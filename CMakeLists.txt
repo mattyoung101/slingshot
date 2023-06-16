@@ -1,0 +1,51 @@
+cmake_minimum_required(VERSION 3.26)
+project(slingshot)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+set(FETCHCONTENT_QUIET FALSE)
+include(FetchContent)
+
+# Pull Catch2 dependency for unit testing
+FetchContent_Declare(
+    Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG        v3.3.2 # or a later release
+    GIT_PROGRESS TRUE
+)
+FetchContent_MakeAvailable(Catch2)
+
+# Pull slang dependency (core dependency for SV parsing)
+# Note that we use the latest commit on master (updated manually by me) because the current 3.0 release has
+# a bug that prevents compilation under Clang.
+FetchContent_Declare(
+    slang
+    GIT_REPOSITORY https://github.com/MikePopoloski/slang.git
+    GIT_TAG dba528bfe0efcf83650a36bd9df43583599c6361
+    GIT_PROGRESS TRUE
+)
+# Currently fails because mimalloc-static cannot be found on my system
+# TODO: configure mimalloc to work correctly
+set(SLANG_USE_MIMALLOC OFF)
+FetchContent_MakeAvailable(slang)
+
+# See if we can use the Mold linker
+find_program(MOLD mold)
+
+# we'll have two targets:
+# - slingshot test executable
+# - slingshot library
+
+# add the slingshot executable
+include_directories(cpp/include)
+add_executable(slingshot cpp/src/main.cpp cpp/src/token_extractor.cpp)
+target_link_libraries(slingshot PRIVATE slang::slang)
+target_compile_options(slingshot PRIVATE "-Wall" "-Wextra" "-g3")
+# Only compile Slingshot with C++20, allow dependencies to choose their own C++ version
+set_target_properties(slingshot PROPERTIES CXX_STANDARD 20 CXX_EXTENSIONS ON INTERPROCEDURAL_OPTIMIZATION ON)
+
+if (MOLD)
+    message(STATUS "Using mold linker")
+    target_link_options(slingshot PRIVATE "-fuse-ld=mold")
+else()
+    message(WARNING "NOT using mold linker")
+endif()
