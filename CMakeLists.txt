@@ -20,7 +20,7 @@ FetchContent_MakeAvailable(Catch2)
 FetchContent_Declare(
     slang
     GIT_REPOSITORY https://github.com/MikePopoloski/slang.git
-    GIT_TAG dba528bfe0efcf83650a36bd9df43583599c6361
+    GIT_TAG 5e1f963e246f5fc1e2bc2fee4d32e9ad66b4c1d9
     GIT_PROGRESS TRUE
 )
 # Currently fails because mimalloc-static cannot be found on my system

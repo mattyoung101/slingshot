@@ -12,8 +12,13 @@
 #include <slang/syntax/SyntaxTree.h>
 #include <slang/syntax/SyntaxVisitor.h>
 #include <slang/text/SourceLocation.h>
+#include <slang/syntax/SyntaxPrinter.h>
 #include <type_traits>
+#include <iostream>
+#include <set>
 
+#include "slang/ast/symbols/PortSymbols.h"
+#include "slang/ast/symbols/VariableSymbols.h"
 #include "slingshot/slingshot.hpp"
 #include "slingshot/token_extractor.hpp"
 
@@ -21,12 +26,20 @@ using namespace slingshot;
 using namespace slang::syntax;
 using namespace slang::ast;
 
-struct ModuleVisitor : public ASTVisitor<ModuleVisitor, true, false> {
-    template<typename T>
-    void handle(const T &t) {
-        if (std::is_base_of_v<Statement, T>) {
-            static_cast<Statement>(t);
-        }
+static std::vector<std::string> symbols;
+
+/// Visits SV "variables" (wires, regs, logics). Currently, in Slang, this module also picks up module ports.
+struct VariableVisitor : public ASTVisitor<VariableVisitor, true, false> {
+    void handle(const VariableSymbol &t) {
+        symbols.emplace_back(t.name);
+        visitDefault(t);
+    }
+};
+
+/// Visit SV parameters
+struct ParameterVisitor : public ASTVisitor<ParameterVisitor, true, false> {
+    void handle(const ParameterSymbol &t) {
+        symbols.emplace_back(t.name);
         visitDefault(t);
     }
 };
@@ -42,7 +55,23 @@ CompletionResult CompletionTokenExtractor::extractTokens(std::string document) {
     Compilation compilation;
     compilation.addSyntaxTree(tree);
     
-    // /* compilation.getRoot().visit(makeVisitor(Functions funcs...), Args &&args...) */
+    // TODO handle this elsewhere
+    if (!compilation.getAllDiagnostics().empty()) {
+        std::cout<< "WARNING: Diagnostics are not empty!" << std::endl;
+    } else {
+        std::cout << "Parsed OK without any diagnostics" << std::endl;
+    }
+    
+    symbols.clear();
+    compilation.getRoot().visit(VariableVisitor());
+    compilation.getRoot().visit(ParameterVisitor());
+    
+    /* std::cout << SyntaxPrinter::printFile(*tree) << std::endl; */
+
+    for (const auto &token : symbols) {
+        std::cout << token << " ";
+    }
+    std::cout << std::endl;
 
     return result;
 }
