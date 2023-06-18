@@ -1,14 +1,11 @@
 #include <iostream>
-#include "slingshot/token_extractor.hpp"
 #include "slingshot/slingshot.hpp"
 
-using namespace slingshot;
-
 int main(void) {
-    std::cout << "Slingshot CPP version: " << SLINGSHOT_CPP_VERSION << std::endl;
+    std::cout << "Slingshot CPP version: " << slingshot_get_cpp_version() << std::endl;
+    std::cout << "Slang version: " << slingshot_get_slang_version() << std::endl;
     std::cout << "Running token extractor" << std::endl;
 
-    CompletionTokenExtractor extractor;
     std::string document = R"(
     `timescale 1ns/1ns
     `default_nettype none
@@ -29,6 +26,8 @@ int main(void) {
         // Counter
         logic[2:0] ctr;
 
+        deez;
+
         always_ff @(posedge i_clk) begin
             if (i_rst) begin
                 ctr <= 0;
@@ -48,7 +47,7 @@ int main(void) {
     endmodule    
     )";
 
-    extractor.extractTokens(document);
+    CompletionResult_t result = slingshot_extract_completion_tokens(document);
 
     return 0;
 }

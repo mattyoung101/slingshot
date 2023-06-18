@@ -47,6 +47,15 @@ Verilator.
     - We would welcome PRs that fix any issues you encounter when applying Slingshot to industry designs, and
     Slingshot being wrong in this case _would_ be considered a bug.
 
+## Implementation details
+Slingshot will be written in a mix of Rust and C++, the majority being Rust. The C++ side is used to interface
+with the Slang parser and extract completion symbols and their associated scopes, as well as diagnostics. This
+is then sent over to Rust via an FFI binding, which handles the rest of the language server implementation
+via tower-lsp.
+
+The C++ side specifically uses C++20 and CMake, so needs a recent version of both gcc/clang and CMake. I
+personally compile with Clang 15.
+
 ## What will Slingshot bring to the table?
 There are already a few existing LSPs for SV. What does Slingshot aim to bring to the table? Slingshot's main advantage is
 its use of the slang frontend and its C++ implementation. Here's a comparison of some other LSPs and what Slingshot

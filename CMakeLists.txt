@@ -5,11 +5,22 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 set(FETCHCONTENT_QUIET FALSE)
 include(FetchContent)
 
+# Optimisation
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+    message(STATUS "Release build, enabling performance")
+    add_compile_options(-O3 -march=native -mtune=native -flto)
+    add_link_options(-flto)
+else()
+    message(STATUS "Debug build, enabling sanitizers")
+    add_compile_options(-Og -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address -fsanitize=undefined)
+endif()
+
 # Pull Catch2 dependency for unit testing
 FetchContent_Declare(
     Catch2
     GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG        v3.3.2 # or a later release
+    GIT_TAG        v3.3.2 
     GIT_PROGRESS TRUE
 )
 FetchContent_MakeAvailable(Catch2)
@@ -37,12 +48,17 @@ find_program(MOLD mold)
 
 # add the slingshot executable
 include_directories(cpp/include)
-add_executable(slingshot cpp/src/main.cpp cpp/src/token_extractor.cpp)
+add_executable(slingshot cpp/src/main.cpp cpp/src/slingshot.cpp)
 target_link_libraries(slingshot PRIVATE slang::slang)
 target_compile_options(slingshot PRIVATE "-Wall" "-Wextra" "-g3")
 # Only compile Slingshot with C++20, allow dependencies to choose their own C++ version
-set_target_properties(slingshot PROPERTIES CXX_STANDARD 20 CXX_EXTENSIONS ON INTERPROCEDURAL_OPTIMIZATION ON)
+set_target_properties(slingshot PROPERTIES 
+    CXX_STANDARD 20 
+    CXX_EXTENSIONS ON 
+    INTERPROCEDURAL_OPTIMIZATION ON
+)
 
+# Use mold for faster linking if available
 if (MOLD)
     message(STATUS "Using mold linker")
     target_link_options(slingshot PRIVATE "-fuse-ld=mold")
