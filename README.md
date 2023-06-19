@@ -1,17 +1,15 @@
-# Slingshot - SystemVerilog language server
+# Slingshot - SystemVerilog LSP
 **Slingshot** is a language server for the SystemVerilog hardware description language, powered by the 
-[slang](https://github.com/MikePopoloski/slang) frontend. slang is among the fastest and most feature complete 
+[slang](https://github.com/MikePopoloski/slang) frontend. Slang is among the fastest and most feature complete 
 open-source SystemVerilog frontends, which means that Slingshot should be fast and accurate.
 
 Slingshot was born out of a frustration with existing LSPs for SystemVerilog. The end goal is
 to essentially create the "clangd of Verilog", that is, to make the editing experience as smooth as popular
-languages like C++ and Python.
-
-Slingshot should support any LSP client, but has a particular focus on Neovim compatibility, as it's the
-editor I personally use the most.
+languages like C++ and Python. Slingshot has a particular focus around fast and accurate _complete as you type_,
+since this is a feature lacking in existing SV LSPs.
 
 **Current state:** Slingshot has only just started development, and is a long way off implementing any features
-described below. 
+described below. So, stay tuned, I guess!
 
 **Timeline:** Hoping to complete some initial tests these holidays after uni exams. Assuming I commit to this,
 I'm hoping to get it functional by no later than June 2024.
@@ -20,21 +18,22 @@ I'm hoping to get it functional by no later than June 2024.
 
 ## Design goals and features
 **Mandatory:**
+- Complete-as-you-type
+    - Should recommend wires, ports and macros available in the current scope
+    - When you're typing ports in a module, it should suggest ports to fill
+    - Like clangd, should only suggest completions when it semantically makes sense to
 - Diagnostics engine for warnings/errors
     - Should have a pluggable backend to support Verilator, Slang, Verible, and others
 - No false positives: If Verilator accepts the input, slingshot should as well
 - No false negatives: If Verilator reports an error in the code, slingshot should as well
-- Complete-as-you-type
-    - Should recommend wires, ports and macros available in the current scope
-    - When you're typing ports in a module, it should suggest ports to fill
 - Low memory: We should try target no more than 20-50 MB of what slang uses
 - Low latency: The LSP should respond quickly to user inputs, even at the cost of CPU usage
 
 **Suggested:**
+- Semantic tokens
 - Go to definition 
 - Formatting (possibly via verible if slang doesn't support it)
 - Documentation on hover
-- Semantic tokens
 
 **Current NON-goals:**
 - CPU usage: SV parsing is expensive, and we are prioritising lower latency. That being said, we still do _care_
@@ -58,7 +57,7 @@ personally compile with Clang 15.
 
 ## What will Slingshot bring to the table?
 There are already a few existing LSPs for SV. What does Slingshot aim to bring to the table? Slingshot's main advantage is
-its use of the slang frontend and its C++ implementation. Here's a comparison of some other LSPs and what Slingshot
+its use of the slang frontend and its C++/Rust implementation. Here's a comparison of some other LSPs and what Slingshot
 aims to improve on:
 
 - [svlangserver](https://github.com/imc-trading/svlangserver),

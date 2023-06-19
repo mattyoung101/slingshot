@@ -30,9 +30,31 @@ using namespace slang::ast;
 using namespace slang::diag;
 using namespace slang;
 
+// string trim, source: https://stackoverflow.com/a/217605/5007892
+// trim from start (in place)
+static constexpr inline void ltrim(std::string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+}
+
+// trim from end (in place)
+static constexpr inline void rtrim(std::string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+}
+
+// trim from both ends (in place)
+static constexpr inline void trim(std::string &s) {
+    rtrim(s);
+    ltrim(s);
+}
+
+/// List of symbols that we extracted from the document on the current invocation
 static std::vector<std::string> symbols;
 
-/// Visits SV "variables" (wires, regs, logics). Currently, in Slang, this module also picks up module ports.
+/// Visits SV "variables" (wires, regs, logics). Currently, in Slang, this visitor also picks up module ports.
 struct VariableVisitor : public ASTVisitor<VariableVisitor, true, false> {
     void handle(const VariableSymbol &t) {
         symbols.emplace_back(t.name);
@@ -48,7 +70,7 @@ struct ParameterVisitor : public ASTVisitor<ParameterVisitor, true, false> {
     }
 };
 
- CompletionResult_t slingshot_extract_completion_tokens(std::string document) {
+ CompletionResult_t slingshot_extract_completion_tokens(std::string document, bool debug) {
     CompletionResult_t result;
 
     // first, parse the document 
@@ -58,33 +80,58 @@ struct ParameterVisitor : public ASTVisitor<ParameterVisitor, true, false> {
     compilation.addSyntaxTree(tree);
 
     if (!compilation.getAllDiagnostics().empty()) {
-        std::cout << "WARNING: Diagnostics are not empty!" << std::endl;
+        if (debug) std::cout << "Diagnostics are NOT empty!" << std::endl;
 
         // process diagnostics into text
+        // this approach currently relies on using Slang's DiagnosticEngine, although we are really only using
+        // it to print the diagnostic message to a string. we should consider doing that ourselves if performance
+        // in this section becomes an issue.
+        // note that we only instantiate the DiagnosticEngine if any diagnostics are detected, so there is a
+        // fast-path for working code.
+        // TODO come to think of it, we probably don't want to check for diagnostics in the autocomplete code
+        // ...only check for diagnostics when an actual edit has gone through (like hitting esc in vim)
         DiagnosticEngine engine(*compilation.getSourceManager());
         auto client = std::make_shared<TextDiagnosticClient>();
         client->showColors(false);
+        client->showLocation(false);
+        client->showSourceLine(false);
         engine.addClient(client);
 
         for (const auto &diag : compilation.getAllDiagnostics()) {
             engine.issue(diag);
-        }
 
-        std::string report = client->getString();
-        std::cout << report << std::endl;
+            auto report = client->getString();
+            // messages include a newline that needs removing
+            trim(report);
+            auto line = compilation.getSourceManager()->getLineNumber(diag.location);
+            auto offset = compilation.getSourceManager()->getColumnNumber(diag.location);
+            if (debug) {
+                std::cout << std::format("Diagnostic. Line: {}, Offset: {}, Message: {}", line, offset, report) 
+                << std::endl;
+            }
+
+            // add the diagnostic to the output result that we'll return to Rust
+            result.diagnostics.emplace_back(Diagnostic_t{report, line, offset});
+            
+            // reset the buffer for the next diagnostic
+            client->clear();
+        }
     } else {
-        std::cout << "Parsed OK without any diagnostics" << std::endl;
+        if (debug) std::cout << "Parsed OK without any diagnostics" << std::endl;
     }
     
     // extract symbols from document
     symbols.clear();
     compilation.getRoot().visit(VariableVisitor());
     compilation.getRoot().visit(ParameterVisitor());
-
-    for (const auto &token : symbols) {
-        std::cout << token << " ";
+    
+    if (debug) {
+        std::cout << "Tokens:" << std::endl;
+        for (const auto &token : symbols) {
+            std::cout << token << " ";
+        }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
 
     result.tokens = symbols;
     return result;

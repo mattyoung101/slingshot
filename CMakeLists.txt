@@ -13,7 +13,7 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 else()
     message(STATUS "Debug build, enabling sanitizers")
     add_compile_options(-Og -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address -fsanitize=undefined)
+    add_link_options(-fsanitize=address -fsanitize=undefined -flto)
 endif()
 
 # Pull Catch2 dependency for unit testing
@@ -57,6 +57,9 @@ set_target_properties(slingshot PROPERTIES
     CXX_EXTENSIONS ON 
     INTERPROCEDURAL_OPTIMIZATION ON
 )
+
+# add the slingshot static library
+# TODO
 
 # Use mold for faster linking if available
 if (MOLD)

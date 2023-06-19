@@ -47,7 +47,7 @@ int main(void) {
     endmodule    
     )";
 
-    CompletionResult_t result = slingshot_extract_completion_tokens(document);
+    auto result = slingshot_extract_completion_tokens(document, true);
 
     return 0;
 }
