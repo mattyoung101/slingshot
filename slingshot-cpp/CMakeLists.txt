@@ -77,6 +77,12 @@ set_target_properties(slingshot_tinker PROPERTIES
 
 # this is just to make the rust build script behave, the C++ project isn't designed for installation
 install(TARGETS slingshot)
+# source: https://stackoverflow.com/a/40685598/5007892
+install(
+    DIRECTORY include
+    DESTINATION include
+    FILES_MATCHING PATTERN "*.h*"
+)
 
 # Use mold for faster linking if available
 # Currently does not work for some reason, some stupid thing in this project (presumably Boost, the 

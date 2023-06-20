@@ -13,16 +13,17 @@ use cmake::Config;
 fn main() {
     // compile slingshot with CMake first
     let dst = Config::new("slingshot-cpp").build();
+
+    // reference: https://rendered-obsolete.github.io/2018/09/30/rust-ffi-ci.html
     
     // link slingshot static library
-    // reference: https://rendered-obsolete.github.io/2018/09/30/rust-ffi-ci.html
     let libpath = dst.join("lib");
     println!("cargo:rustc-link-search=native={}", libpath.display());
     println!("cargo:rustc-link-lib=static=slingshot");
 
     // generate rust bindings
     let bindings = bindgen::Builder::default()
-        .header("slingshot.hpp")
+        .header("wrapper.hpp")
         .generate()
         .expect("Unable to generate bindings");
 
