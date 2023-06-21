@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2023 Matt Young.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
 use cmake;
 use std::env;
 use std::path::PathBuf;
@@ -20,10 +27,11 @@ fn main() {
     let libpath = dst.join("lib");
     println!("cargo:rustc-link-search=native={}", libpath.display());
     println!("cargo:rustc-link-lib=static=slingshot");
+    // TODO rerun only if slingshot.cpp/slingshot.h/wrapper.hpp changed
 
     // generate rust bindings
     let bindings = bindgen::Builder::default()
-        .header("wrapper.hpp")
+        .header("wrapper.h")
         .generate()
         .expect("Unable to generate bindings");
 

@@ -12,10 +12,10 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
     # add_link_options()
 else()
     message(STATUS "Debug build, enabling sanitizers")
-    add_compile_options(-Og)
+    #add_compile_options(-Og)
     # the below messes with rust
-    #add_compile_options(-Og -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
-    #add_link_options(-fsanitize=address -fsanitize=undefined)
+    add_compile_options(-Og -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address -fsanitize=undefined)
 endif()
 
 # Pull Catch2 dependency for unit testing

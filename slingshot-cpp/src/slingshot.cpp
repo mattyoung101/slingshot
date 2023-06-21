@@ -22,8 +22,9 @@
 #include <slang/ast/symbols/VariableSymbols.h>
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/TextDiagnosticClient.h>
-#include <slingshot/slingshot.hpp>
+#include <slingshot/slingshot.h>
 #include <csignal>
+#include <cstdlib>
 
 using namespace slang::syntax;
 using namespace slang::ast;
@@ -70,7 +71,7 @@ struct ParameterVisitor : public ASTVisitor<ParameterVisitor, true, false> {
     }
 };
 
- CompletionResult_t slingshot_extract_completion_tokens(std::string document, bool debug) {
+ CompletionResult_t slingshot_extract_completion_tokens(const char *document, bool debug) {
     CompletionResult_t result;
 
     // first, parse the document 
@@ -78,6 +79,8 @@ struct ParameterVisitor : public ASTVisitor<ParameterVisitor, true, false> {
     auto tree = SyntaxTree::fromText(document);
     Compilation compilation;
     compilation.addSyntaxTree(tree);
+
+    std::vector<Diagnostic_t> localDiagnostics;
 
     if (!compilation.getAllDiagnostics().empty()) {
         if (debug) std::cout << "Diagnostics are NOT empty!" << std::endl;
@@ -111,7 +114,7 @@ struct ParameterVisitor : public ASTVisitor<ParameterVisitor, true, false> {
             }
 
             // add the diagnostic to the output result that we'll return to Rust
-            result.diagnostics.emplace_back(Diagnostic_t{report, line, offset});
+            localDiagnostics.emplace_back(Diagnostic_t{strdup(report.c_str()), line, offset});
             
             // reset the buffer for the next diagnostic
             client->clear();
@@ -133,16 +136,46 @@ struct ParameterVisitor : public ASTVisitor<ParameterVisitor, true, false> {
         std::cout << std::endl;
     }
 
-    result.tokens = symbols;
+    // turn our C++ vectors into C arrays
+    result.numTokens = symbols.size();
+    result.numDiagnostics = localDiagnostics.size();
+
+    result.tokens = static_cast<char**>(calloc(result.numTokens, sizeof(char*)));
+    result.diagnostics = static_cast<Diagnostic_t*>(calloc(result.numDiagnostics, sizeof(Diagnostic_t)));
+
+    for (size_t i = 0; i < symbols.size(); i++) {
+        result.tokens[i] = strdup(symbols[i].c_str());
+    }
+
+    for (size_t i = 0; i < localDiagnostics.size(); i++) {
+        result.diagnostics[i] = localDiagnostics[i];
+    }
+
     return result;
 }
 
-std::string slingshot_get_cpp_version() {
-    return SLINGSHOT_CPP_VERSION;
+void slingshot_free_completion(CompletionResult_t result) {
+    for (size_t i = 0; i < result.numTokens; i++) {
+        free(result.tokens[i]);
+    }
+    free(result.tokens);
+
+    for (size_t i = 0; i < result.numDiagnostics; i++) {
+        free(result.diagnostics[i].message);
+    }
+    free(result.diagnostics);
 }
 
-std::string slingshot_get_slang_version() {
+char *slingshot_get_cpp_version() {
+    return strdup(SLINGSHOT_CPP_VERSION);
+}
+
+char *slingshot_get_slang_version() {
     // semantic versioning with git hash
-    return std::format("{}.{}.{}+{}", slang::VersionInfo::getMajor(), slang::VersionInfo::getMinor(),
-                       slang::VersionInfo::getPatch(), slang::VersionInfo::getHash());
+    return strdup(std::format("{}.{}.{}+{}", slang::VersionInfo::getMajor(), slang::VersionInfo::getMinor(),
+                       slang::VersionInfo::getPatch(), slang::VersionInfo::getHash()).c_str());
+}
+
+void slingshot_free_str(char *str) {
+    free(str);
 }

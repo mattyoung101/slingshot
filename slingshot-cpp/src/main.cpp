@@ -1,10 +1,17 @@
 #include <iostream>
-#include "slingshot/slingshot.hpp"
+#include "slingshot/slingshot.h"
+#include <cstdlib>
 
 int main(void) {
-    std::cout << "Slingshot CPP version: " << slingshot_get_cpp_version() << std::endl;
-    std::cout << "Slang version: " << slingshot_get_slang_version() << std::endl;
+    char *slingshot_version = slingshot_get_cpp_version();
+    char *slang_version = slingshot_get_slang_version();
+    
+    std::cout << "Slingshot CPP version: " << slingshot_version << std::endl;
+    std::cout << "Slang version: " << slang_version << std::endl;
     std::cout << "Running token extractor" << std::endl;
+
+    slingshot_free_str(slingshot_version);
+    slingshot_free_str(slang_version);
 
     std::string document = R"(
     `timescale 1ns/1ns
@@ -47,7 +54,8 @@ int main(void) {
     endmodule    
     )";
 
-    auto result = slingshot_extract_completion_tokens(document, true);
+    auto result = slingshot_extract_completion_tokens(document.c_str(), true);
+    slingshot_free_completion(result);
 
     return 0;
 }
