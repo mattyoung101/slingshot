@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.26)
 project(slingshot)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+# YOU WILL NOT LINK TIME OPTIMISE MY PROJECT!!!!!!
+# This mega breaks Rust for some reason, so we cannot use it.
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
 set(FETCHCONTENT_QUIET FALSE)
 include(FetchContent)
 
@@ -12,10 +14,11 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
     # add_link_options()
 else()
     message(STATUS "Debug build, enabling sanitizers")
-    #add_compile_options(-Og)
-    # the below messes with rust
-    add_compile_options(-Og -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address -fsanitize=undefined)
+    add_compile_options(-Og)
+    
+    # the below messes with rust but is necessary for debugging the C++ directly
+    #add_compile_options(-Og -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
+    #add_link_options(-fsanitize=address -fsanitize=undefined)
 endif()
 
 # Pull Catch2 dependency for unit testing
@@ -37,12 +40,10 @@ FetchContent_Declare(
     GIT_PROGRESS TRUE
 )
 # Currently fails because mimalloc-static cannot be found on my system
-# TODO: configure mimalloc to work correctly
+# TODO: configure mimalloc to work correctly (may be faster -> although possible penalty for maintaining two
+# heaps, one for gcc and one for slang, we should move to mimalloc entirely)
 set(SLANG_USE_MIMALLOC OFF)
 FetchContent_MakeAvailable(slang)
-
-# See if we can use the Mold linker
-find_program(MOLD mold)
 
 # we'll have the following targets:
 # - slingshot tinker executable -> for quick local testing of the API
@@ -51,14 +52,14 @@ find_program(MOLD mold)
 
 # add the slingshot static library
 add_library(slingshot STATIC src/slingshot.cpp)
-target_include_directories(slingshot PRIVATE include)
-target_link_libraries(slingshot PRIVATE slang::slang)
+target_include_directories(slingshot PUBLIC include)
+target_link_libraries(slingshot PUBLIC slang::slang)
 target_compile_options(slingshot PRIVATE "-Wall" "-Wextra" "-g3")
 # Only compile Slingshot with C++20, allow dependencies to choose their own C++ version
 set_target_properties(slingshot PROPERTIES 
     CXX_STANDARD 20 
     CXX_EXTENSIONS ON 
-    INTERPROCEDURAL_OPTIMIZATION ON
+    INTERPROCEDURAL_OPTIMIZATION OFF
 )
 
 # add the slingshot executable
@@ -70,7 +71,7 @@ target_compile_options(slingshot_tinker PRIVATE "-Wall" "-Wextra" "-g3")
 set_target_properties(slingshot_tinker PROPERTIES 
     CXX_STANDARD 20 
     CXX_EXTENSIONS ON 
-    INTERPROCEDURAL_OPTIMIZATION ON
+    INTERPROCEDURAL_OPTIMIZATION OFF
 )
 
 # TODO unit tests
@@ -78,20 +79,10 @@ set_target_properties(slingshot_tinker PROPERTIES
 # this is just to make the rust build script behave, the C++ project isn't designed for installation
 install(TARGETS slingshot)
 # source: https://stackoverflow.com/a/40685598/5007892
+# TODO is this required?
 install(
     DIRECTORY include
     DESTINATION include
     FILES_MATCHING PATTERN "*.h*"
 )
 
-# Use mold for faster linking if available
-# Currently does not work for some reason, some stupid thing in this project (presumably Boost, the 
-# bastard), is adding -flto=thin, and for some reason Mold can't handle C++<->Rust LTO
-
-# if (MOLD)
-#     message(STATUS "Using mold linker")
-#     target_link_libraries(slingshot PRIVATE "-fuse-ld=mold")
-#     target_link_options(slingshot_tinker PRIVATE "-fuse-ld=mold")
-# else()
-#     message(WARNING "NOT using mold linker")
-# endif()

@@ -10,6 +10,7 @@ use std::env;
 use std::path::PathBuf;
 use cmake::Config;
 
+// if necessary for debugging, this insanity appears to be the only way to print from a build script
 // https://stackoverflow.com/a/75263349/5007892
 // macro_rules! buildprint {
 //     ($($tokens: tt)*) => {
@@ -26,6 +27,8 @@ fn main() {
     // link slingshot static library
     let libpath = dst.join("lib");
     println!("cargo:rustc-link-search=native={}", libpath.display());
+    // FIXME I think this is not getting linked properly or something?
+    // ...it's weird, `cargo test` works but main.rs is broken
     println!("cargo:rustc-link-lib=static=slingshot");
     // TODO rerun only if slingshot.cpp/slingshot.h/wrapper.hpp changed
 

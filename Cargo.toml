@@ -12,14 +12,15 @@ publish = false
 [dependencies]
 tower-lsp = "0.19.0"
 tokio = { version = "1.28.2", features = ["full"] }
+# This just exists to fix linker errors (see https://docs.rs/link-cplusplus/latest/link_cplusplus/)
+# We specifically request libstdc++ otherwise more than likely it won't work (since bloody nothing else has
+# in this hellish process of trying to force Rust to link against my C++ library)
+link-cplusplus = { version = "1.0", features = ["libstdc++"] }
 
 [build-dependencies]
 bindgen = "0.66.0"
 cmake = "0.1.50"
 
-# Somewhere, somehow, in the C++ side of things, "-flto=thin" is being appended to the compile flags.
-# I don't know WHO is responsible for adding that (probably Boost), it ain't me, so we have no choice but to force
-# LTO everywhere for interop.
 [profile.dev]
 lto = "thin"
 
