@@ -25,6 +25,10 @@
 #include <slingshot/slingshot.h>
 #include <csignal>
 #include <cstdlib>
+#include <slang/ast/symbols/MemberSymbols.h>
+#include <slang/ast/types/AllTypes.h>
+#include "slang/ast/symbols/CompilationUnitSymbols.h"
+#include "slang/ast/symbols/ParameterSymbols.h"
 
 using namespace slang::syntax;
 using namespace slang::ast;
@@ -71,11 +75,25 @@ struct ParameterVisitor : public ASTVisitor<ParameterVisitor, true, false> {
     }
 };
 
- CompletionResult_t slingshot_extract_completion_tokens(const char *document, bool debug) {
+/// Visit SV typedefs. We are particularly looking for "typedef enum".
+struct TypedefVisitor : public ASTVisitor<TypedefVisitor, true, true> {
+    void handle(const CompilationUnitSymbol &t) {
+        for (const auto &member [[maybe_unused]]: t.members()) {
+            // TODO this will most likely be wrong, we can't just dump these symbols in the list
+            symbols.emplace_back(t.name);
+        }
+        visitDefault(t);
+    }
+};
+
+// TODO add names of modules
+// TODO process classes
+
+CompletionResult_t slingshot_extract_completion_tokens(const char *document, bool debug) {
     CompletionResult_t result;
 
     // first, parse the document 
-    // TODO handle include path (may need a .slingshot.config or something who knows)
+    // TODO handle include path (may need a .slingshot.config or something who knows) -> whole project indexing
     auto tree = SyntaxTree::fromText(document);
     Compilation compilation;
     compilation.addSyntaxTree(tree);
@@ -127,6 +145,7 @@ struct ParameterVisitor : public ASTVisitor<ParameterVisitor, true, false> {
     symbols.clear();
     compilation.getRoot().visit(VariableVisitor());
     compilation.getRoot().visit(ParameterVisitor());
+    compilation.getRoot().visit(TypedefVisitor());
     
     if (debug) {
         std::cout << "Tokens:" << std::endl;

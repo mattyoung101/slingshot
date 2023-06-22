@@ -11,7 +11,6 @@ use slingshot::{slingshot_get_slang_version, slingshot_free_str};
 // use tower_lsp::{Client, LanguageServer, LspService, Server};
 use std::ffi::CStr;
 
-
 #[tokio::main]
 async fn main() {
     println!("Hello, world!");
@@ -19,11 +18,9 @@ async fn main() {
     unsafe {
         let raw_slang_version = slingshot_get_slang_version();
         let slang_version = CStr::from_ptr(raw_slang_version).to_str().expect("Cannot unwrap str");
+        // TODO figure out why this version differs from the C++ one
         println!("Slang version, from Rust: {}", slang_version);
         slingshot_free_str(raw_slang_version);
     }
 }
 
-// fn main() {
-//     println!("Hello world");
-// }

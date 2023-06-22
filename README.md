@@ -27,6 +27,8 @@ I'm hoping to get it functional by no later than June 2024.
     - Like clangd, should only suggest completions when it semantically makes sense to do so
 - Diagnostics engine for warnings/errors
     - Should have a pluggable backend to support Verilator, Slang, Verible, and others
+- Whole project indexing
+    - Slingshot should discover files (possibly as you edit them) and add them to an index cache
 - No false positives: If Verilator accepts the input, slingshot should as well
 - No false negatives: If Verilator reports an error in the code, slingshot should as well
 - Low latency: The LSP should respond quickly to user inputs, even at the cost of CPU usage

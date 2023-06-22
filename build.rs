@@ -24,13 +24,16 @@ fn main() {
 
     // reference: https://rendered-obsolete.github.io/2018/09/30/rust-ffi-ci.html
     
-    // link slingshot static library
+    // link slingshot static library, note here that we use a "fat" static library which is a
+    // combination of both libslingshot (from slingshot-cpp) and libsvlang (from slang) to make
+    // linking with rust possible.
     let libpath = dst.join("lib");
     println!("cargo:rustc-link-search=native={}", libpath.display());
-    // FIXME I think this is not getting linked properly or something?
-    // ...it's weird, `cargo test` works but main.rs is broken
-    println!("cargo:rustc-link-lib=static=slingshot");
-    // TODO rerun only if slingshot.cpp/slingshot.h/wrapper.hpp changed
+    println!("cargo:rustc-link-lib=static=slingshotfat");
+    println!("cargo:rerun-if-changed=wrapper.h");
+    println!("cargo:rerun-if-changed=slingshot-cpp/src");
+    println!("cargo:rerun-if-changed=slingshot-cpp/include");
+    println!("cargo:rerun-if-changed=slingshot-cpp/CMakeLists.txt");
 
     // generate rust bindings
     let bindings = bindgen::Builder::default()

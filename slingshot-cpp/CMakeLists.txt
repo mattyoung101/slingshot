@@ -4,8 +4,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # YOU WILL NOT LINK TIME OPTIMISE MY PROJECT!!!!!!
 # This mega breaks Rust for some reason, so we cannot use it.
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
+
 set(FETCHCONTENT_QUIET FALSE)
 include(FetchContent)
+
+# split project into multiple cmake scripts: https://stackoverflow.com/a/69545109/5007892
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(MergeStaticLibraries)
 
 # Optimisation
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
@@ -17,6 +22,8 @@ else()
     add_compile_options(-Og)
     
     # the below messes with rust but is necessary for debugging the C++ directly
+    # TODO detect if we are NOT using Rust, and complete that shit
+
     #add_compile_options(-Og -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
     #add_link_options(-fsanitize=address -fsanitize=undefined)
 endif()
@@ -74,15 +81,20 @@ set_target_properties(slingshot_tinker PROPERTIES
     INTERPROCEDURAL_OPTIMIZATION OFF
 )
 
+# build a fat static library with all dependencies linked in, for then linking with Rust
+bundle_static_library(slingshot slingshotfat)
+
 # TODO unit tests
 
+# install dependencies
 # this is just to make the rust build script behave, the C++ project isn't designed for installation
 install(TARGETS slingshot)
 # source: https://stackoverflow.com/a/40685598/5007892
-# TODO is this required?
+# FIXME is this required?
 install(
     DIRECTORY include
     DESTINATION include
     FILES_MATCHING PATTERN "*.h*"
 )
-
+# install the fat library, so that Rust can link against it
+install(FILES ${CMAKE_BINARY_DIR}/libslingshotfat.a DESTINATION lib)
