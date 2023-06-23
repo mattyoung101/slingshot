@@ -22,35 +22,16 @@ else()
     add_compile_options(-Og)
     
     # the below messes with rust but is necessary for debugging the C++ directly
-    # TODO detect if we are NOT using Rust, and complete that shit
+    # TODO add a USE_SANITIZERS option to enable this shit
 
     #add_compile_options(-Og -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
     #add_link_options(-fsanitize=address -fsanitize=undefined)
 endif()
 
-# Pull Catch2 dependency for unit testing
-FetchContent_Declare(
-    Catch2
-    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG        v3.3.2 
-    GIT_PROGRESS TRUE
-)
-FetchContent_MakeAvailable(Catch2)
-
-# Pull slang dependency (core dependency for SV parsing)
-# Note that we use the latest commit on master (updated manually by me) because the current 3.0 release has
-# a bug that prevents compilation under Clang.
-FetchContent_Declare(
-    slang
-    GIT_REPOSITORY https://github.com/MikePopoloski/slang.git
-    GIT_TAG 5e1f963e246f5fc1e2bc2fee4d32e9ad66b4c1d9
-    GIT_PROGRESS TRUE
-)
-# Currently fails because mimalloc-static cannot be found on my system
-# TODO: configure mimalloc to work correctly (may be faster -> although possible penalty for maintaining two
-# heaps, one for gcc and one for slang, we should move to mimalloc entirely)
-set(SLANG_USE_MIMALLOC OFF)
-FetchContent_MakeAvailable(slang)
+# NOTE: We no longer pull Catch2 or Slang dependencies because rust-cmake is incapable of building them
+# correctly, and even if it does, since it's recompiling both each time it takes fuckin forever. 
+# You will have to build these dependencies yourself, see README.
+find_package(slang REQUIRED)
 
 # we'll have the following targets:
 # - slingshot tinker executable -> for quick local testing of the API
@@ -84,7 +65,7 @@ set_target_properties(slingshot_tinker PROPERTIES
 # build a fat static library with all dependencies linked in, for then linking with Rust
 bundle_static_library(slingshot slingshotfat)
 
-# TODO unit tests
+# TODO unit tests -> maybe we want them from the rust side?
 
 # install dependencies
 # this is just to make the rust build script behave, the C++ project isn't designed for installation

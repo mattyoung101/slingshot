@@ -19,6 +19,35 @@ I'm hoping to get it functional by no later than June 2024.
 
 **Author:** Matt Young (m.young2@uqconnect.edu.au)
 
+## Building and running
+**Toolchain**
+
+You will need:
+- Rust, latest stable version, at least 1.70
+- C++ compiler capable of C++20, I personally use Clang 15
+- CMake, at least 3.26
+
+**Building Slang**
+
+The version of Slang that this LSP is compatible with is _very_ specific. Please be warned that everything
+may entirely break if Slang is not compiled with _exactly this commit hash_.
+
+The current compatible commit hash is: `8c85647ea4538438f9723cd848bd95e58d06e471` (from: 22 June 2023, last updated: 24 June 2023).
+
+To compile Slang:
+1. Clone [the repo](https://github.com/MikePopoloski/slang)
+2. `git checkout` the commit hash above
+3. `cmake -DSLANG_USE_MIMALLOC=OFF -B build` to generate the build files, note that I disable mimalloc because
+it does not compile for me
+4. `make -j32` to build with 32 threads, adjust to your CPU
+5. `sudo make install` to install the build files
+
+TODO: build Slang with -DCMAKE_BUILD_TYPE=Release ??
+
+**Building Slingshot**
+
+You should now be able to build Slingshot with just `cargo build`, fingers crossed.
+
 ## Design goals and features
 **Mandatory:**
 - Complete-as-you-type
@@ -60,11 +89,7 @@ with the Slang parser and extract completion symbols and their associated scopes
 is then sent over to Rust via an FFI binding, which handles the rest of the language server implementation
 via tower-lsp.
 
-The C++ side specifically uses C++20 and CMake, so needs a recent version of both gcc/clang and CMake. I
-personally compile with Clang 15.
-
-This project doubles as my way of learning Rust, so bare with me if it's not idiomatic. We are targeting the
-latest stable Rust, currently 1.70.0.
+This project doubles as my way of learning Rust, so bare with me if it's not idiomatic. PRs are welcome, as always.
 
 ## Licence
 Mozilla Public License v2.0

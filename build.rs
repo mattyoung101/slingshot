@@ -20,6 +20,8 @@ use cmake::Config;
 
 fn main() {
     // compile slingshot with CMake first
+    // TODO detect if this is a cargo release build and compile slingshot-cpp with
+    // CMAKE_BUILD_TYPE=Release
     let dst = Config::new("slingshot-cpp").build();
 
     // reference: https://rendered-obsolete.github.io/2018/09/30/rust-ffi-ci.html
@@ -38,6 +40,8 @@ fn main() {
     // generate rust bindings
     let bindings = bindgen::Builder::default()
         .header("wrapper.h")
+        // only generate bindings for functions starting with "slingshot" to fix u128 problems
+        .allowlist_function("slingshot.*")
         .generate()
         .expect("Unable to generate bindings");
 

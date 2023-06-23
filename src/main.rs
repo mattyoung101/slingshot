@@ -1,4 +1,3 @@
-use slingshot::{slingshot_get_slang_version, slingshot_free_str};
 /*
  * Copyright (c) 2023 Matt Young.
  *
@@ -6,6 +5,7 @@ use slingshot::{slingshot_get_slang_version, slingshot_free_str};
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
+use slingshot::{slingshot_get_slang_version, slingshot_free_str};
 // use tower_lsp::jsonrpc::Result;
 // use tower_lsp::lsp_types::*;
 // use tower_lsp::{Client, LanguageServer, LspService, Server};

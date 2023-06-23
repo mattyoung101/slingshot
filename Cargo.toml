@@ -16,6 +16,12 @@ tokio = { version = "1.28.2", features = ["full"] }
 # We specifically request libstdc++ otherwise more than likely it won't work (since bloody nothing else has
 # in this hellish process of trying to force Rust to link against my C++ library)
 link-cplusplus = { version = "1.0", features = ["libstdc++"] }
+# serde, flexbuffers and sqlite will be used for index caching
+serde = "1.0.164"
+flexbuffers = "2.0.0"
+# note that this bundles and links sqlite3 with our binary, which is exactly what we want
+rusqlite = { version = "0.29.0", features = ["bundled"] }
+xxhash-rust = { version = "0.8.5", features = ["xxh3"] }
 
 [build-dependencies]
 bindgen = "0.66.0"
