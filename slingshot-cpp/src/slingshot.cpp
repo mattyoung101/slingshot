@@ -9,6 +9,8 @@
 #include <iostream>
 #include <set>
 #include <format>
+#include <csignal>
+#include <cstdlib>
 #include <slang/text/SourceManager.h>
 #include <slang/ast/Compilation.h>
 #include <slang/ast/ASTVisitor.h>
@@ -23,12 +25,10 @@
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/TextDiagnosticClient.h>
 #include <slingshot/slingshot.h>
-#include <csignal>
-#include <cstdlib>
 #include <slang/ast/symbols/MemberSymbols.h>
 #include <slang/ast/types/AllTypes.h>
-#include "slang/ast/symbols/CompilationUnitSymbols.h"
-#include "slang/ast/symbols/ParameterSymbols.h"
+#include <slang/ast/symbols/CompilationUnitSymbols.h>
+#include <slang/ast/symbols/ParameterSymbols.h>
 
 using namespace slang::syntax;
 using namespace slang::ast;
@@ -89,7 +89,7 @@ struct TypedefVisitor : public ASTVisitor<TypedefVisitor, true, true> {
 // TODO add names of modules
 // TODO process classes
 
-CompletionResult_t slingshot_extract_completion_tokens(const char *document, bool debug) {
+CompletionResult_t slingshot_complete(const char *document, bool debug) {
     CompletionResult_t result;
 
     // first, parse the document 
@@ -98,49 +98,6 @@ CompletionResult_t slingshot_extract_completion_tokens(const char *document, boo
     Compilation compilation;
     compilation.addSyntaxTree(tree);
 
-    std::vector<Diagnostic_t> localDiagnostics;
-
-    if (!compilation.getAllDiagnostics().empty()) {
-        if (debug) std::cout << "Diagnostics are NOT empty!" << std::endl;
-
-        // process diagnostics into text
-        // this approach currently relies on using Slang's DiagnosticEngine, although we are really only using
-        // it to print the diagnostic message to a string. we should consider doing that ourselves if performance
-        // in this section becomes an issue.
-        // note that we only instantiate the DiagnosticEngine if any diagnostics are detected, so there is a
-        // fast-path for working code.
-        // TODO come to think of it, we probably don't want to check for diagnostics in the autocomplete code
-        // ...only check for diagnostics when an actual edit has gone through (like hitting esc in vim)
-        DiagnosticEngine engine(*compilation.getSourceManager());
-        auto client = std::make_shared<TextDiagnosticClient>();
-        client->showColors(false);
-        client->showLocation(false);
-        client->showSourceLine(false);
-        engine.addClient(client);
-
-        for (const auto &diag : compilation.getAllDiagnostics()) {
-            engine.issue(diag);
-
-            auto report = client->getString();
-            // messages include a newline that needs removing
-            trim(report);
-            auto line = compilation.getSourceManager()->getLineNumber(diag.location);
-            auto offset = compilation.getSourceManager()->getColumnNumber(diag.location);
-            if (debug) {
-                std::cout << std::format("Diagnostic. Line: {}, Offset: {}, Message: {}", line, offset, report) 
-                << std::endl;
-            }
-
-            // add the diagnostic to the output result that we'll return to Rust
-            localDiagnostics.emplace_back(Diagnostic_t{strdup(report.c_str()), line, offset});
-            
-            // reset the buffer for the next diagnostic
-            client->clear();
-        }
-    } else {
-        if (debug) std::cout << "Parsed OK without any diagnostics" << std::endl;
-    }
-    
     // extract symbols from document
     symbols.clear();
     compilation.getRoot().visit(VariableVisitor());
@@ -155,21 +112,74 @@ CompletionResult_t slingshot_extract_completion_tokens(const char *document, boo
         std::cout << std::endl;
     }
 
-    // turn our C++ vectors into C arrays
     result.numTokens = symbols.size();
-    result.numDiagnostics = localDiagnostics.size();
-
     result.tokens = static_cast<char**>(calloc(result.numTokens, sizeof(char*)));
-    result.diagnostics = static_cast<Diagnostic_t*>(calloc(result.numDiagnostics, sizeof(Diagnostic_t)));
-
     for (size_t i = 0; i < symbols.size(); i++) {
         result.tokens[i] = strdup(symbols[i].c_str());
     }
 
+    return result;
+}
+
+DiagnosticResults_t slingshot_diagnose(const char *document, bool debug) {
+    DiagnosticResults_t result;
+
+    if (debug) std::cout << "Requesting diagnostics for str: " << document << std::endl;
+    
+    // allocate the source manager - slang docs state that if this goes out of scope, bad stuff will happen
+    auto manager = std::make_shared<SourceManager>();
+    manager->assignText(std::string(document));
+    auto tree = SyntaxTree::fromText(std::string(document));
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+
+    std::vector<Diagnostic_t> localDiagnostics;
+    if (!compilation.getAllDiagnostics().empty()) {
+        if (debug) std::cout << "Diagnostics are NOT empty!" << std::endl;
+
+        // process diagnostics into text
+        // this approach currently relies on using Slang's DiagnosticEngine, although we are really only using
+        // it to print the diagnostic message to a string. we should consider doing that ourselves if performance
+        // in this section becomes an issue.
+        // note that we only instantiate the DiagnosticEngine if any diagnostics are detected, so there is a
+        // fast-path for working code.
+        DiagnosticEngine engine(*manager);
+        auto client = std::make_shared<TextDiagnosticClient>();
+        client->showColors(false);
+        client->showLocation(false);
+        client->showSourceLine(false);
+        engine.addClient(client);
+
+        for (const auto &diag : compilation.getAllDiagnostics()) {
+            engine.issue(diag);
+
+            auto report = client->getString();
+            // messages include a newline that needs removing
+            trim(report);
+            size_t line = manager->getLineNumber(diag.location);
+            size_t offset = manager->getColumnNumber(diag.location);
+            if (debug) {
+                std::cout << std::format("Diagnostic. Line: {}, Offset: {}, Message: {}", line, offset, report) 
+                << std::endl;
+            }
+
+            // add the diagnostic to the output result that we'll return to Rust
+            localDiagnostics.emplace_back(Diagnostic_t{strdup(report.c_str()), line, offset});
+            
+            // reset the buffer for the next diagnostic
+            client->clear();
+        }
+    } else {
+        if (debug) std::cout << "Parsed OK without any diagnostics" << std::endl;
+    }
+
+    result.numDiagnostics = localDiagnostics.size();
+    result.diagnostics = static_cast<Diagnostic_t*>(calloc(result.numDiagnostics, sizeof(Diagnostic_t)));
     for (size_t i = 0; i < localDiagnostics.size(); i++) {
         result.diagnostics[i] = localDiagnostics[i];
     }
-
+    
     return result;
 }
 
@@ -178,7 +188,9 @@ void slingshot_free_completion(CompletionResult_t result) {
         free(result.tokens[i]);
     }
     free(result.tokens);
+}
 
+void slingshot_free_diagnostics(DiagnosticResults_t result) {
     for (size_t i = 0; i < result.numDiagnostics; i++) {
         free(result.diagnostics[i].message);
     }

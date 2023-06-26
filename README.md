@@ -44,6 +44,9 @@ it does not compile for me
 
 TODO: build Slang with -DCMAKE_BUILD_TYPE=Release ??
 
+NOTE: You may also need the C++ fmt library, I'm not sure if this is installed by Slang or not. If CMake
+complains, you should install it.
+
 **Building Slingshot**
 
 You should now be able to build Slingshot with just `cargo build`, fingers crossed.

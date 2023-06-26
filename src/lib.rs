@@ -13,3 +13,8 @@ extern crate link_cplusplus;
 
 // Include the generated slingshot-cpp bindings
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
+pub mod slingshot_ergo;
+pub mod diagnostics;
+pub mod completion;
+pub mod indexing;

@@ -32,10 +32,11 @@ fn main() {
     let libpath = dst.join("lib");
     println!("cargo:rustc-link-search=native={}", libpath.display());
     println!("cargo:rustc-link-lib=static=slingshotfat");
-    println!("cargo:rerun-if-changed=wrapper.h");
-    println!("cargo:rerun-if-changed=slingshot-cpp/src");
-    println!("cargo:rerun-if-changed=slingshot-cpp/include");
-    println!("cargo:rerun-if-changed=slingshot-cpp/CMakeLists.txt");
+
+    // println!("cargo:rerun-if-changed=wrapper.h");
+    // println!("cargo:rerun-if-changed=slingshot-cpp/src");
+    // println!("cargo:rerun-if-changed=slingshot-cpp/include");
+    // println!("cargo:rerun-if-changed=slingshot-cpp/CMakeLists.txt");
 
     // generate rust bindings
     let bindings = bindgen::Builder::default()

@@ -35,29 +35,46 @@ typedef struct {
     char **tokens;
     /// Number of strings in the tokens array
     size_t numTokens;
-    /// List of diagnostics reported by Slang. 
+} CompletionResult_t;
+
+typedef struct {
+    /// Heap allocated array of Diagnostic_t instances
     Diagnostic_t *diagnostics;
     /// Number of diagnostics in the diagnostics array
     size_t numDiagnostics;
-} CompletionResult_t;
+} DiagnosticResults_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * Extracts completion tokens from the given input buffer. Also returns diagnostics if any exist.
+ * Extracts completion tokens from the given input buffer and returns their scope info, from Slang.
  * @param document input text document (full text, not path)
  * @param debug if true, run in debug mode (e.g. print logs, etc), otherwise run in normal mode
  * @return completion result struct.
  */
-CompletionResult_t slingshot_extract_completion_tokens(const char *document, bool debug);
+CompletionResult_t slingshot_complete(const char *document, bool debug);
+
+/**
+ * Parses the document and extracts diagnostic information from Slang.
+ * @param document input text document (full text, not path)
+ * @param debug if true, run in debug mode (e.g. print logs, etc), otherwise run in normal mode
+ * @return diagnostic results struct
+ */
+DiagnosticResults_t slingshot_diagnose(const char *document, bool debug);
 
 /**
  * Frees the memory allocated by a CompletionResult_t struct
  * @param result struct to be freed
  */
 void slingshot_free_completion(CompletionResult_t result);
+
+/**
+ * Frees memory allocated by a DiagnosticResults_t struct
+ * @param result struct to be freed
+ */
+void slingshot_free_diagnostics(DiagnosticResults_t result);
 
 /**
  * Simple wrapper around free() for calling from Rust

@@ -15,7 +15,6 @@ int main(void) {
     
     std::cout << "Slingshot CPP version: " << slingshot_version << std::endl;
     std::cout << "Slang version: " << slang_version << std::endl;
-    std::cout << "Running token extractor" << std::endl;
 
     slingshot_free_str(slingshot_version);
     slingshot_free_str(slang_version);
@@ -56,8 +55,13 @@ int main(void) {
     endmodule
     )";
 
-    auto result = slingshot_extract_completion_tokens(document.c_str(), true);
-    slingshot_free_completion(result);
+    // std::cout << "Running token extractor" << std::endl;
+    // auto result = slingshot_complete(document.c_str(), true);
+    // slingshot_free_completion(result);
+
+    std::cout << "Running diagnostics" << std::endl;
+    auto result2 = slingshot_diagnose("hello world", true);
+    slingshot_free_diagnostics(result2);
 
     return 0;
 }

@@ -5,6 +5,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # This mega breaks Rust for some reason, so we cannot use it.
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
 
+option(USE_SANITIZERS "If enabled, use Google Sanitizers for detecting bugs. Only applies in debug builds. NOT COMPATIBLE WITH RUST." OFF)
+
 set(FETCHCONTENT_QUIET FALSE)
 include(FetchContent)
 
@@ -14,24 +16,28 @@ include(MergeStaticLibraries)
 
 # Optimisation
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-    message(STATUS "Release build, enabling performance")
+    message(STATUS "Release build")
     add_compile_options(-O3 -march=native -mtune=native)
     # add_link_options()
 else()
-    message(STATUS "Debug build, enabling sanitizers")
+    message(STATUS "Debug build")
     add_compile_options(-Og)
     
-    # the below messes with rust but is necessary for debugging the C++ directly
-    # TODO add a USE_SANITIZERS option to enable this shit
-
-    #add_compile_options(-Og -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
-    #add_link_options(-fsanitize=address -fsanitize=undefined)
+    if (USE_SANITIZERS)
+        message(STATUS "Using sanitizers")
+        add_compile_options(-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address -fsanitize=undefined)
+    endif()
 endif()
 
 # NOTE: We no longer pull Catch2 or Slang dependencies because rust-cmake is incapable of building them
 # correctly, and even if it does, since it's recompiling both each time it takes fuckin forever. 
 # You will have to build these dependencies yourself, see README.
 find_package(slang REQUIRED)
+# this is an indirect dependency of slang, that for some reason is not being linked by Rust (again, for like
+# the fifth fucking time)
+find_package(fmt REQUIRED)
+find_package(Boost COMPONENTS system thread headers REQUIRED)
 
 # we'll have the following targets:
 # - slingshot tinker executable -> for quick local testing of the API
@@ -41,7 +47,7 @@ find_package(slang REQUIRED)
 # add the slingshot static library
 add_library(slingshot STATIC src/slingshot.cpp)
 target_include_directories(slingshot PUBLIC include)
-target_link_libraries(slingshot PUBLIC slang::slang)
+target_link_libraries(slingshot PUBLIC slang::slang fmt::fmt Boost::headers)
 target_compile_options(slingshot PRIVATE "-Wall" "-Wextra" "-g3")
 # Only compile Slingshot with C++20, allow dependencies to choose their own C++ version
 set_target_properties(slingshot PROPERTIES 
