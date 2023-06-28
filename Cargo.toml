@@ -3,29 +3,27 @@ name = "slingshot"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.70.0"
-description = "SystemVerilog LSP powered by Slang"
+description = "SystemVerilog LSP"
 readme = "README.md"
 license = "MPL-2.0"
 # for now
 publish = false
 
 [dependencies]
+sv-parser = "0.13.1"
 tower-lsp = "0.19.0"
 tokio = { version = "1.28.2", features = ["full"] }
-# This just exists to fix linker errors (see https://docs.rs/link-cplusplus/latest/link_cplusplus/)
-# We specifically request libstdc++ otherwise more than likely it won't work (since bloody nothing else has
-# in this hellish process of trying to force Rust to link against my C++ library)
-link-cplusplus = { version = "1.0", features = ["libstdc++"] }
 # serde, flexbuffers and sqlite will be used for index caching
+# note we compile and statically link rusqlite with the slingshot binary which is in fact what we want
 serde = "1.0.164"
 flexbuffers = "2.0.0"
-# note that this bundles and links sqlite3 with our binary, which is exactly what we want
 rusqlite = { version = "0.29.0", features = ["bundled"] }
 xxhash-rust = { version = "0.8.5", features = ["xxh3"] }
-
-[build-dependencies]
-bindgen = "0.66.0"
-cmake = "0.1.50"
+tempfile = "3.6.0"
+regex = "1.8.4"
+lazy_static = "1.4.0"
+log = "0.4.19"
+simple_logger = "4.2.0"
 
 [profile.dev]
 lto = "thin"

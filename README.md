@@ -1,8 +1,6 @@
 # Slingshot - SystemVerilog LSP
-**Slingshot** is a **work in progress** language server for the SystemVerilog hardware description language, powered by the 
-[slang](https://github.com/MikePopoloski/slang) frontend. Slang is among the fastest and most feature complete 
-open-source SystemVerilog frontends, which means that Slingshot should be fast and accurate. Slingshot is
-developed in a mix of Rust and C++20.
+**Slingshot** is a **work in progress** language server for the SystemVerilog hardware description language, 
+currently powered by dalance's [sv-parser](https://github.com/dalance/sv-parser).
 
 Slingshot was born out of a frustration with existing SystemVerilog LSPs and editor plugins. While many exist,
 and most are functional, I still found them imperfect for my needs. Many are missing crucial features like
@@ -24,28 +22,6 @@ I'm hoping to get it functional by no later than June 2024.
 
 You will need:
 - Rust, latest stable version, at least 1.70
-- C++ compiler capable of C++20, I personally use Clang 15
-- CMake, at least 3.26
-
-**Building Slang**
-
-The version of Slang that this LSP is compatible with is _very_ specific. Please be warned that everything
-may entirely break if Slang is not compiled with _exactly this commit hash_.
-
-The current compatible commit hash is: `8c85647ea4538438f9723cd848bd95e58d06e471` (from: 22 June 2023, last updated: 24 June 2023).
-
-To compile Slang:
-1. Clone [the repo](https://github.com/MikePopoloski/slang)
-2. `git checkout` the commit hash above
-3. `cmake -DSLANG_USE_MIMALLOC=OFF -B build` to generate the build files, note that I disable mimalloc because
-it does not compile for me
-4. `make -j32` to build with 32 threads, adjust to your CPU
-5. `sudo make install` to install the build files
-
-TODO: build Slang with -DCMAKE_BUILD_TYPE=Release ??
-
-NOTE: You may also need the C++ fmt library, I'm not sure if this is installed by Slang or not. If CMake
-complains, you should install it.
 
 **Building Slingshot**
 
@@ -87,10 +63,17 @@ Slang.
     industry designs, if you are able to contribute.
 
 ## Implementation details
-Slingshot will be written in a mix of Rust and C++, the majority being Rust. The C++ side is used to interface
-with the Slang parser and extract completion symbols and their associated scopes, as well as diagnostics. This
-is then sent over to Rust via an FFI binding, which handles the rest of the language server implementation
-via tower-lsp.
+Slingshot is currently written in just Rust. In a past life, it was written in a mix of Rust and C++20 to
+interface with the Slang SystemVerilog frontend developed by Mike Popoloski. Unfortunately, that proved
+extremely difficult to work with from both the Rust and C++ side - the worst of both worlds, constant segfaulting,
+and a nightmarish build process. So that has been scrapped, and I'm trying just Rust for now. _However_, if
+sv-parser is not suitable for the task at hand, then we will probably move to a pure C++20 project with either
+Verible or Slang.
+
+sv-parser does not have good error recovery support, and is less accurate than Slang. Slingshot will therefore
+have to make a "best guess" attempt at providing useful feedback while the user is typing, probably by splicing
+lines that are causing errors. In an ideal world where I have unlimited time to dedicate to this project, I'd
+write a new SV parser using chumsky, but that is an absolutely mammoth task and a project into itself.
 
 This project doubles as my way of learning Rust, so bare with me if it's not idiomatic. PRs are welcome, as always.
 

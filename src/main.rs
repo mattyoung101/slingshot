@@ -5,8 +5,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-use slingshot::{slingshot_ergo::Slingshot, slingshot_get_slang_version, slingshot_free_str};
-use std::ffi::CStr;
+use log::info;
+use simple_logger::SimpleLogger;
+use slingshot::completion::CompletionProvider;
+use slingshot::completion::SvParserCompletion;
+use slingshot::diagnostics::DiagnosticProvider;
+use slingshot::diagnostics::VerilatorDiagnostics;
 
 #[derive(Debug)]
 struct Backend {
@@ -15,15 +19,16 @@ struct Backend {
 
 #[tokio::main]
 async fn main() {
-    println!("Hello, world!");
+    // initialise logging framework
+    // TODO we will probably need to use a file-based logging service since we'll be using an stdio
+    // based LSP, so logging to stdio will interfere with that
+    SimpleLogger::new().init().unwrap();
 
-    unsafe {
-        let raw_slang_version = slingshot_get_slang_version();
-        let slang_version = CStr::from_ptr(raw_slang_version).to_str().expect("Cannot unwrap str");
-        println!("Slang version, from Rust: {}", slang_version);
-        slingshot_free_str(raw_slang_version);
+    let result = VerilatorDiagnostics::diagnose("module x; endmodule\n");
+    for entry in result.iter() {
+        info!("{:?}", entry);
     }
 
-    Slingshot::diagnose("hello world", false);
+    let result2 = SvParserCompletion::extract_tokens("module x; endmodule\n");
 }
 

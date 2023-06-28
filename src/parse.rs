@@ -5,7 +5,5 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-pub mod diagnostics;
-pub mod completion;
-pub mod indexing;
-pub mod parse;
+
+// this file may be used if we need to manage sv-parser
