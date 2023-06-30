@@ -25,7 +25,7 @@ pub struct Diagnostic {
 /// Interface to a piece of software that can perform diagnostics, e.g. Slang, Verilator, etc.
 pub trait DiagnosticProvider {
     /// Provides a set of diagnostics for the given document.
-    fn diagnose(document: &str) -> Vec<Diagnostic>;
+    fn diagnose(document: &str) -> Option<Vec<Diagnostic>>;
 }
 
 /// Wrapper around Verilator to provide diagnostics
@@ -40,7 +40,7 @@ pub struct VerilatorDiagnostics {
 // Useful information is in capture groups
 
 impl DiagnosticProvider for VerilatorDiagnostics {
-    fn diagnose(document: &str) -> Vec<Diagnostic> {
+    fn diagnose(document: &str) -> Option<Vec<Diagnostic>> {
         debug!("Running VerilatorDiagnostics for document:\n{}", document);
 
         let mut diagnostics: Vec<Diagnostic> = Vec::new();
@@ -50,7 +50,7 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             Ok(file) => file,
             Err(err) => {
                 error!("Error creating temp file: {}", err);
-                return Vec::new()
+                return None
             }
         };
         // if we can create a file in /tmp we can probably write to it, just silently fail if we
@@ -69,7 +69,7 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             Ok(o) => o,
             Err(err) => {
                 error!("Failed to invoke Verilator: {}", err);
-                return Vec::new()
+                return None
             }
         };
 
@@ -83,7 +83,7 @@ impl DiagnosticProvider for VerilatorDiagnostics {
                 warn!("Verilator exited with error status, but output does not appear to contain \
                         any warning/error messages. Maybe Verilator crashed?");
                 warn!("Verilator said:\nstdout:\n{}\nstderr:\n{}", stdout, stderr);
-                return Vec::new();
+                return None
             }
         }
             
@@ -106,7 +106,7 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             diagnostics.push(Diagnostic { message: msg1.to_string(), line: *line, offset: *pos })  ;
         }
 
-        return diagnostics;
+        return Some(diagnostics);
     }
 }
 

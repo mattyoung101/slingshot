@@ -27,6 +27,11 @@ You will need:
 
 You should now be able to build Slingshot with just `cargo build`, fingers crossed.
 
+**Running**
+
+Slingshot currently does not function as a LSP (i.e. the LSP backend has not yet been written). When it has
+been, I will add instructions for using it here.
+
 ## Design goals and features
 **Mandatory:**
 - Complete-as-you-type
@@ -55,27 +60,36 @@ about CPU usage (we don't want like 100% CPU all the time), but it's not the #1 
 - Full-compliance with SystemVerilog: SV is a complex language, and I do not (yet!) work in the
 industry, so I am basing this plugin off my own personal workload and the support of open-source tools like
 Slang. 
-    - Parsing is done by the upstream Slang project, so any Slingshot bugs that are actually parse errors in
-    Slang should be reported to them.
+    - Most parsing is done by an engine, not by Slingshot itself. Most parsing issues will be issues in these
+    upstream engines, not Slingshot itself.
     - If Slingshot is unable to understand your project structure (and you've configured it correctly), this is
-    a bug in Slingshot and should be reported to us.
-    - We would welcome PRs to this project or Slang that fix any issues you encounter when applying Slingshot to 
-    industry designs, if you are able to contribute.
+    a bug in Slingshot and should be reported to me.
+    - If you are able to share snippets of code from your industry projects (unlikely), or produce minimum
+    reproducible examples (more likely), these would be greatly appreciated.
 
 ## Implementation details
+Fundamentally, Slingshot is a fully modular interface between "engines", that do the real parsing work, and
+the LSP protocol. All LSP features, from completion to diagnostics, are driven by
+a backend "engine". Currently, completion is driven by sv-parser and diagnostics are driven by Verilator,
+but I aim to make these fully runtime configurable. Things Slingshot handles itself are project indexing and
+LSP communications.
+
 Slingshot is currently written in just Rust. In a past life, it was written in a mix of Rust and C++20 to
 interface with the Slang SystemVerilog frontend developed by Mike Popoloski. Unfortunately, that proved
 extremely difficult to work with from both the Rust and C++ side - the worst of both worlds, constant segfaulting,
 and a nightmarish build process. So that has been scrapped, and I'm trying just Rust for now. _However_, if
-sv-parser is not suitable for the task at hand, then we will probably move to a pure C++20 project with either
-Verible or Slang.
+sv-parser is not suitable for the task at hand, then at this point I'll bundle a Slang executable that starts
+a server and communicates with the main Slingshot process via IPC.
 
-sv-parser does not have good error recovery support, and is less accurate than Slang. Slingshot will therefore
+sv-parser does not have good error recovery support. Slingshot will therefore
 have to make a "best guess" attempt at providing useful feedback while the user is typing, probably by splicing
 lines that are causing errors. In an ideal world where I have unlimited time to dedicate to this project, I'd
-write a new SV parser using chumsky, but that is an absolutely mammoth task and a project into itself.
+write a new SV parser using chumsky, but that is an absolutely mammoth task and a project unto itself. This is
+massively annoying because one of Slingshot's _primary goals_ is accurate autocomplete. So, as nice as Rust is,
+if sv-parser is not capable of good enough error recovery to be useable, we will have no choice but to move to
+C++, which in turn will make the LSP side of things a massive pain.
 
-This project doubles as my way of learning Rust, so bare with me if it's not idiomatic. PRs are welcome, as always.
+Alto, to note, this project doubles as my way of learning Rust, so bare with me if it's not idiomatic.
 
 ## Licence
 Mozilla Public License v2.0

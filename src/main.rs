@@ -23,12 +23,32 @@ async fn main() {
     // TODO we will probably need to use a file-based logging service since we'll be using an stdio
     // based LSP, so logging to stdio will interfere with that
     SimpleLogger::new().init().unwrap();
+    
+    //let document = "module x; logic [15:0] y;\nendmodule\n";
+    
+    let document = r#"
+module mymodule(
+    input logic [15:0] a,
+    input logic [15:0] b,
+    output logic[31:0] c
+);
+    logic [15:0] something;
 
-    let result = VerilatorDiagnostics::diagnose("module x; endmodule\n");
+    always_comb begin
+        c = a + b + something;
+    end
+endmodule;
+
+    "#;
+
+    let result = VerilatorDiagnostics::diagnose(document).unwrap();
     for entry in result.iter() {
         info!("{:?}", entry);
     }
 
-    let result2 = SvParserCompletion::extract_tokens("module x; endmodule\n");
+    let result2 = SvParserCompletion::extract_tokens(document).unwrap();
+    for entry in result2.iter() {
+        info!("entry: {:?}", entry);
+    }
 }
 
