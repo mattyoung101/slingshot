@@ -41,9 +41,9 @@ been, I will add instructions for using it here.
 - Diagnostics engine for warnings/errors
     - Should have a pluggable backend to support Verilator, Slang, Verible, and others
 - Whole project indexing
-    - Slingshot should discover files (possibly as you edit them) and add them to an index cache
+    - Slingshot should discover referenced files and add them to an index cache
 - No false positives: If Verilator accepts the input, slingshot should as well
-- No false negatives: If Verilator reports an error in the code, slingshot should as well
+
 - Low latency: The LSP should respond quickly to user inputs, even at the cost of CPU usage
 
 **Suggested:**
@@ -51,6 +51,9 @@ been, I will add instructions for using it here.
 - Go to definition 
 - Formatting (possibly via verible if slang doesn't support it)
 - Documentation on hover (extract from comments)
+- No false negatives: If Verilator reports an error in the code, slingshot should as well
+    - This is probably harder than no false positives to achieve, based on how the project indexing will likely
+    work
 - Low memory: We should try to use significantly less resident RAM than other SV LSPs
     - Hopefully this should naturally happen because of C++/Rust, but manual optimisation may be required
 

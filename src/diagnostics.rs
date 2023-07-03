@@ -5,10 +5,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-use std::{io::Write, process::Command};
 use lazy_static::lazy_static;
-use log::{info, warn, error, debug};
+use log::{debug, error, info, warn};
 use regex::Regex;
+use std::{io::Write, process::Command};
 use tempfile::NamedTempFile;
 
 /// A diagnostic message from a diagnostic engine
@@ -19,7 +19,7 @@ pub struct Diagnostic {
     /// Which line this occurs on
     line: usize,
     /// Position in line this occurs on
-    offset: usize
+    offset: usize,
 }
 
 /// Interface to a piece of software that can perform diagnostics, e.g. Slang, Verilator, etc.
@@ -29,11 +29,9 @@ pub trait DiagnosticProvider {
 }
 
 /// Wrapper around Verilator to provide diagnostics
-pub struct VerilatorDiagnostics {
+pub struct VerilatorDiagnostics {}
 
-}
-
-// Verilator warning/error matcher regex: 
+// Verilator warning/error matcher regex:
 // %(Warning|Error).*:([0-9]+):([0-9]+): (.*)(\n.*:.*)?
 // This was developed on regex101 and also accounts for the fact that Verilator can split warnings
 // across 2 lines
@@ -50,13 +48,13 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             Ok(file) => file,
             Err(err) => {
                 error!("Error creating temp file: {}", err);
-                return None
+                return None;
             }
         };
         // if we can create a file in /tmp we can probably write to it, just silently fail if we
         // can't for some reason -> Verilator will mald later anyway which we can detect
         let _ = tmpfile.write(document.as_bytes());
-        
+
         let tmpfile_path = tmpfile.path().to_str().unwrap();
         debug!("Created Verilator temp file: {}", tmpfile_path);
 
@@ -64,12 +62,13 @@ impl DiagnosticProvider for VerilatorDiagnostics {
         // note that we need to disable some warnings like DECLFILENAME because we use the temp
         // file
         let output = match Command::new("verilator")
-                                .args(["--lint-only", "-Wall", "-Wno-DECLFILENAME", tmpfile_path])
-                                .output() {
+            .args(["--lint-only", "-Wall", "-Wno-DECLFILENAME", tmpfile_path])
+            .output()
+        {
             Ok(o) => o,
             Err(err) => {
                 error!("Failed to invoke Verilator: {}", err);
-                return None
+                return None;
             }
         };
 
@@ -77,20 +76,26 @@ impl DiagnosticProvider for VerilatorDiagnostics {
         let stderr = std::str::from_utf8(&output.stderr).unwrap();
 
         if !output.status.success() {
-            debug!("Verilator exited with error status: {}", output.status.code().unwrap());
+            debug!(
+                "Verilator exited with error status: {}",
+                output.status.code().unwrap()
+            );
 
             if !(stderr.contains("Error") || stderr.contains("Warning")) {
-                warn!("Verilator exited with error status, but output does not appear to contain \
-                        any warning/error messages. Maybe Verilator crashed?");
+                warn!(
+                    "Verilator exited with error status, but output does not appear to contain \
+                        any warning/error messages. Maybe Verilator crashed?"
+                );
                 warn!("Verilator said:\nstdout:\n{}\nstderr:\n{}", stdout, stderr);
-                return None
+                return None;
             }
         }
-            
+
         // parse verilator output with regex
         // TODO move this to the verilator struct somehow
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"%(Warning|Error).*:([0-9]+):([0-9]+): (.*)(\n.*:.*)?").unwrap();
+            static ref RE: Regex =
+                Regex::new(r"%(Warning|Error).*:([0-9]+):([0-9]+): (.*)(\n.*:.*)?").unwrap();
         }
 
         for capture in RE.captures_iter(stderr) {
@@ -102,11 +107,14 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             let line = &capture[2].parse::<usize>().unwrap_or(0);
             let pos = &capture[3].parse::<usize>().unwrap_or(0);
             let msg1 = capture[4].to_string();
-            
-            diagnostics.push(Diagnostic { message: msg1.to_string(), line: *line, offset: *pos })  ;
+
+            diagnostics.push(Diagnostic {
+                message: msg1.to_string(),
+                line: *line,
+                offset: *pos,
+            });
         }
 
         return Some(diagnostics);
     }
 }
-
