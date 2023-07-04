@@ -6,43 +6,18 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-    usize,
-};
+use std::{collections::HashMap, path::PathBuf, usize};
 
 use log::{debug, warn};
-use serde::{Deserialize, Serialize};
 use sv_parser::{parse_sv_str, unwrap_node, Locate, RefNode};
 
-#[derive(Debug, Eq, PartialOrd, Ord, PartialEq, Hash, Serialize, Deserialize)]
-pub enum TokenType {
-    /// A token type that does not matter to us for completion
-    NotInterested,
-    /// A module, class or enum
-    ModuleClassEnum,
-    /// A logic, wire or register
-    LogicWireReg,
-    /// A port in a module
-    Port,
-    /// A `defined macro
-    Macro,
-    /// A value of an enum
-    EnumValue,
-}
-
-#[derive(Debug, PartialEq, PartialOrd, Ord, Hash, Eq, Serialize, Deserialize)]
-pub struct CompletionToken {
-    token: String,
-    token_type: TokenType,
-}
+use crate::{SvDocument, SvToken, TokenType};
 
 /// Interface to a piece of software that can generate completions, e.g. sv-parser, Slang, etc
 pub trait CompletionProvider {
     /// Extracts a list of CompletionTokens for the given document. Note the HashSet, as completion
     /// tokens must be unique.
-    fn extract_tokens(document: &str) -> Option<HashSet<CompletionToken>>;
+    fn extract_tokens(code_document: &str) -> Option<SvDocument>;
 }
 
 /// Diagnostics powered by Rust's sv-parser crate
@@ -76,11 +51,11 @@ fn splice(document: &str, lineno: usize) -> String {
 /// TokenType it corresponds to.
 fn get_node_type(node: &RefNode) -> TokenType {
     match node {
-        RefNode::ModuleIdentifier(_) => return TokenType::ModuleClassEnum,
-        RefNode::VariableIdentifier(_) => return TokenType::LogicWireReg,
+        RefNode::ModuleIdentifier(_) => return TokenType::Module,
+        RefNode::VariableIdentifier(_) => return TokenType::Variable,
         RefNode::PortIdentifier(_) => return TokenType::Port,
-        RefNode::ClassIdentifier(_) => return TokenType::ModuleClassEnum,
-        RefNode::TypeIdentifier(_) => return TokenType::ModuleClassEnum,
+        RefNode::ClassIdentifier(_) => return TokenType::Class,
+        RefNode::TypeIdentifier(_) => return TokenType::Enum, // TODO check this, may not be true
         RefNode::EnumIdentifier(_) => return TokenType::EnumValue,
         _ => return TokenType::NotInterested,
     }
@@ -101,7 +76,7 @@ fn get_identifier(node: RefNode) -> Option<Locate> {
 }
 
 impl CompletionProvider for SvParserCompletion {
-    fn extract_tokens(document: &str) -> Option<HashSet<CompletionToken>> {
+    fn extract_tokens(code_document: &str) -> Option<SvDocument> {
         // The path of SystemVerilog source file (TODO get the actual path)
         let path = PathBuf::from("/tmp/test");
         // The list of defined macros (TODO provide a documented list of defined macros e.g.
@@ -113,7 +88,7 @@ impl CompletionProvider for SvParserCompletion {
         // this function does allow us to accept "incomplete" documents, however, this does not
         // appear to work very well
         // TODO if this fails, add logic to splice a max number of times until the error goes away
-        let tree = match parse_sv_str(document, path, &predefines, &includes, false, false) {
+        let tree = match parse_sv_str(code_document, path, &predefines, &includes, false, false) {
             Ok(t) => t.0,
             Err(e) => {
                 warn!("sv-parser rejected document: {:?}", e);
@@ -122,40 +97,61 @@ impl CompletionProvider for SvParserCompletion {
         };
         debug!("sv-parser accepted document:\n{:?}", tree);
 
-        let mut tokens = HashSet::new();
+        let mut document = SvDocument::default();
 
         for node in &tree {
-            let node_type = get_node_type(&node);
-            if node_type != TokenType::NotInterested {
-                let location = get_identifier(node);
-                if location.is_some() {
-                    let identifier = tree.get_str(&location).unwrap();
-                    debug!(
-                        "Found interesting node: {} (location: {:?}",
-                        identifier, location
-                    );
+            // not sure if this is very idiomatic Rust to call clone, we do this to avoid the move in
+            // get_identifier. I'd say only fix if this somehow affects performance.
+            // also sometimes get_identifier returns None, not sure why, but obviously we can't
+            // process that token in that case
+            let location = get_identifier(node.clone());
+            if location.is_none() {
+                continue;
+            }
+            let identifier = tree.get_str(&location);
+            if identifier.is_none() {
+                continue;
+            }
 
-                    // special case: if this is a variable identifier, make sure we haven't
-                    // previously recorded it as a port
-                    if node_type == TokenType::LogicWireReg
-                        && tokens.contains(&CompletionToken {
-                            token: identifier.to_string(),
-                            token_type: TokenType::Port,
-                        })
-                    {
-                        debug!("Found node {} as Variable, but have previously recorded it as Port, skipping", identifier);
-                        continue;
-                    }
+            match get_node_type(&node) {
+                TokenType::Module => {
+                    document.new_module(identifier.unwrap());
+                }
 
-                    tokens.insert(CompletionToken {
-                        token: identifier.to_string(),
-                        token_type: node_type,
+                TokenType::Port => {
+                    document.add_port(SvToken {
+                        name: identifier.unwrap().to_string(),
+                        token_type: TokenType::Port,
                     });
                 }
-            }
+
+                TokenType::Variable => document.add_variable(SvToken {
+                    name: identifier.unwrap().to_string(),
+                    token_type: TokenType::Variable,
+                }),
+
+                _n @ _ => {
+                    //debug!("Ignoring node type: {:?}", n);
+                }
+            };
+
+            // we may have to do this in the future (note)
+            // // special case: if this is a variable identifier, make sure we haven't
+            // // previously recorded it as a port
+            // if node_type == TokenType::LogicWireReg
+            //     && tokens.contains(&CompletionToken {
+            //         token: identifier.to_string(),
+            //         token_type: TokenType::Port,
+            //     })
+            // {
+            //     debug!("Found node {} as Variable, but have previously recorded it as Port, skipping", identifier);
+            //     continue;
+            // }
         }
 
-        return Some(tokens);
+        document.finish_module();
+
+        return Some(document);
     }
 }
 

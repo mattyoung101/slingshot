@@ -96,6 +96,7 @@ async fn main() {
     // TODO we will probably need to use a file-based logging service since we'll be using an stdio
     // based LSP, so logging to stdio will interfere with that
     SimpleLogger::new().init().unwrap();
+    color_backtrace::install();
 
     info!("Slingshot v{} - Copyright (c) 2023 Matt Young.", VERSION);
     info!("Licenced under the Mozilla Public License v2.0.");
@@ -128,7 +129,11 @@ endmodule;
     }
 
     let result2 = SvParserCompletion::extract_tokens(document).unwrap();
-    for entry in result2.iter() {
-        info!("entry: {:?}", entry);
+    let module = &result2.modules[0];
+    for port in module.ports.as_slice() {
+        info!("port: {:?}", port);
+    }
+    for var in module.variables.as_slice() {
+        info!("variable: {:?}", var);
     }
 }

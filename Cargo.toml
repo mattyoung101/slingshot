@@ -17,7 +17,6 @@ tokio = { version = "1.28.2", features = ["full"] }
 # note we compile and statically link rusqlite with the slingshot binary which is in fact what we want
 serde = "1.0.164"
 flexbuffers = "2.0.0"
-rusqlite = { version = "0.29.0", features = ["bundled"] }
 xxhash-rust = { version = "0.8.5", features = ["xxh3"] }
 tempfile = "3.6.0"
 regex = "1.8.4"
@@ -26,6 +25,8 @@ log = "0.4.19"
 simple_logger = "4.2.0"
 tokio-rusqlite = "0.4.0"
 ropey = "1.6.0"
+bytesize = "1.2.0"
+color-backtrace = "0.5.1"
 
 [profile.dev]
 lto = "thin"

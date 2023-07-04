@@ -6,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 use lazy_static::lazy_static;
-use log::{debug, error, info, warn};
+use log::{debug, error, warn};
 use regex::Regex;
 use std::{io::Write, process::Command};
 use tempfile::NamedTempFile;
