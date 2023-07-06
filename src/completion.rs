@@ -44,20 +44,20 @@ fn splice(document: &str, lineno: usize) -> String {
         }
     }
 
-    return output;
+    output
 }
 
 /// Returns if this node is a node we are interested in for completion purposes, and if so, what
 /// TokenType it corresponds to.
 fn get_node_type(node: &RefNode) -> TokenType {
     match node {
-        RefNode::ModuleIdentifier(_) => return TokenType::Module,
-        RefNode::VariableIdentifier(_) => return TokenType::Variable,
-        RefNode::PortIdentifier(_) => return TokenType::Port,
-        RefNode::ClassIdentifier(_) => return TokenType::Class,
-        RefNode::TypeIdentifier(_) => return TokenType::Enum, // TODO check this, may not be true
-        RefNode::EnumIdentifier(_) => return TokenType::EnumValue,
-        _ => return TokenType::NotInterested,
+        RefNode::ModuleIdentifier(_) => TokenType::Module,
+        RefNode::VariableIdentifier(_) => TokenType::Variable,
+        RefNode::PortIdentifier(_) => TokenType::Port,
+        RefNode::ClassIdentifier(_) => TokenType::Class,
+        RefNode::TypeIdentifier(_) => TokenType::Enum, // TODO check this, may not be true
+        RefNode::EnumIdentifier(_) => TokenType::EnumValue,
+        _ => TokenType::NotInterested,
     }
 }
 
@@ -66,10 +66,10 @@ fn get_identifier(node: RefNode) -> Option<Locate> {
     // unwrap_node! can take multiple types
     match unwrap_node!(node, SimpleIdentifier, EscapedIdentifier) {
         Some(RefNode::SimpleIdentifier(x)) => {
-            return Some(x.nodes.0);
+            Some(x.nodes.0)
         }
         Some(RefNode::EscapedIdentifier(x)) => {
-            return Some(x.nodes.0);
+            Some(x.nodes.0)
         }
         _ => None,
     }
@@ -142,7 +142,7 @@ impl CompletionProvider for SvParserCompletion {
                     }
                 }
 
-                _n @ _ => {
+                _n => {
                     //debug!("Ignoring node type: {:?}", n);
                 }
             };
@@ -151,7 +151,7 @@ impl CompletionProvider for SvParserCompletion {
         // complete any remaining modules
         document.finish_module();
 
-        return Some(document);
+        Some(document)
     }
 }
 

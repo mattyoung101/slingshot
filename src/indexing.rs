@@ -65,7 +65,7 @@ impl IndexManager {
             tokens: Vec::new(),
             documents: BTreeMap::new(),
         };
-        return IndexManager { index };
+        IndexManager { index }
     }
 
     /// Requests that the index is flushed to disk. This will only actually bother to do work if a
@@ -80,7 +80,7 @@ impl IndexManager {
     /// that already exists in the index.
     /// This means that insert() can safely be called many times without significant performance
     /// loss.
-    pub fn insert(&self, path: &str, document: &str, symbols: &Vec<SvToken>) {
+    pub fn insert(&self, path: &str, document: &str, _symbols: &Vec<SvToken>) {
         let hash = xxh3_64(document.as_bytes());
         let existing = self.index.documents.get(path);
         if existing.is_some() && *existing.unwrap() == hash {
@@ -140,7 +140,7 @@ impl IndexManager {
         } else {
             debug!("Index does not yet exist, will be created on next write");
             // TODO request population of index
-            return IndexManager::default();
+            IndexManager::default()
         }
     }
 }

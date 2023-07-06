@@ -115,6 +115,6 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             });
         }
 
-        return Some(diagnostics);
+        Some(diagnostics)
     }
 }

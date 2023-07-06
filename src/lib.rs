@@ -160,7 +160,7 @@ impl SvDocument {
                 }
             }
         }
-        return None;
+        None
     }
 
     // TODO: code for start_enum, etc

@@ -5,7 +5,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-use log::{debug, error, info};
+use log::{debug, info};
 use slingshot::completion::CompletionProvider;
 use slingshot::completion::SvParserCompletion;
 use slingshot::diagnostics::DiagnosticProvider;
