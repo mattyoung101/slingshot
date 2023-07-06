@@ -5,13 +5,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-use log::{debug, info};
-use simple_logger::SimpleLogger;
+use log::{debug, error, info};
 use slingshot::completion::CompletionProvider;
 use slingshot::completion::SvParserCompletion;
 use slingshot::diagnostics::DiagnosticProvider;
 use slingshot::diagnostics::VerilatorDiagnostics;
 use slingshot::indexing::IndexManager;
+use stderrlog::LogLevelNum;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::CompletionOptions;
 use tower_lsp::lsp_types::InitializeParams;
@@ -93,9 +93,11 @@ impl LanguageServer for Backend {
 #[tokio::main]
 async fn main() {
     // initialise logging framework
-    // TODO we will probably need to use a file-based logging service since we'll be using an stdio
-    // based LSP, so logging to stdio will interfere with that
-    SimpleLogger::new().init().unwrap();
+    stderrlog::new()
+        .verbosity(LogLevelNum::Trace)
+        .timestamp(stderrlog::Timestamp::Second)
+        .init()
+        .unwrap();
     color_backtrace::install();
 
     info!("Slingshot v{} - Copyright (c) 2023 Matt Young.", VERSION);
@@ -128,12 +130,17 @@ endmodule;
         info!("{:?}", entry);
     }
 
-    let result2 = SvParserCompletion::extract_tokens(document).unwrap();
-    let module = &result2.modules[0];
+    let parsed_document = SvParserCompletion::extract_tokens(document).unwrap();
+    let module = &parsed_document.modules[0];
     for port in module.ports.as_slice() {
         info!("port: {:?}", port);
     }
     for var in module.variables.as_slice() {
         info!("variable: {:?}", var);
     }
+
+    let located_port = parsed_document.locate_port("a");
+    info!("found port: {:?}", located_port);
+    let nonexistent_port = parsed_document.locate_port("deez");
+    info!("shouldn't be found: {:?}", nonexistent_port);
 }

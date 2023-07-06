@@ -125,30 +125,30 @@ impl CompletionProvider for SvParserCompletion {
                     });
                 }
 
-                TokenType::Variable => document.add_variable(SvToken {
-                    name: identifier.unwrap().to_string(),
-                    token_type: TokenType::Variable,
-                }),
+                TokenType::Variable => {
+                    let var = SvToken {
+                        name: identifier.unwrap().to_string(),
+                        token_type: TokenType::Variable,
+                    };
+                    // special case: if this is a variable identifier, make sure we haven't
+                    // previously recorded it as a port
+                    if !document.is_var_declared_as_port(&var) {
+                        document.add_variable(var);
+                    } else {
+                        debug!(
+                            "Skipping variable {} which was already declared as port",
+                            identifier.unwrap()
+                        );
+                    }
+                }
 
                 _n @ _ => {
                     //debug!("Ignoring node type: {:?}", n);
                 }
             };
-
-            // we may have to do this in the future (note)
-            // // special case: if this is a variable identifier, make sure we haven't
-            // // previously recorded it as a port
-            // if node_type == TokenType::LogicWireReg
-            //     && tokens.contains(&CompletionToken {
-            //         token: identifier.to_string(),
-            //         token_type: TokenType::Port,
-            //     })
-            // {
-            //     debug!("Found node {} as Variable, but have previously recorded it as Port, skipping", identifier);
-            //     continue;
-            // }
         }
 
+        // complete any remaining modules
         document.finish_module();
 
         return Some(document);
