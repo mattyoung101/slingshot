@@ -9,9 +9,9 @@
 use bytesize::ByteSize;
 use log::{debug, error};
 use serde::{Deserialize, Serialize};
-use tokio::fs;
-use std::hash::Hash;
+
 use std::collections::BTreeMap;
+use std::hash::Hash;
 use std::path::Path;
 use xxhash_rust::xxh3::xxh3_64;
 
@@ -46,12 +46,12 @@ pub struct Index {
 pub struct IndexManager {
     /// Currently loaded index. Either empty if no index exists yet or partially filled.
     pub index: Index,
-    
+
     /// Path to the index file
     pub index_path: String,
-    
+
     /// Copy of the last Index struct that was written to disk
-    last_written_index: Index
+    last_written_index: Index,
 }
 
 impl IndexManager {
@@ -61,23 +61,27 @@ impl IndexManager {
             document_trees: BTreeMap::new(),
             document_hashes: BTreeMap::new(),
         };
-        IndexManager { index: index.clone(), index_path: path.to_string(), last_written_index: index.clone() }
+        IndexManager {
+            index: index.clone(),
+            index_path: path.to_string(),
+            last_written_index: index,
+        }
     }
-    
+
     /// Forces the current index to be flushed to disk.
     pub fn flush(&mut self) {
         // update last written index with current index
         self.last_written_index = self.index.clone();
     }
-    
+
     /// Flushes the index to disk if and only if it was updated since the last time the index was
     /// written to disk.
     pub fn maybe_flush(&mut self) {
         if self.index == self.last_written_index {
             debug!("No need to flush current index - already written to disk");
-            return
+            return;
         }
-        
+
         self.flush();
     }
 
@@ -98,10 +102,15 @@ impl IndexManager {
             );
             return;
         }
-        
+
         self.index.document_hashes.insert(path.to_string(), hash);
-        self.index.document_trees.insert(path.to_string(), document_tree.clone());
-        debug!("Inserted document at path {} with hash {} into index", path, hash);
+        self.index
+            .document_trees
+            .insert(path.to_string(), document_tree.clone());
+        debug!(
+            "Inserted document at path {} with hash {} into index",
+            path, hash
+        );
     }
 
     /// Creates or loads the IndexManager for the particular project.
@@ -117,7 +126,10 @@ impl IndexManager {
         let binding = index_path.canonicalize().unwrap();
         let absolute_path = binding.to_str().unwrap();
 
-        debug!("index_path: {:?}, absolute_path: {}", index_path, absolute_path);
+        debug!(
+            "index_path: {:?}, absolute_path: {}",
+            index_path, absolute_path
+        );
 
         if index_path.exists() {
             debug!("Index appears to exist, going to try and load it");
@@ -146,7 +158,11 @@ impl IndexManager {
             debug!("Instantiated flexbuffers reader, will now deserialise");
 
             return match Index::deserialize(reader) {
-                Ok(index) => IndexManager { index: index.clone(), index_path: absolute_path.to_string(), last_written_index: index.clone() },
+                Ok(index) => IndexManager {
+                    index: index.clone(),
+                    index_path: absolute_path.to_string(),
+                    last_written_index: index,
+                },
                 Err(e) => {
                     error!("Failed to deserialise index: {}", e);
                     return IndexManager::default(absolute_path);

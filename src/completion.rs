@@ -65,12 +65,8 @@ fn get_node_type(node: &RefNode) -> TokenType {
 fn get_identifier(node: RefNode) -> Option<Locate> {
     // unwrap_node! can take multiple types
     match unwrap_node!(node, SimpleIdentifier, EscapedIdentifier) {
-        Some(RefNode::SimpleIdentifier(x)) => {
-            Some(x.nodes.0)
-        }
-        Some(RefNode::EscapedIdentifier(x)) => {
-            Some(x.nodes.0)
-        }
+        Some(RefNode::SimpleIdentifier(x)) => Some(x.nodes.0),
+        Some(RefNode::EscapedIdentifier(x)) => Some(x.nodes.0),
         _ => None,
     }
 }

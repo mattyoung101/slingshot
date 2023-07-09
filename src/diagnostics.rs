@@ -8,10 +8,10 @@
 use lazy_static::lazy_static;
 use log::{debug, error, warn};
 use regex::Regex;
+use std::io::Write;
+use tempfile::NamedTempFile;
 use tokio::process::Command;
 use tower_lsp::async_trait;
-use std::{io::Write};
-use tempfile::NamedTempFile;
 
 /// A diagnostic message from a diagnostic engine
 #[derive(Debug)]

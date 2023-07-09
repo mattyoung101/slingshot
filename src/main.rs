@@ -40,20 +40,22 @@ struct Backend {
 
 impl Backend {
     async fn on_change(&self, params: TextDocumentItem) {
-        debug!("Text document changed. Path: {}, version: {}", params.uri, params.version);
+        debug!(
+            "Text document changed. Path: {}, version: {}",
+            params.uri, params.version
+        );
 
         // run diagnostics
-        let diagnostics = VerilatorDiagnostics::diagnose(&params.text).await;
-        
+        let _diagnostics = VerilatorDiagnostics::diagnose(&params.text).await;
+
         // run completion
         // TODO also make this function async? also, do we actually need to run completion here??
         // we probably do want to run completion whenever the document is changed to rebuild the
         // symbol cache
-        let completion = SvParserCompletion::extract_tokens(&params.text);
+        let _completion = SvParserCompletion::extract_tokens(&params.text);
 
         // TODO insert completion symbols into index if they exist
         // we probably want a BTreeMap between an absolute file path and a SvDocument
-
     }
 }
 
@@ -113,7 +115,7 @@ impl LanguageServer for Backend {
             uri: params.text_document.uri,
             text: params.text_document.text,
             version: params.text_document.version,
-            language_id: "verilog".to_string()
+            language_id: "verilog".to_string(),
         })
         .await
     }
