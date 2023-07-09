@@ -42,7 +42,7 @@ pub struct SvToken {
 /// A SystemVerilog document (contains a set of modules and enums). This is used to build a very
 /// simplified internal representation of an SV document for completion and indexing purposes. For
 /// more information, see docs/index_design.md which covers this as well.
-#[derive(Debug, PartialEq, PartialOrd, Ord, Hash, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, PartialOrd, Ord, Hash, Eq, Serialize, Deserialize, Default, Clone)]
 pub struct SvDocument {
     pub modules: Vec<SvModule>,
     pub enums: Vec<SvEnum>,

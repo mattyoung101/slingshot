@@ -36,9 +36,7 @@ TODO: what about classes and structs?
 
 ## Acquiring symbols
 Each document's symbols are provided by the currently selected completion provider. At the moment this will
-be sv-lang. It returns a list of symbols and the type of each symbol.
-
-TODO: we should make it return the document hierarchy instead
+be sv-lang. It returns the above document hierarchy for each module.
 
 Every time you edit a file, the completion is rerun and the results are sent to the LSP. However, we also
 asynchronously send the list of symbols to the IndexManager as well, so that it can update the global index
@@ -68,4 +66,19 @@ typing, it almost certainly will be different).
 ### Method 2: Key-value store
 We could use an embedded key value store like Redis to do this work for us. There might be Rust-specific
 embedded key value stores which we could use as well. (redb, sled)
+
+## Returning completions
+The primary goal for the index is to return valid SV completions across files boundaries, for the entire
+project. What we basically want to know is whether a partial symbol like "mymod..." will resolve into a 
+full symbol like "mymodule", and do so with lexically valid scoping (e.g. suggest port completions only from
+that module when you are filling in ports).
+
+This implies a trie data structure, which we might use with trie_rs. However, tries can only tell you if
+a word _starts_ with a particular set of characters and trie_rs also does not support serialisation. What
+we'll do for now is the naive O(n^2) method where we check every document and every module. In the future
+we should look for more optimal methods to locate these though.
+
+## Future improvements
+Note that in the future we will probably also want the index to record things like document comments which
+will be saved in the `SvDocument` struct.
 

@@ -14,6 +14,7 @@ use slingshot::indexing::IndexManager;
 use stderrlog::LogLevelNum;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::CompletionOptions;
+use tower_lsp::lsp_types::DidOpenTextDocumentParams;
 use tower_lsp::lsp_types::InitializeParams;
 use tower_lsp::lsp_types::InitializeResult;
 use tower_lsp::lsp_types::InitializedParams;
@@ -21,6 +22,7 @@ use tower_lsp::lsp_types::MessageType;
 use tower_lsp::lsp_types::OneOf;
 use tower_lsp::lsp_types::ServerCapabilities;
 use tower_lsp::lsp_types::ServerInfo;
+use tower_lsp::lsp_types::TextDocumentItem;
 use tower_lsp::lsp_types::TextDocumentSyncCapability;
 use tower_lsp::lsp_types::TextDocumentSyncKind;
 use tower_lsp::lsp_types::WorkspaceFoldersServerCapabilities;
@@ -28,19 +30,38 @@ use tower_lsp::lsp_types::WorkspaceServerCapabilities;
 use tower_lsp::Client;
 use tower_lsp::LanguageServer;
 
+// Reference: https://stackoverflow.com/a/27841363/5007892
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 struct Backend {
     client: Client,
     index: IndexManager,
 }
 
-// Reference: https://stackoverflow.com/a/27841363/5007892
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+impl Backend {
+    async fn on_change(&self, params: TextDocumentItem) {
+        debug!("Text document changed. Path: {}, version: {}", params.uri, params.version);
+
+        // run diagnostics
+        let diagnostics = VerilatorDiagnostics::diagnose(&params.text).await;
+        
+        // run completion
+        // TODO also make this function async? also, do we actually need to run completion here??
+        // we probably do want to run completion whenever the document is changed to rebuild the
+        // symbol cache
+        let completion = SvParserCompletion::extract_tokens(&params.text);
+
+        // TODO insert completion symbols into index if they exist
+        // we probably want a BTreeMap between an absolute file path and a SvDocument
+
+    }
+}
 
 // Reference: https://github.com/IWANABETHATGUY/tower-lsp-boilerplate/blob/main/src/main.rs
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
-        debug!("Initialize LSP");
+        debug!("Initialising LSP");
 
         return Ok(InitializeResult {
             server_info: Some(ServerInfo {
@@ -84,6 +105,19 @@ impl LanguageServer for Backend {
             .await;
     }
 
+    async fn did_open(&self, params: DidOpenTextDocumentParams) {
+        self.client
+            .log_message(MessageType::INFO, "Document opened")
+            .await;
+        self.on_change(TextDocumentItem {
+            uri: params.text_document.uri,
+            text: params.text_document.text,
+            version: params.text_document.version,
+            language_id: "verilog".to_string()
+        })
+        .await
+    }
+
     async fn shutdown(&self) -> Result<()> {
         debug!("Shutdown LSP");
         Ok(())
@@ -125,7 +159,7 @@ endmodule;
 
     "#;
 
-    let result = VerilatorDiagnostics::diagnose(document).unwrap();
+    let result = VerilatorDiagnostics::diagnose(document).await.unwrap();
     for entry in result.iter() {
         info!("{:?}", entry);
     }

@@ -8,7 +8,9 @@
 use lazy_static::lazy_static;
 use log::{debug, error, warn};
 use regex::Regex;
-use std::{io::Write, process::Command};
+use tokio::process::Command;
+use tower_lsp::async_trait;
+use std::{io::Write};
 use tempfile::NamedTempFile;
 
 /// A diagnostic message from a diagnostic engine
@@ -23,9 +25,10 @@ pub struct Diagnostic {
 }
 
 /// Interface to a piece of software that can perform diagnostics, e.g. Slang, Verilator, etc.
+#[async_trait]
 pub trait DiagnosticProvider {
     /// Provides a set of diagnostics for the given document.
-    fn diagnose(document: &str) -> Option<Vec<Diagnostic>>;
+    async fn diagnose(document: &str) -> Option<Vec<Diagnostic>>;
 }
 
 /// Wrapper around Verilator to provide diagnostics
@@ -37,8 +40,9 @@ pub struct VerilatorDiagnostics {}
 // across 2 lines
 // Useful information is in capture groups
 
+#[async_trait]
 impl DiagnosticProvider for VerilatorDiagnostics {
-    fn diagnose(document: &str) -> Option<Vec<Diagnostic>> {
+    async fn diagnose(document: &str) -> Option<Vec<Diagnostic>> {
         debug!("Running VerilatorDiagnostics for document:\n{}", document);
 
         let mut diagnostics: Vec<Diagnostic> = Vec::new();
@@ -64,6 +68,7 @@ impl DiagnosticProvider for VerilatorDiagnostics {
         let output = match Command::new("verilator")
             .args(["--lint-only", "-Wall", "-Wno-DECLFILENAME", tmpfile_path])
             .output()
+            .await
         {
             Ok(o) => o,
             Err(err) => {
