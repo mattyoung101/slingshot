@@ -8,7 +8,8 @@
 use lazy_static::lazy_static;
 use log::{debug, error, warn};
 use regex::Regex;
-use std::io::Write;
+use std::error::Error;
+use std::io::{ErrorKind, Write};
 use tempfile::NamedTempFile;
 use tokio::process::Command;
 use tower_lsp::async_trait;
@@ -28,7 +29,7 @@ pub struct Diagnostic {
 #[async_trait]
 pub trait DiagnosticProvider {
     /// Provides a set of diagnostics for the given document.
-    async fn diagnose(document: &str) -> Option<Vec<Diagnostic>>;
+    async fn diagnose(document: &str) -> Result<Vec<Diagnostic>, Box<dyn Error>>;
 }
 
 /// Wrapper around Verilator to provide diagnostics
@@ -42,22 +43,17 @@ pub struct VerilatorDiagnostics {}
 
 #[async_trait]
 impl DiagnosticProvider for VerilatorDiagnostics {
-    async fn diagnose(document: &str) -> Option<Vec<Diagnostic>> {
+    async fn diagnose(document: &str) -> Result<Vec<Diagnostic>, Box<dyn Error>> {
         debug!("Running VerilatorDiagnostics for document:\n{}", document);
 
         let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
         // write document to a temp file (verilator doesn't allow stdin as an input)
-        let mut tmpfile = match NamedTempFile::new() {
-            Ok(file) => file,
-            Err(err) => {
-                error!("Error creating temp file: {}", err);
-                return None;
-            }
-        };
+        let mut tmpfile = NamedTempFile::new()?;
+
         // if we can create a file in /tmp we can probably write to it, just silently fail if we
         // can't for some reason -> Verilator will mald later anyway which we can detect
-        let _ = tmpfile.write(document.as_bytes());
+        let _ = tmpfile.write(document.as_bytes())?;
 
         let tmpfile_path = tmpfile.path().to_str().unwrap();
         debug!("Created Verilator temp file: {}", tmpfile_path);
@@ -65,17 +61,10 @@ impl DiagnosticProvider for VerilatorDiagnostics {
         // invoke verilator
         // note that we need to disable some warnings like DECLFILENAME because we use the temp
         // file
-        let output = match Command::new("verilator")
+        let output = Command::new("verilator")
             .args(["--lint-only", "-Wall", "-Wno-DECLFILENAME", tmpfile_path])
             .output()
-            .await
-        {
-            Ok(o) => o,
-            Err(err) => {
-                error!("Failed to invoke Verilator: {}", err);
-                return None;
-            }
-        };
+            .await?;
 
         let stdout = std::str::from_utf8(&output.stdout).unwrap();
         let stderr = std::str::from_utf8(&output.stderr).unwrap();
@@ -92,7 +81,7 @@ impl DiagnosticProvider for VerilatorDiagnostics {
                         any warning/error messages. Maybe Verilator crashed?"
                 );
                 warn!("Verilator said:\nstdout:\n{}\nstderr:\n{}", stdout, stderr);
-                return None;
+                return Err(Box::new(std::io::Error::from(ErrorKind::InvalidData)));
             }
         }
 
@@ -120,6 +109,6 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             });
         }
 
-        Some(diagnostics)
+        Ok(diagnostics)
     }
 }

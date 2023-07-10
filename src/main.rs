@@ -1,3 +1,4 @@
+use dashmap::DashMap;
 /*
  * Copyright (c) 2023 Matt Young.
  *
@@ -11,8 +12,10 @@ use slingshot::completion::SvParserCompletion;
 use slingshot::diagnostics::DiagnosticProvider;
 use slingshot::diagnostics::VerilatorDiagnostics;
 use slingshot::indexing::IndexManager;
+use std::error::Error;
+use std::io::ErrorKind;
 use stderrlog::LogLevelNum;
-use tower_lsp::jsonrpc::Result;
+use tower_lsp::jsonrpc;
 use tower_lsp::lsp_types::CompletionOptions;
 use tower_lsp::lsp_types::DidOpenTextDocumentParams;
 use tower_lsp::lsp_types::InitializeParams;
@@ -36,10 +39,11 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 struct Backend {
     client: Client,
     index: IndexManager,
+    shit: Vec<String>,
 }
 
 impl Backend {
-    async fn on_change(&self, params: TextDocumentItem) {
+    async fn on_change(&self, params: TextDocumentItem) -> Result<(), Box<dyn Error>> {
         debug!(
             "Text document changed. Path: {}, version: {}",
             params.uri, params.version
@@ -47,22 +51,32 @@ impl Backend {
 
         // run diagnostics
         let _diagnostics = VerilatorDiagnostics::diagnose(&params.text).await;
+        // TODO publish diagnostics
 
         // run completion
-        // TODO also make this function async? also, do we actually need to run completion here??
-        // we probably do want to run completion whenever the document is changed to rebuild the
-        // symbol cache
-        let _completion = SvParserCompletion::extract_tokens(&params.text);
+        let completion = SvParserCompletion::extract_tokens(&params.text)?;
 
-        // TODO insert completion symbols into index if they exist
-        // we probably want a BTreeMap between an absolute file path and a SvDocument
+        // insert completion into index
+        // OK, fuck it, whatever man, this is the 2nd day of me trying to get
+        // `params.uri.to_file_path()?` to work and it just WILL NOT.
+        // at this point I'm fairly sure it's an upstream issue with servo-url so we'll just have
+        // to cop the damn match statement.
+        // I. MISS. EXCEPTIONS!!!!! I. MISS. THE ELVIS OPERATOR!!!!!!!
+        let path = match params.uri.to_file_path() {
+            Ok(p) => p,
+            Err(_) => return Err(Box::new(std::io::Error::from(ErrorKind::Unsupported))),
+        };
+        self.index
+            .insert(&path.to_str().unwrap(), &params.text, &completion);
+
+        return Ok(());
     }
 }
 
 // Reference: https://github.com/IWANABETHATGUY/tower-lsp-boilerplate/blob/main/src/main.rs
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, _: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         debug!("Initialising LSP");
 
         return Ok(InitializeResult {
@@ -111,17 +125,19 @@ impl LanguageServer for Backend {
         self.client
             .log_message(MessageType::INFO, "Document opened")
             .await;
-        self.on_change(TextDocumentItem {
-            uri: params.text_document.uri,
-            text: params.text_document.text,
-            version: params.text_document.version,
-            language_id: "verilog".to_string(),
-        })
-        .await
+        let _ = self
+            .on_change(TextDocumentItem {
+                uri: params.text_document.uri,
+                text: params.text_document.text,
+                version: params.text_document.version,
+                language_id: "verilog".to_string(),
+            })
+            .await;
     }
 
-    async fn shutdown(&self) -> Result<()> {
+    async fn shutdown(&self) -> jsonrpc::Result<()> {
         debug!("Shutdown LSP");
+        self.index.flush();
         Ok(())
     }
 }

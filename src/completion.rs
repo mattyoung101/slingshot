@@ -6,6 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use std::error::Error;
 use std::{collections::HashMap, path::PathBuf, usize};
 
 use log::{debug, warn};
@@ -17,7 +18,7 @@ use crate::{SvDocument, SvToken, TokenType};
 pub trait CompletionProvider {
     /// Extracts a list of CompletionTokens for the given document. Note the HashSet, as completion
     /// tokens must be unique.
-    fn extract_tokens(code_document: &str) -> Option<SvDocument>;
+    fn extract_tokens(code_document: &str) -> Result<SvDocument, Box<dyn Error>>;
 }
 
 /// Diagnostics powered by Rust's sv-parser crate
@@ -72,7 +73,7 @@ fn get_identifier(node: RefNode) -> Option<Locate> {
 }
 
 impl CompletionProvider for SvParserCompletion {
-    fn extract_tokens(code_document: &str) -> Option<SvDocument> {
+    fn extract_tokens(code_document: &str) -> Result<SvDocument, Box<dyn Error>> {
         // The path of SystemVerilog source file (TODO get the actual path)
         let path = PathBuf::from("/tmp/test");
         // The list of defined macros (TODO provide a documented list of defined macros e.g.
@@ -84,13 +85,7 @@ impl CompletionProvider for SvParserCompletion {
         // this function does allow us to accept "incomplete" documents, however, this does not
         // appear to work very well
         // TODO if this fails, add logic to splice a max number of times until the error goes away
-        let tree = match parse_sv_str(code_document, path, &predefines, &includes, false, false) {
-            Ok(t) => t.0,
-            Err(e) => {
-                warn!("sv-parser rejected document: {:?}", e);
-                return None;
-            }
-        };
+        let (tree, _) = parse_sv_str(code_document, path, &predefines, &includes, false, false)?;
         debug!("sv-parser accepted document:\n{:?}", tree);
 
         let mut document = SvDocument::default();
@@ -147,7 +142,7 @@ impl CompletionProvider for SvParserCompletion {
         // complete any remaining modules
         document.finish_module();
 
-        Some(document)
+        Ok(document)
     }
 }
 

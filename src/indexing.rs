@@ -7,11 +7,10 @@
  */
 
 use bytesize::ByteSize;
+use dashmap::DashMap;
 use log::{debug, error};
 use serde::{Deserialize, Serialize};
 
-use std::collections::BTreeMap;
-use std::hash::Hash;
 use std::path::Path;
 use xxhash_rust::xxh3::xxh3_64;
 
@@ -27,18 +26,27 @@ const REFRESH_INDEX_TIMER: u32 = 60;
 /// This is the actual index that is written to disk. Note that the index, like clangd's, is per
 /// project.
 /// This is just serialised to disk with serde and flatbuffers (via sqlite), so put whatever in here.
-#[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default, Clone)]
+///
+/// Note that we use DashMap because eventually further up in the stack we need to call something
+/// along the lines of `self.index.insert`, but because Rust is a stupid PoS, we are unable to call
+/// `&mut self.index.insert`. So, basically DashMap is the workaround for that.
+///
+/// TODO: imo this is not actually a great idea, it's clear that the tower-lsp-boilerplate authors
+/// are using dashmap purely to get around the whole mut thing, it's not a thread safety issue (and
+/// dashmap seems to use unsafe extensively which is concerning). if we spend a few days fighting
+/// rustc we might be able to keep our BTreeMap and solve this with lifetimes. or maybe a RefCell?
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct Index {
     /// Version of the index file
     pub version: String,
 
     /// Mapping between the absolute path of each document in the project and its parsed document
     /// tree. Used to calculate completions for each document.
-    pub document_trees: BTreeMap<String, SvDocument>,
+    pub document_trees: DashMap<String, SvDocument>,
 
     /// Mapping between the absolute path of each document in the project and the xxh3 hash of its contents.
     /// Used to determine if the index needs to be refreshed when the LSP starts up or not.
-    pub document_hashes: BTreeMap<String, u64>,
+    pub document_hashes: DashMap<String, u64>,
 }
 
 /// This is the tool for managing the index cache of all files
@@ -49,40 +57,24 @@ pub struct IndexManager {
 
     /// Path to the index file
     pub index_path: String,
-
-    /// Copy of the last Index struct that was written to disk
-    last_written_index: Index,
 }
 
 impl IndexManager {
     fn default(path: &str) -> IndexManager {
         let index = Index {
             version: INDEX_VERSION.to_string(),
-            document_trees: BTreeMap::new(),
-            document_hashes: BTreeMap::new(),
+            document_trees: DashMap::new(),
+            document_hashes: DashMap::new(),
         };
         IndexManager {
-            index: index.clone(),
+            index,
             index_path: path.to_string(),
-            last_written_index: index,
         }
     }
 
-    /// Forces the current index to be flushed to disk.
-    pub fn flush(&mut self) {
-        // update last written index with current index
-        self.last_written_index = self.index.clone();
-    }
-
-    /// Flushes the index to disk if and only if it was updated since the last time the index was
-    /// written to disk.
-    pub fn maybe_flush(&mut self) {
-        if self.index == self.last_written_index {
-            debug!("No need to flush current index - already written to disk");
-            return;
-        }
-
-        self.flush();
+    /// Writes the current index to be flushed to disk.
+    pub fn flush(&self) {
+        todo!()
     }
 
     /// Requests that the given symbols at the given file path are introduced into the index.
@@ -90,7 +82,7 @@ impl IndexManager {
     /// that already exists in the index.
     /// This means that insert() can safely be called many times without significant performance
     /// loss.
-    pub fn insert(&mut self, path: &str, document: &str, document_tree: &SvDocument) {
+    pub fn insert(&self, path: &str, document: &str, document_tree: &SvDocument) {
         let hash = xxh3_64(document.as_bytes());
         let existing = self.index.document_hashes.get(path);
         if existing.is_some() && *existing.unwrap() == hash {
@@ -111,10 +103,13 @@ impl IndexManager {
             "Inserted document at path {} with hash {} into index",
             path, hash
         );
+
+        // TODO flush but possibly only on timer to reduce disk wear
+        // TODO or maybe do batch updates instead of a timer
     }
 
     /// Creates or loads the IndexManager for the particular project.
-    /// Must be a path to a cache directory, e.g. /home/joe/project/.cache
+    /// Must be a path to a cache directory, e.g. /home/matt/workspace/epic_riscv_cpu/.cache
     pub fn new(path: &Path) -> Self {
         debug!(
             "IndexManager initialising in folder {}",
@@ -123,6 +118,8 @@ impl IndexManager {
         assert!(path.is_dir());
 
         let index_path = path.join("slingshot_index.dat");
+        // FIXME: this will fail because index_path may not exist - do we just mandate that the
+        // path to new() is absolute and deal with it in the LSP URI stuff?
         let binding = index_path.canonicalize().unwrap();
         let absolute_path = binding.to_str().unwrap();
 
@@ -159,9 +156,8 @@ impl IndexManager {
 
             return match Index::deserialize(reader) {
                 Ok(index) => IndexManager {
-                    index: index.clone(),
+                    index,
                     index_path: absolute_path.to_string(),
-                    last_written_index: index,
                 },
                 Err(e) => {
                     error!("Failed to deserialise index: {}", e);
