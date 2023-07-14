@@ -1,4 +1,4 @@
-use dashmap::DashMap;
+use log::warn;
 /*
  * Copyright (c) 2023 Matt Young.
  *
@@ -39,7 +39,6 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 struct Backend {
     client: Client,
     index: IndexManager,
-    shit: Vec<String>,
 }
 
 impl Backend {
@@ -52,6 +51,8 @@ impl Backend {
         // run diagnostics
         let _diagnostics = VerilatorDiagnostics::diagnose(&params.text).await;
         // TODO publish diagnostics
+        
+        //self.client.publish_diagnostics(uri, diags, version)
 
         // run completion
         let completion = SvParserCompletion::extract_tokens(&params.text)?;
@@ -61,10 +62,9 @@ impl Backend {
         // `params.uri.to_file_path()?` to work and it just WILL NOT.
         // at this point I'm fairly sure it's an upstream issue with servo-url so we'll just have
         // to cop the damn match statement.
-        // I. MISS. EXCEPTIONS!!!!! I. MISS. THE ELVIS OPERATOR!!!!!!!
         let path = match params.uri.to_file_path() {
             Ok(p) => p,
-            Err(_) => return Err(Box::new(std::io::Error::from(ErrorKind::Unsupported))),
+            Err(_) => return Err(format!("Error converting text document URI: {:?}", params.uri).into()),
         };
         self.index
             .insert(&path.to_str().unwrap(), &params.text, &completion);
@@ -125,7 +125,7 @@ impl LanguageServer for Backend {
         self.client
             .log_message(MessageType::INFO, "Document opened")
             .await;
-        let _ = self
+        let result = self
             .on_change(TextDocumentItem {
                 uri: params.text_document.uri,
                 text: params.text_document.text,
@@ -133,6 +133,9 @@ impl LanguageServer for Backend {
                 language_id: "verilog".to_string(),
             })
             .await;
+        if result.is_err() {
+            warn!("on_change failed in did_open: {:?}", result.err());
+        }
     }
 
     async fn shutdown(&self) -> jsonrpc::Result<()> {
@@ -152,8 +155,7 @@ async fn main() {
         .unwrap();
     color_backtrace::install();
 
-    info!("Slingshot v{} - Copyright (c) 2023 Matt Young.", VERSION);
-    info!("Licenced under the Mozilla Public License v2.0.");
+    info!("Slingshot v{} - Copyright (c) 2023 Matt Young. Mozilla Public License v2.0.", VERSION);
 
     //let document = "module x; logic [15:0] y;\nendmodule\n";
 

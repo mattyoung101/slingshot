@@ -86,7 +86,7 @@ impl CompletionProvider for SvParserCompletion {
         // appear to work very well
         // TODO if this fails, add logic to splice a max number of times until the error goes away
         let (tree, _) = parse_sv_str(code_document, path, &predefines, &includes, false, false)?;
-        debug!("sv-parser accepted document:\n{:?}", tree);
+        debug!("sv-parser accepted document");
 
         let mut document = SvDocument::default();
 
