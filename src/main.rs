@@ -13,7 +13,7 @@ use slingshot::diagnostics::DiagnosticProvider;
 use slingshot::diagnostics::VerilatorDiagnostics;
 use slingshot::indexing::IndexManager;
 use std::error::Error;
-use std::io::ErrorKind;
+
 use stderrlog::LogLevelNum;
 use tower_lsp::jsonrpc;
 use tower_lsp::lsp_types::CompletionOptions;
@@ -51,7 +51,7 @@ impl Backend {
         // run diagnostics
         let _diagnostics = VerilatorDiagnostics::diagnose(&params.text).await;
         // TODO publish diagnostics
-        
+
         //self.client.publish_diagnostics(uri, diags, version)
 
         // run completion
@@ -64,12 +64,14 @@ impl Backend {
         // to cop the damn match statement.
         let path = match params.uri.to_file_path() {
             Ok(p) => p,
-            Err(_) => return Err(format!("Error converting text document URI: {:?}", params.uri).into()),
+            Err(_) => {
+                return Err(format!("Error converting text document URI: {:?}", params.uri).into())
+            }
         };
         self.index
-            .insert(&path.to_str().unwrap(), &params.text, &completion);
+            .insert(path.to_str().unwrap(), &params.text, &completion);
 
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -155,7 +157,10 @@ async fn main() {
         .unwrap();
     color_backtrace::install();
 
-    info!("Slingshot v{} - Copyright (c) 2023 Matt Young. Mozilla Public License v2.0.", VERSION);
+    info!(
+        "Slingshot v{} - Copyright (c) 2023 Matt Young. Mozilla Public License v2.0.",
+        VERSION
+    );
 
     //let document = "module x; logic [15:0] y;\nendmodule\n";
 

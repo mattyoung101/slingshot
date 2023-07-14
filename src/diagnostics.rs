@@ -6,10 +6,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 use lazy_static::lazy_static;
-use log::{debug, error, warn};
+use log::{debug, warn};
 use regex::Regex;
 use std::error::Error;
-use std::io::{ErrorKind, Write};
+use std::io::Write;
 use tempfile::NamedTempFile;
 use tokio::process::Command;
 use tower_lsp::async_trait;
@@ -59,10 +59,13 @@ impl VerilatorDiagnostics {
         for (i, line) in document.lines().enumerate() {
             // Verilator uses 1-indexing for line numbers so we add 1 here
             if i + 1 == lineno {
-                return line.len()
+                return line.len();
             }
         }
-        panic!("Lineno {} does not exist in document:\n{}", lineno, document);
+        panic!(
+            "Lineno {} does not exist in document:\n{}",
+            lineno, document
+        );
     }
 }
 
@@ -132,14 +135,18 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             //debug!("line: {}, pos: {}, msg1: {}", line, pos, msg1);
 
             // For now, we will just report to the user that the error is the entire line
-            let end_pos = VerilatorDiagnostics::get_line_length(document, *line);
+            let _end_pos = VerilatorDiagnostics::get_line_length(document, *line);
             //debug!("end_pos: {}", end_pos);
 
             diagnostics.push(SvDiagnostic {
                 message: msg1.to_string(),
                 line: *line,
                 offset: *pos,
-                severity: if message_type == "Error" { SvDiagnosticSeverity::ERROR } else { SvDiagnosticSeverity::WARNING }
+                severity: if message_type == "Error" {
+                    SvDiagnosticSeverity::ERROR
+                } else {
+                    SvDiagnosticSeverity::WARNING
+                },
             });
         }
 

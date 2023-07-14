@@ -9,7 +9,7 @@
 use std::error::Error;
 use std::{collections::HashMap, path::PathBuf, usize};
 
-use log::{debug, warn};
+use log::debug;
 use sv_parser::{parse_sv_str, unwrap_node, Locate, RefNode};
 
 use crate::{SvDocument, SvToken, TokenType};
