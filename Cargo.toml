@@ -30,6 +30,8 @@ color-backtrace = "0.5.1"
 flexi_logger = "0.25.5"
 dashmap = { version = "5.4.0", features = ["serde"]}
 timer = "0.2.0"
+anyhow = "1.0.71"
+thiserror = "1.0.43"
 
 [profile.dev]
 lto = "thin"

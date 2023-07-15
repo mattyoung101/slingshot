@@ -8,37 +8,24 @@
 use lazy_static::lazy_static;
 use log::{debug, warn};
 use regex::Regex;
+use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position};
 use std::error::Error;
 use std::io::Write;
 use tempfile::NamedTempFile;
 use tokio::process::Command;
 use tower_lsp::async_trait;
 
-#[derive(Debug)]
-pub enum SvDiagnosticSeverity {
-    INFO,
-    WARNING,
-    ERROR,
-}
-
-/// A diagnostic message from a diagnostic engine
-#[derive(Debug)]
-pub struct SvDiagnostic {
-    /// Diagnostic message
-    message: String,
-    /// Which line this occurs on
-    line: usize,
-    /// Position in line this occurs on
-    offset: usize,
-    /// Severity of the diagnostic
-    severity: SvDiagnosticSeverity,
+#[derive(thiserror::Error, Debug)]
+pub enum DiagnosticProviderError {
+    #[error("Verilator may have crashed.")]
+    VerilatorFailed
 }
 
 /// Interface to a piece of software that can perform diagnostics, e.g. Slang, Verilator, etc.
 #[async_trait]
 pub trait DiagnosticProvider {
     /// Provides a set of diagnostics for the given document.
-    async fn diagnose(document: &str) -> Result<Vec<SvDiagnostic>, Box<dyn Error>>;
+    async fn diagnose(document: &str) -> Result<Vec<Diagnostic>, anyhow::Error>;
 }
 
 /// Wrapper around Verilator to provide diagnostics
@@ -55,11 +42,11 @@ impl VerilatorDiagnostics {
     ///
     /// # Panics
     /// Panics if the lineno does not exist in the document (too large or too small)
-    fn get_line_length(document: &str, lineno: usize) -> usize {
+    fn get_line_length(document: &str, lineno: u32) -> u32 {
         for (i, line) in document.lines().enumerate() {
             // Verilator uses 1-indexing for line numbers so we add 1 here
-            if i + 1 == lineno {
-                return line.len();
+            if i + 1 == TryInto::<usize>::try_into(lineno).unwrap() {
+                return line.len().try_into().unwrap();
             }
         }
         panic!(
@@ -71,8 +58,8 @@ impl VerilatorDiagnostics {
 
 #[async_trait]
 impl DiagnosticProvider for VerilatorDiagnostics {
-    async fn diagnose(document: &str) -> Result<Vec<SvDiagnostic>, Box<dyn Error>> {
-        let mut diagnostics: Vec<SvDiagnostic> = Vec::new();
+    async fn diagnose(document: &str) -> Result<Vec<Diagnostic>, anyhow::Error> {
+        let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
         // write document to a temp file (verilator doesn't allow stdin as an input)
         let mut tmpfile = NamedTempFile::new()?;
@@ -112,7 +99,7 @@ impl DiagnosticProvider for VerilatorDiagnostics {
                         any warning/error messages. Maybe Verilator crashed?"
                 );
                 warn!("Verilator said:\nstdout:\n{}\nstderr:\n{}", stdout, stderr);
-                return Err("Verilator may have crashed".into());
+                return Err(DiagnosticProviderError::VerilatorFailed.into());
             }
         }
 
@@ -128,26 +115,37 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             // we could ignore this diagnostic entirely but may as well return it, realistically
             // this shouldn't happen anyway and the user will see **something**
             // if people start malding on the bug tracker or whatever then yeah skip the diagnostic
-            let line = &capture[2].parse::<usize>().unwrap_or(0);
-            let pos = &capture[3].parse::<usize>().unwrap_or(0);
+            let line = &capture[2].parse::<u32>().unwrap_or(0);
+            let pos = &capture[3].parse::<u32>().unwrap_or(0);
             let msg1 = capture[4].to_string();
 
             //debug!("line: {}, pos: {}, msg1: {}", line, pos, msg1);
 
             // For now, we will just report to the user that the error is the entire line
-            let _end_pos = VerilatorDiagnostics::get_line_length(document, *line);
+            let end_pos = VerilatorDiagnostics::get_line_length(document, *line);
             //debug!("end_pos: {}", end_pos);
-
-            diagnostics.push(SvDiagnostic {
-                message: msg1.to_string(),
-                line: *line,
-                offset: *pos,
-                severity: if message_type == "Error" {
-                    SvDiagnosticSeverity::ERROR
-                } else {
-                    SvDiagnosticSeverity::WARNING
+            
+            let mut diagnostic = Diagnostic::default();
+            diagnostic.message = msg1;
+            diagnostic.source = Some("verilator".to_string());
+            diagnostic.severity = if message_type == "Error" {
+                Some(DiagnosticSeverity::ERROR)
+            } else {
+                Some(DiagnosticSeverity::WARNING)
+            };
+            // note that LSP uses 0-indexed ranges but Verilator uses 1-indexed
+            let range = tower_lsp::lsp_types::Range {
+                start: Position {
+                    line: line - 1,
+                    character: pos - 1
                 },
-            });
+                end: Position {
+                    line: line - 1,
+                    character: end_pos - 1
+                }
+            };
+            diagnostic.range = range;
+            diagnostics.push(diagnostic);
         }
 
         // Determine ranges for errors based on Verilator output. We look for lines that contain a

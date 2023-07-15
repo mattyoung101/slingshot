@@ -18,7 +18,7 @@ use crate::{SvDocument, SvToken, TokenType};
 pub trait CompletionProvider {
     /// Extracts a list of CompletionTokens for the given document. Note the HashSet, as completion
     /// tokens must be unique.
-    fn extract_tokens(code_document: &str) -> Result<SvDocument, Box<dyn Error>>;
+    fn extract_tokens(code_document: &str) -> Result<SvDocument, anyhow::Error>;
 }
 
 /// Diagnostics powered by Rust's sv-parser crate
@@ -73,7 +73,7 @@ fn get_identifier(node: RefNode) -> Option<Locate> {
 }
 
 impl CompletionProvider for SvParserCompletion {
-    fn extract_tokens(code_document: &str) -> Result<SvDocument, Box<dyn Error>> {
+    fn extract_tokens(code_document: &str) -> Result<SvDocument, anyhow::Error> {
         // The path of SystemVerilog source file (TODO get the actual path)
         let path = PathBuf::from("/tmp/test");
         // The list of defined macros (TODO provide a documented list of defined macros e.g.

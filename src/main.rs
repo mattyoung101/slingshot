@@ -12,8 +12,6 @@ use slingshot::completion::SvParserCompletion;
 use slingshot::diagnostics::DiagnosticProvider;
 use slingshot::diagnostics::VerilatorDiagnostics;
 use slingshot::indexing::IndexManager;
-use std::error::Error;
-
 use stderrlog::LogLevelNum;
 use tower_lsp::jsonrpc;
 use tower_lsp::lsp_types::CompletionOptions;
@@ -42,22 +40,12 @@ struct Backend {
 }
 
 impl Backend {
-    async fn on_change(&self, params: TextDocumentItem) -> Result<(), Box<dyn Error>> {
+    async fn on_change(&self, params: TextDocumentItem) {
         debug!(
             "Text document changed. Path: {}, version: {}",
             params.uri, params.version
         );
 
-        // run diagnostics
-        let _diagnostics = VerilatorDiagnostics::diagnose(&params.text).await;
-        // TODO publish diagnostics
-
-        //self.client.publish_diagnostics(uri, diags, version)
-
-        // run completion
-        let completion = SvParserCompletion::extract_tokens(&params.text)?;
-
-        // insert completion into index
         // OK, fuck it, whatever man, this is the 2nd day of me trying to get
         // `params.uri.to_file_path()?` to work and it just WILL NOT.
         // at this point I'm fairly sure it's an upstream issue with servo-url so we'll just have
@@ -65,13 +53,27 @@ impl Backend {
         let path = match params.uri.to_file_path() {
             Ok(p) => p,
             Err(_) => {
-                return Err(format!("Error converting text document URI: {:?}", params.uri).into())
+                warn!("Error converting URI to file path: {:?}", params.uri);
+                return;
             }
         };
-        self.index
-            .insert(path.to_str().unwrap(), &params.text, &completion);
 
-        Ok(())
+        // run and publish diagnostics
+        match VerilatorDiagnostics::diagnose(&params.text).await {
+            Ok(diags) => { self.client.publish_diagnostics(params.uri, diags, Some(params.version)).await },
+            Err(e) => { warn!("VerilatorDiagnostics failed: {:?}", e) }
+        };
+
+        // run completion
+        match SvParserCompletion::extract_tokens(&params.text) {
+            Ok(completion) => {
+                // insert completion into index
+                self.index
+                    .insert(path.to_str().unwrap(), &params.text, &completion);
+                // TODO generate completions based on index
+            },
+            Err(e) => { warn!("Completion failed: {:?}", e); }
+        }
     }
 }
 
@@ -127,17 +129,13 @@ impl LanguageServer for Backend {
         self.client
             .log_message(MessageType::INFO, "Document opened")
             .await;
-        let result = self
-            .on_change(TextDocumentItem {
+        self.on_change(TextDocumentItem {
                 uri: params.text_document.uri,
                 text: params.text_document.text,
                 version: params.text_document.version,
                 language_id: "verilog".to_string(),
             })
             .await;
-        if result.is_err() {
-            warn!("on_change failed in did_open: {:?}", result.err());
-        }
     }
 
     async fn shutdown(&self) -> jsonrpc::Result<()> {
