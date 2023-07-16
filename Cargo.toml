@@ -13,8 +13,6 @@ publish = false
 sv-parser = "0.13.1"
 tower-lsp = "0.19.0"
 tokio = { version = "1.28.2", features = ["full", "process"] }
-# serde, flexbuffers and sqlite will be used for index caching
-# note we compile and statically link rusqlite with the slingshot binary which is in fact what we want
 serde = "1.0.164"
 flexbuffers = "2.0.0"
 xxhash-rust = { version = "0.8.5", features = ["xxh3"] }
@@ -22,16 +20,15 @@ tempfile = "3.6.0"
 regex = "1.8.4"
 lazy_static = "1.4.0"
 log = "0.4.19"
-stderrlog = "0.5.4" # TODO replace this with flexi_logger
-tokio-rusqlite = "0.4.0"
-ropey = "1.6.0"
+#ropey = "1.6.0" # TODO: use this, it seems good!
 bytesize = "1.2.0"
 color-backtrace = "0.5.1"
-flexi_logger = "0.25.5"
 dashmap = { version = "5.4.0", features = ["serde"]}
-timer = "0.2.0"
-anyhow = "1.0.71"
+anyhow = { version = "1.0.71", features = ["backtrace"]}
 thiserror = "1.0.43"
+fern = { version = "0.6.2", features = ["colored"]}
+humantime = "2.1.0"
+log-panics = { version = "2", features = ["with-backtrace"]}
 
 [profile.dev]
 lto = "thin"

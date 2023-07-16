@@ -6,12 +6,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::error::Error;
 use std::{collections::HashMap, path::PathBuf, usize};
-
-use log::debug;
+use log::{debug, trace};
 use sv_parser::{parse_sv_str, unwrap_node, Locate, RefNode};
-
 use crate::{SvDocument, SvToken, TokenType};
 
 /// Interface to a piece of software that can generate completions, e.g. sv-parser, Slang, etc
@@ -86,7 +83,7 @@ impl CompletionProvider for SvParserCompletion {
         // appear to work very well
         // TODO if this fails, add logic to splice a max number of times until the error goes away
         let (tree, _) = parse_sv_str(code_document, path, &predefines, &includes, false, false)?;
-        debug!("sv-parser accepted document");
+        trace!("sv-parser accepted document:\n{:#?}", tree);
 
         let mut document = SvDocument::default();
 
@@ -106,6 +103,9 @@ impl CompletionProvider for SvParserCompletion {
 
             match get_node_type(&node) {
                 TokenType::Module => {
+                    // for multiple modules in a document, make sure we finish the existing module
+                    // before starting a new one
+                    document.maybe_finish_module();
                     document.new_module(identifier.unwrap());
                 }
 
@@ -133,14 +133,13 @@ impl CompletionProvider for SvParserCompletion {
                     }
                 }
 
-                _n => {
-                    //debug!("Ignoring node type: {:?}", n);
-                }
+                _ => {}
             };
         }
 
         // complete any remaining modules
-        document.finish_module();
+        debug!("Completing any remaining modules");
+        document.maybe_finish_module();
 
         Ok(document)
     }

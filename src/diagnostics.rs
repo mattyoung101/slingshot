@@ -6,11 +6,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 use lazy_static::lazy_static;
-use log::{debug, warn};
+use log::{debug, warn, trace};
 use regex::Regex;
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position};
 use std::error::Error;
 use std::io::Write;
+use std::path::PathBuf;
 use tempfile::NamedTempFile;
 use tokio::process::Command;
 use tower_lsp::async_trait;
@@ -18,14 +19,16 @@ use tower_lsp::async_trait;
 #[derive(thiserror::Error, Debug)]
 pub enum DiagnosticProviderError {
     #[error("Verilator may have crashed.")]
-    VerilatorFailed
+    VerilatorFailed,
+    #[error("Verilator failed to generate any useful diagnostics.")]
+    VerilatorNoDiagnostics,
 }
 
 /// Interface to a piece of software that can perform diagnostics, e.g. Slang, Verilator, etc.
 #[async_trait]
 pub trait DiagnosticProvider {
     /// Provides a set of diagnostics for the given document.
-    async fn diagnose(document: &str) -> Result<Vec<Diagnostic>, anyhow::Error>;
+    async fn diagnose(path: &PathBuf, document: &str) -> Result<Vec<Diagnostic>, anyhow::Error>;
 }
 
 /// Wrapper around Verilator to provide diagnostics
@@ -38,7 +41,7 @@ pub struct VerilatorDiagnostics {}
 // Useful information is in capture groups
 
 impl VerilatorDiagnostics {
-    /// Determines the length of the line "lineno" (1-indexed) in the document "document"
+    /// Determines the length of the line "lineno" (1-indexed) in the document "document".
     ///
     /// # Panics
     /// Panics if the lineno does not exist in the document (too large or too small)
@@ -46,7 +49,7 @@ impl VerilatorDiagnostics {
         for (i, line) in document.lines().enumerate() {
             // Verilator uses 1-indexing for line numbers so we add 1 here
             if i + 1 == TryInto::<usize>::try_into(lineno).unwrap() {
-                return line.len().try_into().unwrap();
+                return TryInto::<u32>::try_into(line.len()).unwrap() + 1;
             }
         }
         panic!(
@@ -58,17 +61,19 @@ impl VerilatorDiagnostics {
 
 #[async_trait]
 impl DiagnosticProvider for VerilatorDiagnostics {
-    async fn diagnose(document: &str) -> Result<Vec<Diagnostic>, anyhow::Error> {
+    async fn diagnose(path: &PathBuf, document: &str) -> Result<Vec<Diagnostic>, anyhow::Error> {
         let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
         // write document to a temp file (verilator doesn't allow stdin as an input)
+        // we cannot guarantee that the document we received is the exact same text as exists on
+        // disk, so we need to write the document to a temp file and invoke verilator on that
+        // 
+        // because this keeps writing files to /tmp it may cause disk thrashing
+        // we should do this instead: echo "test" | verilator --lint-only -Wall -Wno-DECLFILENAME /dev/stdin
+        // https://stackoverflow.com/a/39230472/5007892
+        // TODO use /dev/stdin instead
         let mut tmpfile = NamedTempFile::new()?;
-
-        // if we can create a file in /tmp we can probably write to it, just silently fail if we
-        // can't for some reason -> Verilator will mald later anyway which we can detect
-        // TODO note since we get a URI from LSP, we may not actually need to write out to a temp
-        // file
-        let _ = tmpfile.write(document.as_bytes())?;
+        tmpfile.write(document.as_bytes())?;
 
         let tmpfile_path = tmpfile.path().to_str().unwrap();
         debug!("Created Verilator temp file: {}", tmpfile_path);
@@ -84,8 +89,8 @@ impl DiagnosticProvider for VerilatorDiagnostics {
         let stdout = std::str::from_utf8(&output.stdout).unwrap();
         let stderr = std::str::from_utf8(&output.stderr).unwrap();
 
-        // debug!("{}", stdout);
-        // debug!("{}", stderr);
+        trace!("{}", stdout);
+        trace!("{}", stderr);
 
         if !output.status.success() {
             debug!(
@@ -108,7 +113,8 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             static ref RE: Regex =
                 Regex::new(r"%(Warning|Error).*:([0-9]+):([0-9]+): (.*)(\n.*:.*)?").unwrap();
         }
-
+        
+        let mut num_captures = 0;
         for capture in RE.captures_iter(stderr) {
             let message_type = &capture[1];
             // if we fail to parse the line/pos number for some reason, just return 0
@@ -146,6 +152,13 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             };
             diagnostic.range = range;
             diagnostics.push(diagnostic);
+            num_captures += 1;
+        }
+
+        if num_captures == 0 && output.status.code().unwrap() == 1 {
+            warn!("Verilator exited with status code 1, but was unable to capture any warnings/errors.");
+            warn!("Verilator said:\nstdout:\n{}\nstderr:\n{}", stdout, stderr);
+            return Err(DiagnosticProviderError::VerilatorNoDiagnostics.into())
         }
 
         // Determine ranges for errors based on Verilator output. We look for lines that contain a

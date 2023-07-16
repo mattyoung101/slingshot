@@ -1,6 +1,5 @@
 # Slingshot - SystemVerilog LSP
-**Slingshot** is a **work in progress** language server for the SystemVerilog hardware description language, 
-currently powered by dalance's [sv-parser](https://github.com/dalance/sv-parser).
+**Slingshot** is a **work in progress** language server for the SystemVerilog hardware description language.
 
 Slingshot was born out of a frustration with existing SystemVerilog LSPs and editor plugins. While many exist,
 and most are functional, I still found them imperfect for my needs. Many are missing crucial features like
@@ -9,11 +8,11 @@ Slingshot is to create the _ultimate_ SystemVerilog LSP, with all the features y
 
 Of course this is a moonshot, but here's to trying!
 
-**Current state:** Slingshot has only just started development, and is a long way off implementing any features
-described below. So, stay tuned, I guess.
+**Current state:** Slingshot has only just started development. Right now, it is only capable of providing
+Verilator linting. I am working on adding completion and whole project indexing.
 
-**Timeline:** Hoping to complete some initial tests these holidays after uni exams. Assuming I commit to this,
-I'm hoping to get it functional by no later than June 2024.
+**Timeline:** Due to university, my time is extremely limited. However, I am hoping to get Slingshot fully
+functional by no later than June 2024, so I can use it to develop the SV code for my thesis.
 
 **Author:** Matt Young (m.young2@uqconnect.edu.au)
 
@@ -29,8 +28,35 @@ You should now be able to build Slingshot with just `cargo build`, fingers cross
 
 **Running**
 
-Slingshot currently does not function as a LSP (i.e. the LSP backend has not yet been written). When it has
-been, I will add instructions for using it here.
+Currently I have only tested Slingshot in Neovim.
+
+When Slingshot is a more capable LSP, it will (hopefully) be available in upstream LSP projects like
+[mason.nvim](https://github.com/williamboman/mason.nvim) and [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).
+
+Until then, you can manually add Slingshot as an nvim-lspconfig server by inserting the following into `init.lua`:
+
+```lua
+local lspconfig = require 'lspconfig'
+local configs = require 'lspconfig.configs'
+
+if not configs.slingshot then
+  -- this require lspconfig.configs is the trick required to make it work
+  require("lspconfig.configs").slingshot = {
+    default_config = {
+    cmd = {'<code_path_to_slingshot_repo>/slingshot/target/debug/slingshot'};
+    filetypes = {'verilog', 'systemverilog'};
+    root_dir = function(fname)
+      return lspconfig.util.find_git_ancestor(fname) or vim.loop.os_homedir()
+    end;
+    settings = {};
+    };
+  }
+end
+```
+
+This is the setup I use for development as well.
+
+TODO add instructions for other editors like Vim, Emacs, VSCode.
 
 ## Design goals and features
 **Mandatory:**
@@ -43,7 +69,6 @@ been, I will add instructions for using it here.
 - Whole project indexing
     - Slingshot should discover referenced files and add them to an index cache
 - No false positives: If Verilator accepts the input, slingshot should as well
-
 - Low latency: The LSP should respond quickly to user inputs, even at the cost of CPU usage
 
 **Suggested:**
@@ -73,16 +98,16 @@ Slang.
 ## Implementation details
 Fundamentally, Slingshot is a fully modular interface between "engines", that do the real parsing work, and
 the LSP protocol. All LSP features, from completion to diagnostics, are driven by
-a backend "engine". Currently, completion is driven by sv-parser and diagnostics are driven by Verilator,
-but I aim to make these fully runtime configurable. Things Slingshot handles itself are project indexing and
-LSP communications.
+a backend "engine". Currently, completion is driven by dalance's [sv-parser](https://github.com/dalance/sv-parser)
+and diagnostics are driven by Verilator, but I aim to make these fully runtime configurable. Things Slingshot 
+handles itself are project indexing and LSP communications.
 
 Slingshot is currently written in just Rust. In a past life, it was written in a mix of Rust and C++20 to
 interface with the Slang SystemVerilog frontend developed by Mike Popoloski. Unfortunately, that proved
 extremely difficult to work with from both the Rust and C++ side - the worst of both worlds, constant segfaulting,
 and a nightmarish build process. So that has been scrapped, and I'm trying just Rust for now. _However_, if
 sv-parser is not suitable for the task at hand, then at this point I'll bundle a Slang executable that starts
-a server and communicates with the main Slingshot process via IPC.
+a server and communicates with the main Slingshot process via IPC. (Update: or use an ANTLR grammar via antlr-rust)
 
 sv-parser does not have good error recovery support. Slingshot will therefore
 have to make a "best guess" attempt at providing useful feedback while the user is typing, probably by splicing
@@ -92,7 +117,7 @@ massively annoying because one of Slingshot's _primary goals_ is accurate autoco
 if sv-parser is not capable of good enough error recovery to be useable, we will have no choice but to move to
 C++, which in turn will make the LSP side of things a massive pain.
 
-Alto, to note, this project doubles as my way of learning Rust, so bare with me if it's not idiomatic.
+Also, to note, this project doubles as my way of learning and evaluating Rust, so bare with me if it's not idiomatic.
 
 ## Licence
 Mozilla Public License v2.0

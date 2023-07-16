@@ -5,7 +5,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-use log::debug;
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 
 pub mod completion;
@@ -101,9 +101,19 @@ impl SvDocument {
         }
     }
 
+    /// Finishes the current module if and only if one is active
+    fn maybe_finish_module(&mut self) {
+        if self.cur_module.is_some() {
+            self.finish_module()
+        }
+    }
+
     /// Forcibly finishes the current module
     fn finish_module(&mut self) {
-        assert!(self.cur_module.is_some());
+        if !self.cur_module.is_some() {
+            error!("Trying to finish_module, but no module is active!");
+            return;
+        }
         debug!(
             "Finishing current module: {}",
             self.cur_module.as_ref().unwrap().name
@@ -114,7 +124,10 @@ impl SvDocument {
 
     /// Adds a variable to the current module
     fn add_variable(&mut self, variable: SvToken) {
-        assert!(self.cur_module.is_some());
+        if !self.cur_module.is_some() {
+            error!("Trying to add_variable {:?}, but no module is active!", variable);
+            return;
+        }
         debug!(
             "Adding variable: {} to module: {}",
             variable.name,
@@ -125,7 +138,10 @@ impl SvDocument {
 
     /// Adds a port to the current module
     fn add_port(&mut self, port: SvToken) {
-        assert!(self.cur_module.is_some());
+        if !self.cur_module.is_some() {
+            error!("Attempting to add_port {:?}, but no module is active!", port);
+            return;
+        }
         debug!(
             "Adding port: {} to module: {}",
             port.name,
@@ -137,6 +153,7 @@ impl SvDocument {
     /// Returns true if the given variable token has already been declared in the current module as
     /// a port.
     fn is_var_declared_as_port(&self, variable: &SvToken) -> bool {
+        // panic here because we do actually have to take some action
         assert!(self.cur_module.is_some());
         return self
             .cur_module

@@ -1,4 +1,7 @@
-use log::warn;
+use std::sync::{Arc, Mutex};
+
+use fern::colors::{ColoredLevelConfig, Color};
+use log::{warn, error};
 /*
  * Copyright (c) 2023 Matt Young.
  *
@@ -12,9 +15,6 @@ use slingshot::completion::SvParserCompletion;
 use slingshot::diagnostics::DiagnosticProvider;
 use slingshot::diagnostics::VerilatorDiagnostics;
 use slingshot::indexing::IndexManager;
-use stderrlog::LogLevelNum;
-use tower_lsp::jsonrpc;
-use tower_lsp::lsp_types::CompletionOptions;
 use tower_lsp::lsp_types::DidOpenTextDocumentParams;
 use tower_lsp::lsp_types::InitializeParams;
 use tower_lsp::lsp_types::InitializeResult;
@@ -28,15 +28,17 @@ use tower_lsp::lsp_types::TextDocumentSyncCapability;
 use tower_lsp::lsp_types::TextDocumentSyncKind;
 use tower_lsp::lsp_types::WorkspaceFoldersServerCapabilities;
 use tower_lsp::lsp_types::WorkspaceServerCapabilities;
+use tower_lsp::lsp_types::{CompletionOptions, DidChangeTextDocumentParams};
 use tower_lsp::Client;
 use tower_lsp::LanguageServer;
+use tower_lsp::{jsonrpc, LspService, Server};
 
 // Reference: https://stackoverflow.com/a/27841363/5007892
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 struct Backend {
     client: Client,
-    index: IndexManager,
+    index: Mutex<Option<IndexManager>>,
 }
 
 impl Backend {
@@ -46,10 +48,6 @@ impl Backend {
             params.uri, params.version
         );
 
-        // OK, fuck it, whatever man, this is the 2nd day of me trying to get
-        // `params.uri.to_file_path()?` to work and it just WILL NOT.
-        // at this point I'm fairly sure it's an upstream issue with servo-url so we'll just have
-        // to cop the damn match statement.
         let path = match params.uri.to_file_path() {
             Ok(p) => p,
             Err(_) => {
@@ -59,20 +57,43 @@ impl Backend {
         };
 
         // run and publish diagnostics
-        match VerilatorDiagnostics::diagnose(&params.text).await {
-            Ok(diags) => { self.client.publish_diagnostics(params.uri, diags, Some(params.version)).await },
-            Err(e) => { warn!("VerilatorDiagnostics failed: {:?}", e) }
+        match VerilatorDiagnostics::diagnose(&path, &params.text).await {
+            Ok(diags) => {
+                self.client
+                    .publish_diagnostics(params.uri, diags, Some(params.version))
+                    .await
+            }
+            Err(e) => {
+                warn!("VerilatorDiagnostics failed: {:?}", e)
+            }
         };
 
-        // run completion
-        match SvParserCompletion::extract_tokens(&params.text) {
-            Ok(completion) => {
-                // insert completion into index
-                self.index
-                    .insert(path.to_str().unwrap(), &params.text, &completion);
-                // TODO generate completions based on index
-            },
-            Err(e) => { warn!("Completion failed: {:?}", e); }
+        // run completion, only if the index has been created
+        // mutex information: https://stackoverflow.com/a/62249079/5007892
+        let mut guard = self.index.lock().unwrap();
+        match &mut *guard {
+            Some(index) => {
+                // generate completion tokens
+                match SvParserCompletion::extract_tokens(&params.text) {
+                    Ok(completion) => {
+                        // insert completion into index
+                        index.insert(&path, &params.text, &completion);
+                        
+                        match index.maybe_flush() {
+                            Ok(_) => {}
+                            Err(e) => { error!("Failed to flush index: {:#?}", e); }
+                        }
+                        
+                        // TODO generate completion tokens based on index and current cursor pos
+                    }
+                    Err(e) => {
+                        warn!("Generating completion failed: {:?}", e);
+                    }
+                }
+            }
+            None => {
+                debug!("Index does not exist yet, cannot run completion");
+            }
         }
     }
 }
@@ -80,8 +101,20 @@ impl Backend {
 // Reference: https://github.com/IWANABETHATGUY/tower-lsp-boilerplate/blob/main/src/main.rs
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> jsonrpc::Result<InitializeResult> {
-        debug!("Initialising LSP");
+    async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
+        debug!("Initialising LSP for {:?}", params.client_info);
+
+        match params.workspace_folders {
+            Some(folder) => {
+                let root_dir = folder[0].uri.to_file_path().unwrap();
+                let cache = root_dir.join(".cache/slingshot/slingshot_cache.dat");
+                debug!("Going to initialise index with root path: {:?}, cache: {:?}", root_dir, cache);
+                
+                let mut guard = self.index.lock().unwrap();
+                *guard = Some(IndexManager::new(&cache));
+            }
+            None => {}
+        }
 
         return Ok(InitializeResult {
             server_info: Some(ServerInfo {
@@ -119,7 +152,6 @@ impl LanguageServer for Backend {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        // notify client that LSP has initialised successfully
         self.client
             .log_message(MessageType::INFO, "Slingshot init OK")
             .await;
@@ -130,17 +162,36 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "Document opened")
             .await;
         self.on_change(TextDocumentItem {
-                uri: params.text_document.uri,
-                text: params.text_document.text,
-                version: params.text_document.version,
-                language_id: "verilog".to_string(),
-            })
-            .await;
+            uri: params.text_document.uri,
+            text: params.text_document.text,
+            version: params.text_document.version,
+            language_id: "verilog".to_string(),
+        })
+        .await;
+    }
+
+    async fn did_change(&self, mut params: DidChangeTextDocumentParams) {
+        self.on_change(TextDocumentItem {
+            uri: params.text_document.uri,
+            // FIXME is this really good practice?
+            text: std::mem::take(&mut params.content_changes[0].text),
+            version: params.text_document.version,
+            language_id: "verilog".to_string(),
+        })
+        .await;
     }
 
     async fn shutdown(&self) -> jsonrpc::Result<()> {
         debug!("Shutdown LSP");
-        self.index.flush();
+
+        let mut guard = self.index.lock().unwrap();
+        match &mut *guard {
+            Some(index) => {
+                let _ = index.flush();
+            }
+            None => {}
+        }
+        
         Ok(())
     }
 }
@@ -148,56 +199,61 @@ impl LanguageServer for Backend {
 #[tokio::main]
 async fn main() {
     // initialise logging framework
-    stderrlog::new()
-        .verbosity(LogLevelNum::Trace)
-        .timestamp(stderrlog::Timestamp::Second)
-        .init()
-        .unwrap();
     color_backtrace::install();
+    log_panics::init();
+    // hack to force backtrace: https://stackoverflow.com/a/71731489/5007892
+    std::env::set_var("RUST_BACKTRACE", "1");
+    let colours_line = ColoredLevelConfig::new()
+        .error(Color::Red)
+        .warn(Color::Yellow)
+        // we actually don't need to specify the color for debug and info, they are white by default
+        .info(Color::Green)
+        .debug(Color::White)
+        // depending on the terminals color scheme, this is the same as the background color
+        .trace(Color::BrightBlack);
+    // we actually overwrite the file for ease of debugging
+    let logfile = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open("/tmp/slingshot.log");
+    fern::Dispatch::new()
+        .format(move |out, message, record| {
+            out.finish(format_args!(
+                "{colour_line}[{} {} {}] {}\x1B[0m",
+                // TODO: format time as local time not UTC
+                humantime::format_rfc3339(std::time::SystemTime::now()),
+                record.level(),
+                record.target(),
+                message,
+                colour_line = format_args!(
+                    "\x1B[{}m",
+                    colours_line.get_color(&record.level()).to_fg_str()
+                ),
+            ))
+        })
+        .level(log::LevelFilter::Debug)
+        .chain(std::io::stderr())
+        .chain(logfile.unwrap())
+        .apply()
+        .unwrap();
 
     info!(
         "Slingshot v{} - Copyright (c) 2023 Matt Young. Mozilla Public License v2.0.",
         VERSION
     );
 
-    //let document = "module x; logic [15:0] y;\nendmodule\n";
+    let stdin = tokio::io::stdin();
+    let stdout = tokio::io::stdout();
 
-    let document = r#"
-    typedef enum {
-        ENUM_A,
-        ENUM_B
-    } Test_t;
+    debug!("Building LspService");
+    let (service, socket) = LspService::build(|client| Backend {
+        client,
+        // index is initialised later
+        index: Mutex::new(None),
+    })
+    .finish();
 
-module mymodule(
-    input logic [15:0] a,
-    input logic [15:0] b,
-    output logic[31:0] c
-);
-    logic [15:0] something;
-
-    always_comb begin
-        c = a + b + something;
-    end
-endmodule;
-
-    "#;
-
-    let result = VerilatorDiagnostics::diagnose(document).await.unwrap();
-    for entry in result.iter() {
-        info!("{:?}", entry);
-    }
-
-    let parsed_document = SvParserCompletion::extract_tokens(document).unwrap();
-    let module = &parsed_document.modules[0];
-    for port in module.ports.as_slice() {
-        info!("port: {:?}", port);
-    }
-    for var in module.variables.as_slice() {
-        info!("variable: {:?}", var);
-    }
-
-    let located_port = parsed_document.locate_port("a");
-    info!("found port: {:?}", located_port);
-    let nonexistent_port = parsed_document.locate_port("deez");
-    info!("shouldn't be found: {:?}", nonexistent_port);
+    debug!("Booting server");
+    Server::new(stdin, stdout, socket).serve(service).await;
 }
