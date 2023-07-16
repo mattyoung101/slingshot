@@ -110,7 +110,7 @@ impl SvDocument {
 
     /// Forcibly finishes the current module
     fn finish_module(&mut self) {
-        if !self.cur_module.is_some() {
+        if self.cur_module.is_none() {
             error!("Trying to finish_module, but no module is active!");
             return;
         }
@@ -124,8 +124,11 @@ impl SvDocument {
 
     /// Adds a variable to the current module
     fn add_variable(&mut self, variable: SvToken) {
-        if !self.cur_module.is_some() {
-            error!("Trying to add_variable {:?}, but no module is active!", variable);
+        if self.cur_module.is_none() {
+            error!(
+                "Trying to add_variable {:?}, but no module is active!",
+                variable
+            );
             return;
         }
         debug!(
@@ -138,8 +141,11 @@ impl SvDocument {
 
     /// Adds a port to the current module
     fn add_port(&mut self, port: SvToken) {
-        if !self.cur_module.is_some() {
-            error!("Attempting to add_port {:?}, but no module is active!", port);
+        if self.cur_module.is_none() {
+            error!(
+                "Attempting to add_port {:?}, but no module is active!",
+                port
+            );
             return;
         }
         debug!(

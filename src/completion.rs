@@ -6,10 +6,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::{collections::HashMap, path::PathBuf, usize};
-use log::{debug, trace};
-use sv_parser::{parse_sv_str, unwrap_node, Locate, RefNode};
 use crate::{SvDocument, SvToken, TokenType};
+use log::{debug, trace};
+use std::{collections::HashMap, path::PathBuf, usize};
+use sv_parser::{parse_sv_str, unwrap_node, Locate, RefNode};
 
 /// Interface to a piece of software that can generate completions, e.g. sv-parser, Slang, etc
 pub trait CompletionProvider {

@@ -6,14 +6,18 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use crate::SvDocument;
 use anyhow::Context;
 use bytesize::ByteSize;
 use dashmap::DashMap;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, sync::Mutex, fs};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 use xxhash_rust::xxh3::xxh3_64;
-use crate::SvDocument;
 
 /// Current version of the index file format.
 const INDEX_VERSION: &str = "0.1.0";
@@ -46,13 +50,13 @@ pub struct IndexManager {
 
     /// Path to the index file
     pub index_path: PathBuf,
-    
+
     /// Current flush batch counter
-    batch: Mutex<u32>
+    batch: Mutex<u32>,
 }
 
 impl IndexManager {
-    fn default(path: &PathBuf) -> IndexManager {
+    fn default(path: &Path) -> IndexManager {
         let index = Index {
             version: INDEX_VERSION.to_string(),
             document_trees: DashMap::new(),
@@ -61,7 +65,7 @@ impl IndexManager {
         IndexManager {
             index,
             index_path: path.to_path_buf(),
-            batch: 0.into()
+            batch: 0.into(),
         }
     }
 
@@ -77,11 +81,11 @@ impl IndexManager {
 
         let mut serialiser = flexbuffers::FlexbufferSerializer::new();
         self.index.serialize(&mut serialiser)?;
-        fs::write(self.index_path.to_path_buf(), serialiser.take_buffer())?;
-        
+        fs::write(&self.index_path, serialiser.take_buffer())?;
+
         Ok(())
     }
-    
+
     /// To reduce disk thrashing, we batch updates, which is controlled by
     /// INDEX_UPDATE_BATCH_SIZE. When you call maybe_flush, it will only actually flush to disk
     /// every INDEX_UPDATE_BATCH_SIZE calls.
@@ -90,11 +94,14 @@ impl IndexManager {
         if *guard == INDEX_UPDATE_BATCH_SIZE {
             debug!("Flushing to disk!");
             *guard = 0;
-            return self.flush();
+            self.flush()
         } else {
-            debug!("Not flushing index yet, progress {}/{}", *guard, INDEX_UPDATE_BATCH_SIZE);
+            debug!(
+                "Not flushing index yet, progress {}/{}",
+                *guard, INDEX_UPDATE_BATCH_SIZE
+            );
             *guard += 1;
-            return Ok(())
+            Ok(())
         }
     }
 
@@ -138,7 +145,7 @@ impl IndexManager {
         let reader = flexbuffers::Reader::get_root(bytes.as_slice())?;
         debug!("Instantiated flexbuffers reader, will now deserialise");
 
-        return Ok(Index::deserialize(reader)?);
+        Ok(Index::deserialize(reader)?)
     }
 
     /// Creates or loads the IndexManager for the particular project.
@@ -152,19 +159,19 @@ impl IndexManager {
 
         if path.exists() {
             info!("Index appears to exist, going to try and load it");
-            
+
             match Self::attempt_deserialise(path) {
                 Ok(index) => {
                     info!("Deserialised index successfully");
-                    return IndexManager {
+                    IndexManager {
                         index,
                         index_path: path.to_path_buf(),
-                        batch: 0.into()
+                        batch: 0.into(),
                     }
                 }
                 Err(e) => {
                     error!("Failed to deserialise index: {:?}", e);
-                    return IndexManager::default(&path.to_path_buf());
+                    IndexManager::default(&path.to_path_buf())
                 }
             }
         } else {

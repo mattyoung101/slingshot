@@ -1,7 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
-use fern::colors::{ColoredLevelConfig, Color};
-use log::{warn, error};
+use fern::colors::{Color, ColoredLevelConfig};
+use log::{error, warn};
 /*
  * Copyright (c) 2023 Matt Young.
  *
@@ -78,12 +78,14 @@ impl Backend {
                     Ok(completion) => {
                         // insert completion into index
                         index.insert(&path, &params.text, &completion);
-                        
+
                         match index.maybe_flush() {
                             Ok(_) => {}
-                            Err(e) => { error!("Failed to flush index: {:#?}", e); }
+                            Err(e) => {
+                                error!("Failed to flush index: {:#?}", e);
+                            }
                         }
-                        
+
                         // TODO generate completion tokens based on index and current cursor pos
                     }
                     Err(e) => {
@@ -104,16 +106,16 @@ impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> jsonrpc::Result<InitializeResult> {
         debug!("Initialising LSP for {:?}", params.client_info);
 
-        match params.workspace_folders {
-            Some(folder) => {
-                let root_dir = folder[0].uri.to_file_path().unwrap();
-                let cache = root_dir.join(".cache/slingshot/slingshot_cache.dat");
-                debug!("Going to initialise index with root path: {:?}, cache: {:?}", root_dir, cache);
-                
-                let mut guard = self.index.lock().unwrap();
-                *guard = Some(IndexManager::new(&cache));
-            }
-            None => {}
+        if let Some(folder) = params.workspace_folders {
+            let root_dir = folder[0].uri.to_file_path().unwrap();
+            let cache = root_dir.join(".cache/slingshot/slingshot_cache.dat");
+            debug!(
+                "Going to initialise index with root path: {:?}, cache: {:?}",
+                root_dir, cache
+            );
+
+            let mut guard = self.index.lock().unwrap();
+            *guard = Some(IndexManager::new(&cache));
         }
 
         return Ok(InitializeResult {
@@ -191,7 +193,7 @@ impl LanguageServer for Backend {
             }
             None => {}
         }
-        
+
         Ok(())
     }
 }
