@@ -20,7 +20,7 @@ tempfile = "3.6.0"
 regex = "1.8.4"
 lazy_static = "1.4.0"
 log = "0.4.19"
-#ropey = "1.6.0" # TODO: use this, it seems good!
+ropey = "1.6.0"
 bytesize = "1.2.0"
 color-backtrace = "0.5.1"
 dashmap = { version = "5.4.0", features = ["serde"]}
@@ -30,8 +30,11 @@ fern = { version = "0.6.2", features = ["colored"]}
 humantime = "2.1.0"
 log-panics = { version = "2", features = ["with-backtrace"]}
 
-[profile.dev]
-lto = "thin"
-
+# source: https://fasterthanli.me/articles/why-is-my-rust-build-so-slow
+# source: https://github.com/johnthagen/min-sized-rust
 [profile.release]
 lto = "thin"
+opt-level = "z"
+strip = true
+codegen-units = 1
+panic = "abort"

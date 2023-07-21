@@ -21,6 +21,32 @@ pub trait CompletionProvider {
 /// Diagnostics powered by Rust's sv-parser crate
 pub struct SvParserCompletion {}
 
+impl SvParserCompletion {
+    /// Returns if this node is a node we are interested in for completion purposes, and if so, what
+    /// TokenType it corresponds to.
+    fn get_node_type(node: &RefNode) -> TokenType {
+        match node {
+            RefNode::ModuleIdentifier(_) => TokenType::Module,
+            RefNode::VariableIdentifier(_) => TokenType::Variable,
+            RefNode::PortIdentifier(_) => TokenType::Port,
+            RefNode::ClassIdentifier(_) => TokenType::Class,
+            RefNode::TypeIdentifier(_) => TokenType::Enum, // TODO check this, may not be true
+            RefNode::EnumIdentifier(_) => TokenType::EnumValue,
+            _ => TokenType::NotInterested,
+        }
+    }
+
+    /// Source: https://github.com/dalance/sv-parser (README)
+    fn get_identifier(node: RefNode) -> Option<Locate> {
+        // unwrap_node! can take multiple types
+        match unwrap_node!(node, SimpleIdentifier, EscapedIdentifier) {
+            Some(RefNode::SimpleIdentifier(x)) => Some(x.nodes.0),
+            Some(RefNode::EscapedIdentifier(x)) => Some(x.nodes.0),
+            _ => None,
+        }
+    }
+}
+
 /// Removes a line of string from a document. If sv-parser cannot parse a document, we find the
 /// source of the error, splice it, and try re-running sv-parser again. Yes, this is exactly the
 /// same method that "fuckit.py" and other "error streamrollers" use, and yes it's mega stupid, but
@@ -29,6 +55,7 @@ pub struct SvParserCompletion {}
 ///
 /// Note: We insert comments, not newlines, so that sv-parser's line count stays correct.
 /// Note: This function uses 1-based indexing (e.g. the first line is lineno==1)
+/// TODO remove this function or replace it with a rope
 fn splice(document: &str, lineno: usize) -> String {
     let mut output = String::new();
 
@@ -41,33 +68,9 @@ fn splice(document: &str, lineno: usize) -> String {
             output.push_str(format!("{}\n", line).as_str());
         }
     }
-
     output
 }
 
-/// Returns if this node is a node we are interested in for completion purposes, and if so, what
-/// TokenType it corresponds to.
-fn get_node_type(node: &RefNode) -> TokenType {
-    match node {
-        RefNode::ModuleIdentifier(_) => TokenType::Module,
-        RefNode::VariableIdentifier(_) => TokenType::Variable,
-        RefNode::PortIdentifier(_) => TokenType::Port,
-        RefNode::ClassIdentifier(_) => TokenType::Class,
-        RefNode::TypeIdentifier(_) => TokenType::Enum, // TODO check this, may not be true
-        RefNode::EnumIdentifier(_) => TokenType::EnumValue,
-        _ => TokenType::NotInterested,
-    }
-}
-
-/// Source: https://github.com/dalance/sv-parser (README)
-fn get_identifier(node: RefNode) -> Option<Locate> {
-    // unwrap_node! can take multiple types
-    match unwrap_node!(node, SimpleIdentifier, EscapedIdentifier) {
-        Some(RefNode::SimpleIdentifier(x)) => Some(x.nodes.0),
-        Some(RefNode::EscapedIdentifier(x)) => Some(x.nodes.0),
-        _ => None,
-    }
-}
 
 impl CompletionProvider for SvParserCompletion {
     fn extract_tokens(code_document: &str) -> Result<SvDocument, anyhow::Error> {
@@ -92,7 +95,7 @@ impl CompletionProvider for SvParserCompletion {
             // get_identifier. I'd say only fix if this somehow affects performance.
             // also sometimes get_identifier returns None, not sure why, but obviously we can't
             // process that token in that case
-            let location = get_identifier(node.clone());
+            let location = Self::get_identifier(node.clone());
             if location.is_none() {
                 continue;
             }
@@ -101,7 +104,7 @@ impl CompletionProvider for SvParserCompletion {
                 continue;
             }
 
-            match get_node_type(&node) {
+            match Self::get_node_type(&node) {
                 TokenType::Module => {
                     // for multiple modules in a document, make sure we finish the existing module
                     // before starting a new one

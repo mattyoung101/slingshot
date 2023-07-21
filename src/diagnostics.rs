@@ -8,6 +8,7 @@
 use lazy_static::lazy_static;
 use log::{debug, trace, warn};
 use regex::Regex;
+use ropey::Rope;
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -39,25 +40,6 @@ pub struct VerilatorDiagnostics {}
 // This was developed on regex101 and also accounts for the fact that Verilator can split warnings
 // across 2 lines
 // Useful information is in capture groups
-
-impl VerilatorDiagnostics {
-    /// Determines the length of the line "lineno" (1-indexed) in the document "document".
-    ///
-    /// # Panics
-    /// Panics if the lineno does not exist in the document (too large or too small)
-    fn get_line_length(document: &str, lineno: u32) -> u32 {
-        for (i, line) in document.lines().enumerate() {
-            // Verilator uses 1-indexing for line numbers so we add 1 here
-            if i + 1 == TryInto::<usize>::try_into(lineno).unwrap() {
-                return TryInto::<u32>::try_into(line.len()).unwrap() + 1;
-            }
-        }
-        panic!(
-            "Lineno {} does not exist in document:\n{}",
-            lineno, document
-        );
-    }
-}
 
 #[async_trait]
 impl DiagnosticProvider for VerilatorDiagnostics {
@@ -114,6 +96,8 @@ impl DiagnosticProvider for VerilatorDiagnostics {
                 Regex::new(r"%(Warning|Error).*:([0-9]+):([0-9]+): (.*)(\n.*:.*)?").unwrap();
         }
 
+        let document_rope = Rope::from(document);
+
         let mut num_captures = 0;
         for capture in RE.captures_iter(stderr) {
             let message_type = &capture[1];
@@ -121,12 +105,13 @@ impl DiagnosticProvider for VerilatorDiagnostics {
             // we could ignore this diagnostic entirely but may as well return it, realistically
             // this shouldn't happen anyway and the user will see **something**
             // if people start malding on the bug tracker or whatever then yeah skip the diagnostic
-            let line = &capture[2].parse::<u32>().unwrap_or(0);
-            let pos = &capture[3].parse::<u32>().unwrap_or(0);
+            let line = &capture[2].parse::<u32>()?;
+            let line_usize = &capture[2].parse::<usize>()?;
+            let pos = &capture[3].parse::<u32>()?;
             let msg1 = capture[4].to_string();
 
             // For now, we will just report to the user that the error is the entire line
-            let end_pos = VerilatorDiagnostics::get_line_length(document, *line);
+            let end_pos = document_rope.line(*line_usize - 1).len_chars();
 
             let range = tower_lsp::lsp_types::Range {
                 start: Position {
@@ -135,7 +120,7 @@ impl DiagnosticProvider for VerilatorDiagnostics {
                 },
                 end: Position {
                     line: line - 1,
-                    character: end_pos - 1,
+                    character: u32::try_from(end_pos)? - 1,
                 },
             };
 

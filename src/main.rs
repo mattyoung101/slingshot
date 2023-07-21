@@ -1,7 +1,3 @@
-use std::sync::Mutex;
-
-use fern::colors::{Color, ColoredLevelConfig};
-use log::{error, warn};
 /*
  * Copyright (c) 2023 Matt Young.
  *
@@ -9,13 +5,16 @@ use log::{error, warn};
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
+use fern::colors::{Color, ColoredLevelConfig};
 use log::{debug, info};
+use log::{error, warn};
 use slingshot::completion::CompletionProvider;
 use slingshot::completion::SvParserCompletion;
 use slingshot::diagnostics::DiagnosticProvider;
 use slingshot::diagnostics::VerilatorDiagnostics;
 use slingshot::indexing::IndexManager;
-use tower_lsp::lsp_types::DidOpenTextDocumentParams;
+use std::sync::Mutex;
+use std::time::Instant;
 use tower_lsp::lsp_types::InitializeParams;
 use tower_lsp::lsp_types::InitializeResult;
 use tower_lsp::lsp_types::InitializedParams;
@@ -29,6 +28,7 @@ use tower_lsp::lsp_types::TextDocumentSyncKind;
 use tower_lsp::lsp_types::WorkspaceFoldersServerCapabilities;
 use tower_lsp::lsp_types::WorkspaceServerCapabilities;
 use tower_lsp::lsp_types::{CompletionOptions, DidChangeTextDocumentParams};
+use tower_lsp::lsp_types::{CompletionParams, CompletionResponse, DidOpenTextDocumentParams};
 use tower_lsp::Client;
 use tower_lsp::LanguageServer;
 use tower_lsp::{jsonrpc, LspService, Server};
@@ -43,6 +43,7 @@ struct Backend {
 
 impl Backend {
     async fn on_change(&self, params: TextDocumentItem) {
+        let begin = Instant::now();
         debug!(
             "Text document changed. Path: {}, version: {}",
             params.uri, params.version
@@ -74,6 +75,7 @@ impl Backend {
         match &mut *guard {
             Some(index) => {
                 // generate completion tokens
+                // TODO if entry already exists in index, use that -> skip parse & flush
                 match SvParserCompletion::extract_tokens(&params.text) {
                     Ok(completion) => {
                         // insert completion into index
@@ -85,8 +87,6 @@ impl Backend {
                                 error!("Failed to flush index: {:#?}", e);
                             }
                         }
-
-                        // TODO generate completion tokens based on index and current cursor pos
                     }
                     Err(e) => {
                         warn!("Generating completion failed: {:?}", e);
@@ -94,9 +94,11 @@ impl Backend {
                 }
             }
             None => {
-                debug!("Index does not exist yet, cannot run completion");
+                warn!("Index does not exist yet, cannot insert document");
             }
         }
+
+        debug!("on_change done in {:.2?}", begin.elapsed());
     }
 }
 
@@ -183,15 +185,70 @@ impl LanguageServer for Backend {
         .await;
     }
 
+    async fn completion(
+        &self,
+        params: CompletionParams,
+    ) -> jsonrpc::Result<Option<CompletionResponse>> {
+        let path = params
+            .text_document_position
+            .text_document
+            .uri
+            .to_file_path()
+            .unwrap();
+        let pos = params.text_document_position.position;
+
+        let mut guard = self.index.lock().unwrap();
+        match &mut *guard {
+            Some(index) => {
+                match index.index.document_trees.get(&path) {
+                    Some(document_tree) => {
+                        // assume if document_tree then document_text exists as well
+                        // FIXME THIS IS DEFINITELY NOT VALID
+                        //let document_text = index.index.document_contents.get(&path).unwrap();
+                        //let line = document_text.line(pos.line.try_into().unwrap());
+
+                        // what we want to do is find our cursor position in the SvParser parse
+                        // tree and figure out what node contains us.
+                        //
+                        // this will involve visiting the parse tree until we find the deepest
+                        // nested node that we understand that contains our cursor position.
+                        //
+                        // once we've determined that, we can figure out what _type_ of completion
+                        // we want to provide: modules, ports, etc - and also what module(s) we are
+                        // allowed to search in.
+
+                        return Ok(None);
+                    }
+                    None => {
+                        warn!(
+                            "Cannot run completion, index not contain document: {:?}",
+                            path
+                        );
+                        return Ok(None);
+                    }
+                }
+            }
+            None => {
+                warn!("Cannot run completion, index does not yet exist");
+                return Ok(None);
+            }
+        }
+    }
+
     async fn shutdown(&self) -> jsonrpc::Result<()> {
         debug!("Shutdown LSP");
 
         let mut guard = self.index.lock().unwrap();
         match &mut *guard {
-            Some(index) => {
-                let _ = index.flush();
+            Some(index) => match index.flush() {
+                Ok(()) => {}
+                Err(e) => {
+                    warn!("Flush failed in shutdown!! {:?}", e);
+                }
+            },
+            None => {
+                warn!("Index still does not exist on shutdown?!");
             }
-            None => {}
         }
 
         Ok(())
@@ -222,11 +279,10 @@ async fn main() {
     fern::Dispatch::new()
         .format(move |out, message, record| {
             out.finish(format_args!(
-                "{colour_line}[{} {} {}] {}\x1B[0m",
+                "{colour_line}[{} {}] {}\x1B[0m",
                 // TODO: format time as local time not UTC
                 humantime::format_rfc3339(std::time::SystemTime::now()),
                 record.level(),
-                record.target(),
                 message,
                 colour_line = format_args!(
                     "\x1B[{}m",
@@ -241,7 +297,7 @@ async fn main() {
         .unwrap();
 
     info!(
-        "Slingshot v{} - Copyright (c) 2023 Matt Young. Mozilla Public License v2.0.",
+        "Slingshot LSP v{} - Copyright (c) 2023 Matt Young. Mozilla Public License v2.0.",
         VERSION
     );
 

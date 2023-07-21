@@ -132,7 +132,7 @@ impl SvDocument {
             return;
         }
         debug!(
-            "Adding variable: {} to module: {}",
+            "    Adding variable: {} to module: {}",
             variable.name,
             self.cur_module.as_ref().unwrap().name
         );
@@ -149,7 +149,7 @@ impl SvDocument {
             return;
         }
         debug!(
-            "Adding port: {} to module: {}",
+            "    Adding port: {} to module: {}",
             port.name,
             self.cur_module.as_ref().unwrap().name
         );

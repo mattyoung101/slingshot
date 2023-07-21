@@ -11,6 +11,7 @@ use anyhow::Context;
 use bytesize::ByteSize;
 use dashmap::DashMap;
 use log::{debug, error, info};
+use ropey::Rope;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -40,6 +41,11 @@ pub struct Index {
     /// Mapping between the absolute path of each document in the project and the xxh3 hash of its contents.
     /// Used to determine if the index needs to be refreshed when the LSP starts up or not.
     pub document_hashes: DashMap<PathBuf, u64>,
+    
+    /// Stores a document path and the latest contents of that document we have on file. This is
+    /// used to assist in completion.
+    #[serde(skip)]
+    pub document_contents: DashMap<PathBuf, Rope>,
 }
 
 /// This is the tool for managing the index cache of all files
@@ -61,6 +67,7 @@ impl IndexManager {
             version: INDEX_VERSION.to_string(),
             document_trees: DashMap::new(),
             document_hashes: DashMap::new(),
+            document_contents: DashMap::new(),
         };
         IndexManager {
             index,
@@ -69,12 +76,12 @@ impl IndexManager {
         }
     }
 
-    /// Writes the current index to be flushed to disk. TODO make this function async
+    /// Writes the current index to be flushed to disk.
+    /// TODO make this function async
     pub fn flush(&self) -> Result<(), anyhow::Error> {
-        debug!("Flushing index now");
+        info!("Flushing index now");
         let binding = self.index_path.to_path_buf();
         let parent = binding.parent().context("No parent")?;
-        debug!("Parent dir: {:?}", parent);
 
         // create cache directory if it doesn't exist yet
         fs::create_dir_all(parent)?;
@@ -82,6 +89,8 @@ impl IndexManager {
         let mut serialiser = flexbuffers::FlexbufferSerializer::new();
         self.index.serialize(&mut serialiser)?;
         fs::write(&self.index_path, serialiser.take_buffer())?;
+
+        info!("Flushed successfully.");
 
         Ok(())
     }
@@ -127,6 +136,7 @@ impl IndexManager {
         self.index
             .document_trees
             .insert(path.to_path_buf(), document_tree.clone());
+        self.index.document_contents.insert(path.to_path_buf(), Rope::from_str(document));
         debug!(
             "Inserted document at path {:?} with hash {:#X} into index",
             path, hash
@@ -138,7 +148,7 @@ impl IndexManager {
         let bytes = std::fs::read(path)?;
         debug!(
             "Index file is {}",
-            ByteSize(bytes.len().try_into().unwrap())
+            ByteSize(bytes.len().try_into()?)
         );
 
         // deserialise with flexbuffers

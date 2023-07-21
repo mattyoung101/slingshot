@@ -74,8 +74,8 @@ TODO add instructions for other editors like Vim, Emacs, VSCode.
 **Suggested:**
 - Semantic tokens for semantic highlighting
 - Go to definition 
-- Formatting (possibly via verible if slang doesn't support it)
 - Documentation on hover (extract from comments)
+    - Requires our parser to match comments or us to regex it
 - No false negatives: If Verilator reports an error in the code, slingshot should as well
     - This is probably harder than no false positives to achieve, based on how the project indexing will likely
     work
@@ -86,8 +86,7 @@ TODO add instructions for other editors like Vim, Emacs, VSCode.
 - CPU usage: SV parsing is expensive, and we are prioritising lower latency. That being said, we still do _care_
 about CPU usage (we don't want like 100% CPU all the time), but it's not the #1 priority here.
 - Full-compliance with SystemVerilog: SV is a complex language, and I do not (yet!) work in the
-industry, so I am basing this plugin off my own personal workload and the support of open-source tools like
-Slang. 
+industry, so I am basing this plugin off my own personal workload and the support of open-source tools.
     - Most parsing is done by an engine, not by Slingshot itself. Most parsing issues will be issues in these
     upstream engines, not Slingshot itself.
     - If Slingshot is unable to understand your project structure (and you've configured it correctly), this is
@@ -99,11 +98,11 @@ Slang.
 Fundamentally, Slingshot is a fully modular interface between "engines", that do the real parsing work, and
 the LSP protocol. All LSP features, from completion to diagnostics, are driven by
 a backend "engine". Currently, completion is driven by dalance's [sv-parser](https://github.com/dalance/sv-parser)
-and diagnostics are driven by Verilator, but I aim to make these fully runtime configurable. Things Slingshot 
-handles itself are project indexing and LSP communications.
+and diagnostics are driven by Verilator. Things Slingshot handles itself are project indexing, analysing the
+parse tree to figure out _what_ to send back to the editor, and LSP communications.
 
 Slingshot is currently written in just Rust. In a past life, it was written in a mix of Rust and C++20 to
-interface with the Slang SystemVerilog frontend developed by Mike Popoloski. Unfortunately, that proved
+interface with the Slang SystemVerilog frontend. Unfortunately, that proved
 extremely difficult to work with from both the Rust and C++ side - the worst of both worlds, constant segfaulting,
 and a nightmarish build process. So that has been scrapped, and I'm trying just Rust for now. _However_, if
 sv-parser is not suitable for the task at hand, then at this point I'll bundle a Slang executable that starts
