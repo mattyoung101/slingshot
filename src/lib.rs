@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 pub mod completion;
 pub mod diagnostics;
 pub mod indexing;
+pub mod systemveriloglexer;
+pub mod systemverilogparser;
+pub mod systemverilogparserlistener;
 
 #[derive(Debug, Eq, Ord, PartialOrd, PartialEq, Hash, Serialize, Deserialize, Clone)]
 pub enum TokenType {

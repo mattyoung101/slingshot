@@ -1,3 +1,6 @@
+use antlr_rust::InputStream;
+use antlr_rust::char_stream::CharStream;
+use antlr_rust::common_token_stream::CommonTokenStream;
 /*
  * Copyright (c) 2023 Matt Young.
  *
@@ -13,6 +16,8 @@ use slingshot::completion::SvParserCompletion;
 use slingshot::diagnostics::DiagnosticProvider;
 use slingshot::diagnostics::VerilatorDiagnostics;
 use slingshot::indexing::IndexManager;
+use slingshot::systemveriloglexer::{self, SystemVerilogLexer};
+use slingshot::systemverilogparser::SystemVerilogParser;
 use std::sync::Mutex;
 use std::time::Instant;
 use tower_lsp::lsp_types::InitializeParams;
@@ -300,6 +305,25 @@ async fn main() {
         "Slingshot LSP v{} - Copyright (c) 2023 Matt Young. Mozilla Public License v2.0.",
         VERSION
     );
+
+    let document = std::fs::read_to_string("/home/matt/workspace/waveform/rtl/clk_divider.sv").unwrap().to_string();
+    debug!("{}", document);
+    
+    for _ in 0..10 {
+        let begin = Instant::now();
+        
+        let lexer = SystemVerilogLexer::new(InputStream::new(&*document));
+        let tokens = CommonTokenStream::new(lexer);
+
+        let mut parser = SystemVerilogParser::new(tokens);
+
+        let tree = parser.source_text();
+        debug!("{:?}", tree);
+
+        info!("Parse done in {:.2?}", begin.elapsed());
+    }
+
+    //////
 
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();

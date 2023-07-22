@@ -288,3 +288,10 @@ target/
 # Added by cargo
 
 /target
+src/main
+src/test
+.gradle
+.idea
+*.interp
+*.java
+*.tokens
