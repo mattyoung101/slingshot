@@ -8,6 +8,11 @@
 
 package slingshot.completion
 
-interface CompletionProvider {
-
+/**
+ * Exception thrown in case completion failed
+ */
+class CompletionException : RuntimeException {
+    constructor(): super()
+    constructor(msg: String) : super(msg)
+    constructor(ex: Exception): super(ex)
 }

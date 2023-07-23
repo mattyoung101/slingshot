@@ -20,11 +20,11 @@ functional by no later than June 2024, so I can use it to develop the SV code fo
 **Toolchain**
 
 You will need:
-- Rust, latest stable version, at least 1.70
+- Java 17 or higher
 
 **Building Slingshot**
 
-You should now be able to build Slingshot with just `cargo build`, fingers crossed.
+The program can be built with `./gradlew build` and an executable JAR file can be made with `./gradlew shadowJar`.
 
 **Running**
 
@@ -97,26 +97,27 @@ industry, so I am basing this plugin off my own personal workload and the suppor
 ## Implementation details
 Fundamentally, Slingshot is a fully modular interface between "engines", that do the real parsing work, and
 the LSP protocol. All LSP features, from completion to diagnostics, are driven by
-a backend "engine". Currently, completion is driven by dalance's [sv-parser](https://github.com/dalance/sv-parser)
-and diagnostics are driven by Verilator. Things Slingshot handles itself are project indexing, analysing the
-parse tree to figure out _what_ to send back to the editor, and LSP communications.
+a backend "engine". Currently, completion is driven by 
+[this ANTLR grammar](https://github.com/antlr/grammars-v4/tree/master/verilog/systemverilog)
+and diagnostics are driven by Verilator. ANTLR was specifically chosen because of its readily available SV and its support
+for error recovery. Things Slingshot handles itself are project indexing, analysing the parse tree to figure out _what_ 
+to send back to the editor, and LSP communications.
 
-Slingshot is currently written in just Rust. In a past life, it was written in a mix of Rust and C++20 to
-interface with the Slang SystemVerilog frontend. Unfortunately, that proved
-extremely difficult to work with from both the Rust and C++ side - the worst of both worlds, constant segfaulting,
-and a nightmarish build process. So that has been scrapped, and I'm trying just Rust for now. _However_, if
-sv-parser is not suitable for the task at hand, then at this point I'll bundle a Slang executable that starts
-a server and communicates with the main Slingshot process via IPC. (Update: or use an ANTLR grammar via antlr-rust)
+Because I am extremely indecisive, Slingshot has been through many language iterations. It was originally written in
+a mix of C++20 and Rust, where the C++20 side handled parsing through the Slang frontend and the Rust side handled
+LSP communication. Unfortunately, that was a bit of a nightmare: near constant segfaulting and a hellish build process.
 
-sv-parser does not have good error recovery support. Slingshot will therefore
-have to make a "best guess" attempt at providing useful feedback while the user is typing, probably by splicing
-lines that are causing errors. In an ideal world where I have unlimited time to dedicate to this project, I'd
-write a new SV parser using chumsky, but that is an absolutely mammoth task and a project unto itself. This is
-massively annoying because one of Slingshot's _primary goals_ is accurate autocomplete. So, as nice as Rust is,
-if sv-parser is not capable of good enough error recovery to be useable, we will have no choice but to move to
-C++, which in turn will make the LSP side of things a massive pain.
+I then decided to Rewrite it in Rust (TM) (R) and use sv-parser. This was actually getting somewhere until we came
+to the stage of completion. The Rust sv-parser frontend does not support error recovery, so refuses to generate syntax
+trees unless the document is 100% valid. Unfortunately, this means we cannot use it for completion, beacuse we need
+to parse the line the user is currently typing to figure out _what_ we should complete for them. With sv-parser, we
+would have to recycle old document spans that may not map directly to the currently edited document. antlr-rust is
+currently abandoned, and the beta version does not parse documents in the same way as Java (it generates errors for
+perfectly valid SV documents, whereas Java does not).
 
-Also, to note, this project doubles as my way of learning and evaluating Rust, so bare with me if it's not idiomatic.
+Slingshot is now being written in Kotlin and using Java 17 as the runtime. This _will_ increase memory usage somewhat, 
+however, the modern JVM has an extremely powerful JIT and GC, so I don't expect latencies to be significantly impacted.
+Kotlin is also a significantly more productive language than Rust, so development velocity may be improved.
 
 ## Licence
 Mozilla Public License v2.0
