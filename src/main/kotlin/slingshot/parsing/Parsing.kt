@@ -14,18 +14,25 @@ import org.tinylog.kotlin.Logger
 enum class TokenType {
     /** A token type that does not matter to us for completion */
     NotInterested,
+
     /** A module */
     Module,
+
     /** A class */
     Class,
+
     /** An enum */
     Enum,
+
     /** A "variable": logic, wire or register */
     Variable,
+
     /** A port in a module */
     Port,
+
     /** A`defined macro */
     Macro,
+
     /** A value of an enum */
     EnumValue,
 }
@@ -49,8 +56,9 @@ data class SvEnum(val name: String, val enumValues: List<SvToken>)
  * simplified internal representation of an SV document for completion and indexing purposes. For
  * more information, see docs/index_design.md which covers this as well.
  */
-data class SvDocument(val modules: MutableList<SvModule> = mutableListOf(),
-                      val enums: MutableList<SvEnum> = mutableListOf()
+data class SvDocument(
+    val modules: MutableList<SvModule> = mutableListOf(),
+    val enums: MutableList<SvEnum> = mutableListOf()
 ) {
     private var curModule: SvModule? = null
 
@@ -97,7 +105,8 @@ data class SvDocument(val modules: MutableList<SvModule> = mutableListOf(),
      * a port.
      */
     fun isVarDeclaredAsPort(variable: SvToken): Boolean {
-        return curModule?.ports?.any { it.name == variable.name && it.tokenType == TokenType.Variable } ?: false
+        return curModule?.ports?.any { it.name == variable.name && it.tokenType == TokenType.Variable }
+            ?: false
     }
 
     /**

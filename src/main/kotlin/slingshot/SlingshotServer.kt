@@ -8,8 +8,8 @@
 
 package slingshot
 
-import org.eclipse.lsp4j.InitializeParams
-import org.eclipse.lsp4j.InitializeResult
+import org.eclipse.lsp4j.*
+import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.eclipse.lsp4j.services.LanguageServer
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.eclipse.lsp4j.services.WorkspaceService
@@ -23,14 +23,29 @@ class SlingshotServer : LanguageServer {
     private val workspaceService = SlingshotWorkspaceService()
 
     override fun initialize(params: InitializeParams): CompletableFuture<InitializeResult> {
-        return CompletableFuture()
+        val caps = ServerCapabilities()
+        // this is the legacy option but hopefully will suffice
+        caps.textDocumentSync = Either.forLeft(TextDocumentSyncKind.Full)
+
+        return CompletableFuture.supplyAsync {
+            InitializeResult(
+                caps,
+                ServerInfo(
+                    "Slingshot",
+                    SLINGSHOT_VERSION
+                )
+            )
+        }
     }
 
     override fun shutdown(): CompletableFuture<Any> {
-        return CompletableFuture()
+        return CompletableFuture.supplyAsync {
+            textDocumentService.onShutdown()
+        }
     }
 
     override fun exit() {
+        textDocumentService.onShutdown()
     }
 
     override fun getTextDocumentService(): TextDocumentService {

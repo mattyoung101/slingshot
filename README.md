@@ -1,5 +1,6 @@
 # Slingshot - SystemVerilog LSP
 **Slingshot** is a **work in progress** language server for the SystemVerilog hardware description language.
+Slingshot is written in Kotlin and runs on a Java 17 compliant JVM or higher.
 
 Slingshot was born out of a frustration with existing SystemVerilog LSPs and editor plugins. While many exist,
 and most are functional, I still found them imperfect for my needs. Many are missing crucial features like
@@ -21,6 +22,7 @@ functional by no later than June 2024, so I can use it to develop the SV code fo
 
 You will need:
 - Java 17 or higher
+- An IDE, like IntelliJ or maybe Neovim with the Kotlin LSP
 
 **Building Slingshot**
 
@@ -69,7 +71,8 @@ TODO add instructions for other editors like Vim, Emacs, VSCode.
 - Whole project indexing
     - Slingshot should discover referenced files and add them to an index cache
 - No false positives: If Verilator accepts the input, slingshot should as well
-- Low latency: The LSP should respond quickly to user inputs, even at the cost of CPU usage
+- Low latency: The LSP should respond quickly to user inputs, even at the cost of CPU usage. This is our most
+important metric.
 
 **Suggested:**
 - Semantic tokens for semantic highlighting
@@ -79,12 +82,12 @@ TODO add instructions for other editors like Vim, Emacs, VSCode.
 - No false negatives: If Verilator reports an error in the code, slingshot should as well
     - This is probably harder than no false positives to achieve, based on how the project indexing will likely
     work
-- Low memory: We should try to use significantly less resident RAM than other SV LSPs
-    - Hopefully this should naturally happen because of C++/Rust, but manual optimisation may be required
 
 **Current NON-goals:**
 - CPU usage: SV parsing is expensive, and we are prioritising lower latency. That being said, we still do _care_
 about CPU usage (we don't want like 100% CPU all the time), but it's not the #1 priority here.
+- Low memory: This was originally a goal when Slingshot was written in compiled languages, but now that we are
+using the JVM, low memory usage is difficult without reducing our most important metric, latency.
 - Full-compliance with SystemVerilog: SV is a complex language, and I do not (yet!) work in the
 industry, so I am basing this plugin off my own personal workload and the support of open-source tools.
     - Most parsing is done by an engine, not by Slingshot itself. Most parsing issues will be issues in these

@@ -8,6 +8,16 @@
 
 package slingshot.completion
 
-interface CompletionProvider {
+import slingshot.parsing.SvDocument
 
+/**
+ * Interface to a piece of software that can generate completions, e.g. sv-parser, Slang, etc.
+ */
+interface CompletionProvider {
+    /**
+     * Parses a document to an [SvDocument] instance. Throws a [CompletionException] in case the document
+     * could not be parsed.
+     */
+    @Throws(CompletionException::class)
+    fun parseDocument(document: String): SvDocument
 }

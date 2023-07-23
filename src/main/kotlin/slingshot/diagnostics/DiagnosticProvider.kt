@@ -8,5 +8,18 @@
 
 package slingshot.diagnostics
 
+import org.eclipse.lsp4j.Diagnostic
+import java.nio.file.Path
+import kotlin.jvm.Throws
+
+/**
+ * Interface to a piece of software that can perform diagnostics, e.g. Slang, Verilator, etc.
+ */
 interface DiagnosticProvider {
+    /**
+    * Provides a set of diagnostics for the given document. Throws [DiagnosticException] if the diagnostic
+    * provider failed to generate a set of valid diagnostics.
+    */
+    @Throws(DiagnosticException::class)
+    fun diagnose(path: Path, document: String): List<Diagnostic>
 }

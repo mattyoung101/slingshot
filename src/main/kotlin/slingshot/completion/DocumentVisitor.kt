@@ -48,6 +48,9 @@ class DocumentVisitor : SystemVerilogParserBaseListener() {
             return
         }
         val variable = SvToken(name, TokenType.Variable)
+        // special case: if this is a variable identifier, make sure we haven't previously recorded it as
+        // a port
+        // TODO check if this still applies to ANTLR parser
         if (!document.isVarDeclaredAsPort(variable)) {
             document.addVariable(variable)
         } else {
