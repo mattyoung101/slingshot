@@ -9,9 +9,8 @@
 package slingshot
 
 import org.eclipse.lsp4j.launch.LSPLauncher
+import org.eclipse.lsp4j.services.LanguageClient
 import org.tinylog.kotlin.Logger
-import slingshot.completion.ANTLRCompletion
-import java.io.File
 
 /** Slingshot LSP version */
 const val SLINGSHOT_VERSION = "0.1.0"
@@ -21,7 +20,8 @@ fun main(args: Array<String>) {
     Logger.info("Slingshot LSP v${SLINGSHOT_VERSION} - Copyright (c) 2023 Matt Young. Mozilla Public License v2.0.")
 
     val server = SlingshotServer()
-    val launcher = LSPLauncher.createServerLauncher(server, System.`in`, System.out)
     Logger.info("Booting server")
+    val launcher = LSPLauncher.createServerLauncher(server, System.`in`, System.out)
+    server.connect(launcher.remoteProxy)
     launcher.startListening()
 }

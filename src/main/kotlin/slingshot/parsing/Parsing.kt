@@ -74,7 +74,7 @@ data class SvDocument(
 
     /** Finishes the current module if and only if one is active */
     fun finishModule() {
-        // it's OK to attempt to finish a module that doesn't exist
+        // it's OK to attempt to finish a module that doesn't exist, we just won't do anything
         curModule ?: return
 
         Logger.debug("Finishing current module: ${curModule?.name}")
@@ -83,19 +83,17 @@ data class SvDocument(
     }
 
     fun addVariable(variable: SvToken) {
-        curModule ?: run {
+        curModule ?: return
             Logger.error("Trying to add variable $variable, but no module is active!")
-            return
-        }
+
         Logger.debug("    Adding variable: ${variable.name} to module: ${curModule!!.name}")
         curModule!!.variables.add(variable)
     }
 
     fun addPort(port: SvToken) {
-        curModule ?: run {
+        curModule ?: return
             Logger.error("Trying to add port $port, but no module is active!")
-            return
-        }
+
         Logger.debug("    Adding port: ${port.name} to module: ${curModule!!.name}")
         curModule!!.ports.add(port)
     }

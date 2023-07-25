@@ -15,7 +15,6 @@ plugins {
 
 group = 'com.mattyoung101'
 version = '1.0-SNAPSHOT'
-apply plugin: 'antlr'
 apply plugin: 'java'
 apply plugin: 'com.github.johnrengelman.shadow'
 
@@ -27,7 +26,6 @@ repositories {
 dependencies {
     implementation 'org.eclipse.lsp4j:org.eclipse.lsp4j:0.21.0'
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
-    antlr "org.antlr:antlr4:4.12.0"
     implementation "org.antlr:antlr4-runtime:4.12.0"
     implementation 'org.tinylog:tinylog-api-kotlin:2.6.1'
     implementation 'org.tinylog:tinylog-impl:2.6.2'

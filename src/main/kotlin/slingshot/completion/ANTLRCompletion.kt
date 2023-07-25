@@ -14,6 +14,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker
 import org.tinylog.kotlin.Logger
 import slingshot.parser.SystemVerilogLexer
 import slingshot.parser.SystemVerilogParser
+import slingshot.parsing.SvParseTreeVisitor
 import slingshot.parsing.SvDocument
 
 /**
@@ -34,15 +35,15 @@ class ANTLRCompletion : CompletionProvider {
         parser.addErrorListener(LogErrorListener)
 
         val tree = parser.source_text()
-        val walker = DocumentVisitor()
-        ParseTreeWalker.DEFAULT.walk(walker, tree)
-        walker.document.finishModule()
+        val visitor = SvParseTreeVisitor()
+        ParseTreeWalker.DEFAULT.walk(visitor, tree)
+        visitor.document.finishModule()
 
 //        val ruleNames = SystemVerilogParser.ruleNames.toList()
 //        Logger.debug("\n${TreeUtils.toPrettyTree(tree, ruleNames)}")
 
         Logger.info("Parse took ${(System.nanoTime() - begin) / 1e+6} ms\n")
 
-        return walker.document
+        return visitor.document
     }
 }
