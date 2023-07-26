@@ -31,8 +31,9 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
             caps.textDocumentSync = Either.forLeft(TextDocumentSyncKind.Full)
             caps.completionProvider = CompletionOptions(
                 false,
-                listOf(".")
+                TRIGGER_CHARACTERS
             )
+            Logger.debug("Trigger characters: $TRIGGER_CHARACTERS")
             // we only provide per-file diagnostics at the moment, and not for the whole "workspace"
             caps.diagnosticProvider = DiagnosticRegistrationOptions(false, false)
 
@@ -70,5 +71,9 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
         Logger.info("Client connected!")
         this.client = client
         textDocumentService.connect(client)
+    }
+
+    companion object {
+        private val TRIGGER_CHARACTERS = "qwertyuiopasdfghjklzxcvbnm.[".toList().map { it.toString() }
     }
 }

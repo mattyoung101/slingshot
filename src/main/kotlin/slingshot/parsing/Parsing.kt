@@ -9,6 +9,7 @@
 package slingshot.parsing
 
 import org.tinylog.kotlin.Logger
+import slingshot.completion.CompletionException
 
 /** Abstract SystemVerilog token type */
 enum class TokenType {
@@ -83,16 +84,14 @@ data class SvDocument(
     }
 
     fun addVariable(variable: SvToken) {
-        curModule ?: return
-            Logger.error("Trying to add variable $variable, but no module is active!")
+        curModule ?: throw CompletionException("Trying to add variable $variable, but no module is active!")
 
         Logger.debug("    Adding variable: ${variable.name} to module: ${curModule!!.name}")
         curModule!!.variables.add(variable)
     }
 
     fun addPort(port: SvToken) {
-        curModule ?: return
-            Logger.error("Trying to add port $port, but no module is active!")
+        curModule ?: throw CompletionException("Trying to add port $port, but no module is active!")
 
         Logger.debug("    Adding port: ${port.name} to module: ${curModule!!.name}")
         curModule!!.ports.add(port)

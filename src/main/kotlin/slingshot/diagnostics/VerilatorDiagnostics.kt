@@ -45,10 +45,10 @@ class VerilatorDiagnostics : DiagnosticProvider {
 
         val stderr = process.errorReader().use { it.readText() }
         val stdout = process.inputReader().use { it.readText() }
-        Logger.debug("Verilator stdout:\n$stdout\nVerilator stderr:\n$stderr")
+//        Logger.debug("Verilator stdout:\n$stdout\nVerilator stderr:\n$stderr")
 
         if (process.exitValue() != 0) {
-            Logger.debug("Verilator exited with error status: ${process.exitValue()}")
+            Logger.trace("Verilator exited with error status: ${process.exitValue()}")
 
             if (!("Error" in stderr || "Warning" in stderr)) {
                 throw DiagnosticException("Verilator did not return any warning/error " +
@@ -71,7 +71,7 @@ class VerilatorDiagnostics : DiagnosticProvider {
 
             // Sometimes Verilator returns diagnostics for a file we are not in, so ignore them
             if ("/dev/stdin" !in fileName) {
-                Logger.debug("Verilator diagnostic applies to unrelated file $fileName - skipping")
+                Logger.trace("Verilator diagnostic applies to unrelated file $fileName - skipping")
                 continue
             }
 
@@ -79,11 +79,11 @@ class VerilatorDiagnostics : DiagnosticProvider {
             val endPos = document.lines().getOrNull(line - 1)?.length ?: throw DiagnosticException(
                 "Failed to get length of line $line in document $path\n$stderr"
             )
-            Logger.debug("msg type: $msgType, line: $line, pos: $pos, msg: $msg")
+            Logger.trace("msg type: $msgType, line: $line, pos: $pos, msg: $msg")
 
             val range = Range(
                 Position(line - 1, pos - 1),
-                Position(line - 1, endPos - 1)
+                Position(line - 1, endPos)
             )
             val diagnostic = Diagnostic(
                 range,

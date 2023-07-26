@@ -42,7 +42,7 @@ class ANTLRCompletion : CompletionProvider {
 //        val ruleNames = SystemVerilogParser.ruleNames.toList()
 //        Logger.debug("\n${TreeUtils.toPrettyTree(tree, ruleNames)}")
 
-        Logger.info("Parse took ${(System.nanoTime() - begin) / 1e+6} ms\n")
+        Logger.debug("Parse took ${(System.nanoTime() - begin) / 1e+6} ms")
 
         return visitor.document
     }

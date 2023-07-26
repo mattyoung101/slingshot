@@ -28,6 +28,10 @@ You will need:
 
 The program can be built with `./gradlew build` and an executable JAR file can be made with `./gradlew shadowJar`.
 
+Because the SystemVerilog generated parser is so massive, you will need to modify IntelliJ's max file parse
+size to be larger. Go to Help -> Edit Custom Properties and insert `idea.max.intellisense.filesize=999999`.
+Then, restart the IDE.
+
 **Running**
 
 Currently I have only tested Slingshot in Neovim.
