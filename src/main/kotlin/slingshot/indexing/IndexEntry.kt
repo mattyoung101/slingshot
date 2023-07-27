@@ -8,13 +8,16 @@
 
 package slingshot.indexing
 
+import slingshot.parser.SystemVerilogParser
 import slingshot.parsing.SvDocument
-import java.io.Serializable
 
 /**
  * The [IndexEntry] stores a partial or complete entry for a SystemVerilog document in the index.
  * @param contents latest text contents of the document, must be filled
  * @param tree latest parsed tree of the document, doesn't have to be present
  */
-data class IndexEntry(@Transient var contents: String, var tree: SvDocument? = null) {
+data class IndexEntry(
+    @Transient var contents: String,
+    var tree: SvDocument? = null,
+) {
 }

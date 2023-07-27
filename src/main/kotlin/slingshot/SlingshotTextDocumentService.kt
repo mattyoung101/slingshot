@@ -22,12 +22,14 @@ import slingshot.diagnostics.DiagnosticProvider
 import slingshot.diagnostics.VerilatorDiagnostics
 import slingshot.indexing.IndexManager
 import slingshot.parsing.ParseUtils
+import slingshot.parsing.TokenType
 import java.net.URI
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadPoolExecutor
 import kotlin.io.path.toPath
+import com.google.gson.ToNumberPolicy
 
 class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
     private val indexManager = IndexManager()
@@ -51,8 +53,7 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
         //  concurrent hash map
         executor.submit { indexManager.insert(path, document) }
 
-        // now that we know the document is definitely in the index, run diagnostics asynchronously in the
-        // thread pool
+        // at the same time, we run diagnostics asynchronously in the thread pool
         executor.submit {
             try {
                 val diagnostics = diagnostics.diagnose(path, document)
@@ -83,15 +84,26 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
 
             // if we're not in a comment, then parse the text document to produce a tree, if we don't already
             // have one
+            var tokenType = TokenType.Unknown
             if (entry.tree == null) {
                 Logger.debug("Parsing document $path")
                 try {
-                    entry.tree = completion.parseDocument(entry.contents)
+                    // this determines both the abstract parse tree and the active token
+                    val (parseTree, token) = completion.parseDocument(entry.contents, position.position.line,
+                        position.position.character)
+                    // store parse tree
+                    entry.tree = parseTree
+                    tokenType = token
                 } catch (e: CompletionException) {
                     Logger.warn("Completion failed for $path:")
                     Logger.warn(e)
                     return@supplyAsync EMPTY_COMPLETION
                 }
+            }
+
+            if (tokenType == TokenType.Unknown) {
+                Logger.warn("Unable to determine active token in document $path, cannot run completion")
+                return@supplyAsync EMPTY_COMPLETION
             }
 
             val item = CompletionItem("ctr").apply {

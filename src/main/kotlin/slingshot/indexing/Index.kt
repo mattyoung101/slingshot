@@ -11,6 +11,7 @@ package slingshot.indexing
 import slingshot.parsing.SvDocument
 import java.io.Serializable
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 
 /** Current Slingshot index version */
 const val INDEX_VERSION = "0.1.0"
@@ -24,17 +25,19 @@ data class Index(
     /** Version of the index file */
     val version: String = INDEX_VERSION,
 
+    // note that we are using ConcurrentHashMap because Index is accessed from multiple threads
+
     /**
      * Mapping between the absolute path of each document in the project and the xxh3 hash of its contents.
      * Used to determine if the index needs to be refreshed when the LSP starts up or not.
      */
-    val hashes: MutableMap<Path, Long> = mutableMapOf(),
+    val hashes: MutableMap<Path, Long> = ConcurrentHashMap(),
 
     /**
      * Stores a document path and the latest contents of that document we have on file. This is
      * used to assist in completion.
      */
-    val documents: MutableMap<Path, IndexEntry> = mutableMapOf()
+    val documents: MutableMap<Path, IndexEntry> = ConcurrentHashMap()
 ) {
 
 }

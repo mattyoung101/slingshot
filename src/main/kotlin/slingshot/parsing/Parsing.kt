@@ -16,6 +16,9 @@ enum class TokenType {
     /** A token type that does not matter to us for completion */
     NotInterested,
 
+    /** For completion: The cursor is in a token type that we don't understand */
+    Unknown,
+
     /** A module */
     Module,
 

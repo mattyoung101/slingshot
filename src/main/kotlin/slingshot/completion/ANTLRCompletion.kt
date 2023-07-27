@@ -16,13 +16,14 @@ import slingshot.parser.SystemVerilogLexer
 import slingshot.parser.SystemVerilogParser
 import slingshot.parsing.SvParseTreeVisitor
 import slingshot.parsing.SvDocument
+import slingshot.parsing.TokenType
 
 /**
  * Completion provider that uses an ANTLR 4 grammar to generate an [SvDocument].
  * This is the best completion provider for Slingshot.
  */
 class ANTLRCompletion : CompletionProvider {
-    override fun parseDocument(document: String): SvDocument {
+    override fun parseDocument(document: String, line: Int, pos: Int): Pair<SvDocument, TokenType> {
         val begin = System.nanoTime()
 
         val lexer = SystemVerilogLexer(CharStreams.fromString(document))
@@ -39,11 +40,11 @@ class ANTLRCompletion : CompletionProvider {
         ParseTreeWalker.DEFAULT.walk(visitor, tree)
         visitor.document.finishModule()
 
-//        val ruleNames = SystemVerilogParser.ruleNames.toList()
-//        Logger.debug("\n${TreeUtils.toPrettyTree(tree, ruleNames)}")
+       // val ruleNames = SystemVerilogParser.ruleNames.toList()
+       // Logger.debug("\n${TreeUtils.toPrettyTree(tree, ruleNames)}")
 
         Logger.debug("Parse took ${(System.nanoTime() - begin) / 1e+6} ms")
 
-        return visitor.document
+        return Pair(visitor.document, TokenType.Unknown)
     }
 }
