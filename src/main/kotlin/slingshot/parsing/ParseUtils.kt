@@ -23,11 +23,16 @@ object ParseUtils {
     }
 
     fun isInBlockComment(document: String, line: Int): Boolean {
-        Logger.debug("Checking if line $line in doc comment")
-
+        // Logger.debug("Checking if line $line in doc comment")
         var isOpening = true
         var opening = -1
         for ((i, lineStr) in document.lines().withIndex()) {
+            // quick check for single line block comments
+            if ("/*" in lineStr && "*/" in lineStr && i == line) {
+                Logger.debug("Found single line doc comment for line $i")
+                return true
+            }
+
             val lookingFor = if (isOpening) "/*" else "*/"
             // no comment in line
             if (lookingFor !in lineStr) continue
@@ -39,7 +44,7 @@ object ParseUtils {
             } else {
                 Logger.debug("Found closing block comment on line $i")
                 if (line in opening..i) {
-                    Logger.debug("Contains line $line!")
+                    Logger.debug("Contains line $line")
                     return true
                 }
                 // try look for another block comment

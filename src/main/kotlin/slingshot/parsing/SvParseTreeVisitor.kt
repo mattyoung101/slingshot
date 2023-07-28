@@ -22,7 +22,7 @@ class SvParseTreeVisitor : SystemVerilogParserBaseListener() {
 
     override fun enterModule_declaration(ctx: SystemVerilogParser.Module_declarationContext?) {
         val name = ctx?.module_header()?.module_identifier()?.text ?: throw CompletionException(
-            "Unable to determine name for module declaration: $ctx"
+            "Unable to determine name for module declaration: ${ctx?.text}"
         )
         document.newModule(name)
     }
@@ -33,24 +33,23 @@ class SvParseTreeVisitor : SystemVerilogParserBaseListener() {
 
     override fun enterAnsi_port_declaration(ctx: SystemVerilogParser.Ansi_port_declarationContext?) {
         val name = ctx?.port_identifier()?.identifier()?.text ?: throw CompletionException(
-            "Unable to determine name for port declaration: $ctx"
+            "Unable to determine name for port declaration: ${ctx?.text}"
         )
-        document.addPort(SvToken(name, TokenType.Port))
+        document.addPort(name)
     }
 
     override fun enterVariable_decl_assignment(ctx: SystemVerilogParser.Variable_decl_assignmentContext?) {
         val name = ctx?.variable_identifier()?.identifier()?.text ?: throw CompletionException(
-            "Unable to determine name for variable declaration: $ctx"
+            "Unable to determine name for variable declaration: ${ctx?.text}"
         )
 
-        val variable = SvToken(name, TokenType.Variable)
         // special case: if this is a variable identifier, make sure we haven't previously recorded it as
         // a port
-        // TODO check if this still applies to ANTLR parser
-        if (!document.isVarDeclaredAsPort(variable)) {
-            document.addVariable(variable)
+        // TODO check if this still applies to ANTLR parser, we could skip this expensive check
+        if (!document.isVarDeclaredAsPort(name)) {
+            document.addVariable(name)
         } else {
-            Logger.debug("    Skipping variable $variable which was already declared as port")
+            Logger.debug("    Skipping variable $name which was already declared as port")
         }
     }
 }

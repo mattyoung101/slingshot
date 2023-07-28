@@ -68,4 +68,11 @@ class ParseUtilsTest {
         assertFalse(ParseUtils.isInAnyComment(document, 4, 4))
         assertFalse(ParseUtils.isInLineComment(document, 4, 4))
     }
+
+    @Test
+    fun testBlockComment_Inline() {
+        val document = "/* doc comment */"
+        assertTrue(ParseUtils.isInBlockComment(document, 0))
+        assertTrue(ParseUtils.isInAnyComment(document, 0, 5))
+    }
 }

@@ -27,9 +27,7 @@ import java.net.URI
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
-import java.util.concurrent.ThreadPoolExecutor
 import kotlin.io.path.toPath
-import com.google.gson.ToNumberPolicy
 
 class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
     private val indexManager = IndexManager()
@@ -45,12 +43,11 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
     }
 
     /**
-     * Called whenever the text document was changed
+     * Called whenever the text document was changed. This function is assumed to _not_ be called from a
+     * completable future, hence why the executor is used, so we don't block stuff running elsewhere.
      */
     private fun changed(path: Path, document: String) {
         // store document in index when it's changed
-        // TODO need to lock the index so its usable across threads without race conditions - use
-        //  concurrent hash map
         executor.submit { indexManager.insert(path, document) }
 
         // at the same time, we run diagnostics asynchronously in the thread pool
@@ -67,10 +64,10 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
 
     override fun completion(position: CompletionParams): CompletableFuture<Either<MutableList<CompletionItem>, CompletionList>> {
         // NOTE: POSITIONS ARE ZERO INDEXED
-        Logger.debug("Completion request for ${position.position.line}:${position.position.character} in ${position.textDocument.uri}")
-
         return CompletableFuture.supplyAsync {
             val path = URI(position.textDocument.uri).toPath()
+            Logger.debug("Completion request for ${position.position.line}:${position.position.character} in $path")
+
             val entry = indexManager.retrieve(path) ?: run {
                 Logger.warn("Document $path not in index, cannot run completion!")
                 return@supplyAsync EMPTY_COMPLETION
@@ -82,8 +79,7 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
                 return@supplyAsync EMPTY_COMPLETION
             }
 
-            // if we're not in a comment, then parse the text document to produce a tree, if we don't already
-            // have one
+            // parse the text document to produce a tree, if we don't already have one on file
             var tokenType = TokenType.Unknown
             if (entry.tree == null) {
                 Logger.debug("Parsing document $path")
@@ -91,7 +87,8 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
                     // this determines both the abstract parse tree and the active token
                     val (parseTree, token) = completion.parseDocument(entry.contents, position.position.line,
                         position.position.character)
-                    // store parse tree
+
+                    // store parse tree back into the index, and the token type locally
                     entry.tree = parseTree
                     tokenType = token
                 } catch (e: CompletionException) {
@@ -125,8 +122,7 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
         changed(uri, document)
     }
 
-    override fun didClose(params: DidCloseTextDocumentParams) {
-    }
+    override fun didClose(params: DidCloseTextDocumentParams) {}
 
     override fun didSave(params: DidSaveTextDocumentParams) {
         val uri = URI(params.textDocument.uri).toPath()
@@ -140,6 +136,7 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
     }
 
     companion object {
+        /** An empty completion response for [completion] */
         private val EMPTY_COMPLETION = Either.forLeft<MutableList<CompletionItem>, CompletionList>(mutableListOf())
     }
 }
