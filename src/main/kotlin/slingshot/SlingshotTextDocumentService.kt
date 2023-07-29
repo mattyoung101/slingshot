@@ -27,6 +27,7 @@ import java.net.URI
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
+import java.util.concurrent.ForkJoinPool
 import kotlin.io.path.toPath
 
 class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
@@ -34,7 +35,7 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
     private val completion: CompletionProvider = ANTLRCompletion()
     private val diagnostics: DiagnosticProvider = VerilatorDiagnostics()
     private var client: LanguageClient? = null
-    private val executor = Executors.newCachedThreadPool()
+    private val executor = ForkJoinPool.commonPool()
 
     /** Called when the LSP is shutting down. May be called more than once. */
     fun onShutdown() {

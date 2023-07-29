@@ -8,6 +8,7 @@
 
 package slingshot.parsing
 
+import org.eclipse.lsp4j.Position
 import org.tinylog.kotlin.Logger
 import slingshot.completion.CompletionException
 import slingshot.parser.SystemVerilogParser
@@ -24,7 +25,9 @@ class SvParseTreeVisitor : SystemVerilogParserBaseListener() {
         val name = ctx?.module_header()?.module_identifier()?.text ?: throw CompletionException(
             "Unable to determine name for module declaration: ${ctx?.text}"
         )
-        document.newModule(name)
+        val begin = Position(ctx.start.line, ctx.start.charPositionInLine)
+        val end = Position(ctx.stop.line, ctx.stop.charPositionInLine)
+        document.newModule(name, begin, end)
     }
 
     override fun exitModule_declaration(ctx: SystemVerilogParser.Module_declarationContext?) {
@@ -35,7 +38,9 @@ class SvParseTreeVisitor : SystemVerilogParserBaseListener() {
         val name = ctx?.port_identifier()?.identifier()?.text ?: throw CompletionException(
             "Unable to determine name for port declaration: ${ctx?.text}"
         )
-        document.addPort(name)
+        val begin = Position(ctx.start.line, ctx.start.charPositionInLine)
+        val end = Position(ctx.stop.line, ctx.stop.charPositionInLine)
+        document.addPort(name, begin, end)
     }
 
     override fun enterVariable_decl_assignment(ctx: SystemVerilogParser.Variable_decl_assignmentContext?) {
@@ -47,7 +52,9 @@ class SvParseTreeVisitor : SystemVerilogParserBaseListener() {
         // a port
         // TODO check if this still applies to ANTLR parser, we could skip this expensive check
         if (!document.isVarDeclaredAsPort(name)) {
-            document.addVariable(name)
+            val begin = Position(ctx.start.line, ctx.start.charPositionInLine)
+            val end = Position(ctx.stop.line, ctx.stop.charPositionInLine)
+            document.addVariable(name, begin, end)
         } else {
             Logger.debug("    Skipping variable $name which was already declared as port")
         }

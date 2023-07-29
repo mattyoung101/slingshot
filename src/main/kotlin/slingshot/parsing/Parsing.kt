@@ -8,8 +8,7 @@
 
 package slingshot.parsing
 
-import org.tinylog.kotlin.Logger
-import slingshot.completion.CompletionException
+import org.eclipse.lsp4j.Position
 
 /** Abstract SystemVerilog token type */
 enum class TokenType {
@@ -42,10 +41,17 @@ enum class TokenType {
 }
 
 /** A generic SystemVerilog object */
-interface SvObject
+open class SvObject(open val begin: Position, open val end: Position) {}
+
 
 /** A SvToken contains the name of the token and its type */
-data class SvToken(val name: String, val tokenType: TokenType, val parent: SvModule)
+data class SvToken(
+    val name: String,
+    val tokenType: TokenType,
+    val parent: SvModule,
+    override val begin: Position,
+    override val end: Position
+) : SvObject(begin, end)
 
 /**
  * A SystemVerilog module which contains a public set of ports and private set of variables
@@ -54,7 +60,14 @@ data class SvToken(val name: String, val tokenType: TokenType, val parent: SvMod
  * @param variables private logic, wire, etc, tokens to this module
  * @param parent owner document
  */
-data class SvModule(val name: String, val ports: MutableList<SvToken>, val variables: MutableList<SvToken>, val parent: SvDocument) {
+data class SvModule(
+    val name: String,
+    val ports: MutableList<SvToken>,
+    val variables: MutableList<SvToken>,
+    val parent: SvDocument,
+    override val begin: Position,
+    override val end: Position
+): SvObject(begin, end) {
     /**
      * Locates a port in this module by a partial string. This is used for auto-complete. Currently
      * this uses a naive slow algorithm but could be made more optimal in future.
@@ -63,7 +76,7 @@ data class SvModule(val name: String, val ports: MutableList<SvToken>, val varia
         return ports.firstOrNull { it.name.contains(port) }
     }
 
-    fun findVar(variable: String): SvToken ? {
+    fun findVar(variable: String): SvToken? {
         return variables.firstOrNull { it.name.contains(variable) }
     }
 }

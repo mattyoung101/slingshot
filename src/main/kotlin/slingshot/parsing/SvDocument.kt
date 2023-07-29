@@ -8,6 +8,7 @@
 
 package slingshot.parsing
 
+import org.eclipse.lsp4j.Position
 import org.tinylog.kotlin.Logger
 import slingshot.completion.CompletionException
 
@@ -28,11 +29,11 @@ data class SvDocument(
      * Starts a new module in the document if one is currently not started, otherwise, ends the
      * existing module.
      */
-    fun newModule(name: String) {
+    fun newModule(name: String, begin: Position, end: Position) {
         if (curEnum != null) throw CompletionException("Cannot start a new module when an enum is active!")
         finishModule()
         Logger.debug("Starting new module: $name")
-        curModule = SvModule(name, mutableListOf(), mutableListOf(), this)
+        curModule = SvModule(name, mutableListOf(), mutableListOf(), this, begin, end)
     }
 
     /** Finishes the current module if and only if one is active */
@@ -44,16 +45,16 @@ data class SvDocument(
         curModule = null
     }
 
-    fun addVariable(name: String) {
+    fun addVariable(name: String, begin: Position, end: Position) {
         curModule ?: throw CompletionException("Trying to add variable $name, but no module is active!")
         Logger.debug("    Adding variable: $name to module: ${curModule!!.name}")
-        curModule!!.variables.add(SvToken(name, TokenType.Variable, curModule!!))
+        curModule!!.variables.add(SvToken(name, TokenType.Variable, curModule!!, begin, end))
     }
 
-    fun addPort(name: String) {
+    fun addPort(name: String, begin: Position, end: Position) {
         curModule ?: throw CompletionException("Trying to add port $name, but no module is active!")
         Logger.debug("    Adding port: $name to module: ${curModule!!.name}")
-        curModule!!.ports.add(SvToken(name, TokenType.Port, curModule!!))
+        curModule!!.ports.add(SvToken(name, TokenType.Port, curModule!!, begin, end))
     }
 
     /**

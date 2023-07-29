@@ -8,6 +8,7 @@
 
 package slingshot.parsing
 
+import org.eclipse.lsp4j.Position
 import org.tinylog.kotlin.Logger
 
 object ParseUtils {
