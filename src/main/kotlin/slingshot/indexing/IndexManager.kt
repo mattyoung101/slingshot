@@ -24,6 +24,7 @@ class IndexManager {
     // currently we aren't supporting saving/writing yet like in the Rust version, because it slows down
     // programming and probably won't work that well anyway
     // just reindex the project on startup
+    // TODO support full project indexing in future with cache saving to disk
 
     fun insert(path: Path, document: String) {
         // this part is mostly done for the sake of not flushing the index when serialisation was implemented,
@@ -31,7 +32,7 @@ class IndexManager {
         val hash = HASHER.hash64().hash(ByteBuffer.wrap(document.toByteArray()), 0x1337L)
         val existing = index.hashes[path]
         if (existing != null && existing == hash) {
-            Logger.debug("No need to insert document at $path with hash " +
+            Logger.trace("No need to insert document at $path with hash " +
              "${java.lang.Long.toHexString(hash)}: already exists")
             return
         }
@@ -44,14 +45,7 @@ class IndexManager {
             contents = document
             tree = null
         }
-        Logger.debug("(Re)inserted document $path with hash ${java.lang.Long.toHexString(hash)}")
-    }
-
-    fun attachTree(path: Path, tree: SvDocument) {
-        index.documents[path] ?: return Logger.error("Attempted to attach document tree to non-existent " +
-         "path $path!")
-        index.documents[path]?.tree = tree
-        Logger.debug("Attached document tree to path $path")
+        Logger.trace("(Re)inserted document $path with hash ${java.lang.Long.toHexString(hash)}")
     }
 
     fun retrieve(path: Path): IndexEntry? {

@@ -8,7 +8,26 @@
 
 package slingshot.parsing
 
+import org.antlr.v4.runtime.Token
+import org.eclipse.lsp4j.Position
+import org.eclipse.lsp4j.util.Positions
 import org.tinylog.kotlin.Logger
+import java.lang.IllegalArgumentException
+
+fun Token.toPosition(): Position {
+    return Position(line, charPositionInLine)
+}
+
+fun Position.containedIn(start: Position, end: Position): Boolean {
+    // if it's the exact same position we do actually say it's contained in
+    if (start == this && end == this) return true
+
+    // if they're across separate lines we know it definitely contains the cursor
+    if (line > start.line && line < end.line) return true
+
+    // otherwise they must be on the same line, and check the line positions as well
+    return start.line <= line && end.line >= line && start.character <= character && end.character >= character
+}
 
 object ParseUtils {
     fun isInLineComment(document: String, line: Int, pos: Int): Boolean {
@@ -29,7 +48,7 @@ object ParseUtils {
         for ((i, lineStr) in document.lines().withIndex()) {
             // quick check for single line block comments
             if ("/*" in lineStr && "*/" in lineStr && i == line) {
-                Logger.debug("Found single line doc comment for line $i")
+                Logger.trace("Found single line doc comment for line $i")
                 return true
             }
 
@@ -38,13 +57,13 @@ object ParseUtils {
             if (lookingFor !in lineStr) continue
 
             if (isOpening) {
-                Logger.debug("Found opening block comment on line $i")
+                Logger.trace("Found opening block comment on line $i")
                 opening = i
                 isOpening = false
             } else {
-                Logger.debug("Found closing block comment on line $i")
+                Logger.trace("Found closing block comment on line $i")
                 if (line in opening..i) {
-                    Logger.debug("Contains line $line")
+                    Logger.trace("Contains line $line")
                     return true
                 }
                 // try look for another block comment

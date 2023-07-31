@@ -11,7 +11,7 @@ package slingshot.parsing
 import org.tinylog.kotlin.Logger
 import slingshot.completion.CompletionException
 
-/** Abstract SystemVerilog token type */
+/** SystemVerilog token type */
 enum class TokenType {
     /** A token type that does not matter to us for completion */
     NotInterested,
@@ -40,6 +40,40 @@ enum class TokenType {
     /** A value of an enum */
     EnumValue,
 }
+
+/** Types of completions we can recommend to the user */
+enum class CompletionTypes {
+    None,
+
+    /** A module in the current document */
+    Module,
+
+    /** A port from the current module the cursor is in */
+    PortSameModule,
+
+    /** A port from the module that is being instantiated */
+    PortInstantiatedModule,
+
+    /** A variable from the same module being instantiated */
+    VariableSameModule,
+
+    /** The name of a `typedef enum` */
+    Enum,
+
+    /** A constant in a `typedef enum` */
+    EnumValue,
+
+    /** A `defined macro */
+    Macro,
+
+    /** Either "posedge" or "negedge" */
+    Edge,
+
+    /** The keyword `logic` */
+    Logic,
+}
+
+
 
 /** A generic SystemVerilog object */
 interface SvObject

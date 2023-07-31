@@ -8,7 +8,10 @@
 
 package slingshot
 
+import org.eclipse.lsp4j.jsonrpc.messages.ResponseError
+import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode
 import org.eclipse.lsp4j.launch.LSPLauncher
+import org.eclipse.lsp4j.services.LanguageClient
 import org.tinylog.kotlin.Logger
 import kotlin.system.exitProcess
 
@@ -27,7 +30,19 @@ fun main(args: Array<String>) {
 
     val server = SlingshotServer()
     Logger.info("Booting server")
-    val launcher = LSPLauncher.createServerLauncher(server, System.`in`, System.out)
+
+    val launcher = LSPLauncher.Builder<LanguageClient>()
+        .setLocalService(server)
+        .setRemoteInterface(LanguageClient::class.java)
+        .setInput(System.`in`)
+        .setOutput(System.out)
+        .setExceptionHandler {
+            Logger.error("Uncaught exception in LSP callback: $it")
+            Logger.error(it)
+            return@setExceptionHandler ResponseError(ResponseErrorCode.InternalError, it.javaClass.simpleName, it)
+        }
+        .create()
+
     server.connect(launcher.remoteProxy)
     launcher.startListening()
 }

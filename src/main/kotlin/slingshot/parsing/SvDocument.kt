@@ -71,4 +71,8 @@ data class SvDocument(
     fun isVarDeclaredAsPort(name: String): Boolean {
         return curModule?.ports?.any { it.name == name && it.tokenType == TokenType.Port } ?: false
     }
+
+    fun getModuleByName(name: String): SvModule {
+        return modules.first { it.name == name }
+    }
 }

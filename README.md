@@ -4,14 +4,15 @@ It also supports **Verilog**, which is a strict subset of SystemVerilog.
 
 Slingshot is written in Kotlin and runs on a Java 17 compliant JVM or higher.
 
-Slingshot was born out of a frustration with existing SystemVerilog LSPs and editor plugins. While many exist,
-and most are functional, I still found them imperfect for my needs. Many are missing crucial features like
-complete-as-you-type, have rudimentary error reporting, or suffer from other limitations. The ultimate goal of 
-Slingshot is to create the _ultimate_ SystemVerilog LSP, with all the features you've come to know and love. 
-I'm not sure if I can actually achieve this, but I'm up to trying.
+Although there are a few existing LSPs for SystemVerilog, I found them not quite perfect enough for my needs.
+Most SV LSPs have inaccurate and hacky completion, which I found problematic. I thought I might be able to do 
+this better by taking a _completion-first_ approach, and that's why Slingshot was created. The ultimate goal 
+is to create the _ultimate_ SystemVerilog LSP, with all the features you know and love from mature LSPs like 
+clangd and pyright. I'm still not sure if I can actually achieve this, but here's to trying, right?
 
-**Current state:** Slingshot has only just started development. Right now, it is only capable of providing
-Verilator linting. I am working on adding completion and whole project indexing.
+**Current state:** Slingshot is still unstable and work in progress. Right now, it is capable of providing
+Verilator linting and _some_ completion. I'm working on adding more completion items and stabilising the
+server.
 
 **Timeline:** Due to university, my time is extremely limited. However, I am hoping to get Slingshot fully
 functional by no later than June 2024, so I can use it to develop the SV code for my thesis.
@@ -27,6 +28,7 @@ features.
 - Completion (powered by ANTLR)
   - Slingshot is aware of both line and block comments, and does not suggest completions when you are inside
     a comment
+  - Completion items for "variables" (logic, wire, etc) and ports in the current module
 
 ## Building and running
 **Toolchain**
@@ -36,7 +38,7 @@ You will need:
 
 **Building Slingshot**
 
-The program can be built with `./gradlew build` and an executable JAR file can be made with `./gradlew shadowJar`.
+The program can be built with `./gradlew build`, which also generates JAR files in the `build/libs` directory.
 
 Because the SystemVerilog generated parser is so massive, you will need to modify IntelliJ's max file parse
 size to be larger. Go to Help -> Edit Custom Properties and insert `idea.max.intellisense.filesize=999999`.
@@ -59,7 +61,7 @@ if not configs.slingshot then
   -- this require lspconfig.configs is the trick required to make it work
   require("lspconfig.configs").slingshot = {
     default_config = {
-      cmd = {'java', '-jar', '/home/matt/workspace/slingshot/build/libs/slingshot-1.0-SNAPSHOT-all.jar'};
+      cmd = {'java', '-jar', '<PATH_TO_SLINGSHOT>/slingshot/build/libs/slingshot-1.0-SNAPSHOT-all.jar'};
       filetypes = {'verilog', 'systemverilog'};
       root_dir = function(fname)
         return lspconfig.util.find_git_ancestor(fname) or vim.loop.os_homedir()
@@ -135,6 +137,8 @@ perfectly valid SV documents, whereas Java does not).
 Slingshot is now being written in Kotlin and using Java 17 as the runtime. This _will_ increase memory usage somewhat, 
 however, the modern JVM has an extremely powerful JIT and GC, so I don't expect latencies to be significantly impacted.
 Kotlin is also a significantly more productive language than Rust, so development velocity may be improved.
+
+TODO: simplify this section and explain how completion works (copy and paste the rest into docs/history.md)
 
 ## Licence
 Mozilla Public License v2.0

@@ -14,19 +14,17 @@ import org.eclipse.lsp4j.services.LanguageClient
 import org.eclipse.lsp4j.services.LanguageClientAware
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.tinylog.kotlin.Logger
-import slingshot.completion.ANTLRCompletion
-import slingshot.completion.CompletionException
-import slingshot.completion.CompletionProvider
+import slingshot.completion.*
 import slingshot.diagnostics.DiagnosticException
 import slingshot.diagnostics.DiagnosticProvider
 import slingshot.diagnostics.VerilatorDiagnostics
 import slingshot.indexing.IndexManager
+import slingshot.parsing.CompletionTypes
 import slingshot.parsing.ParseUtils
-import slingshot.parsing.TokenType
 import java.net.URI
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
+import java.util.concurrent.ForkJoinPool
 import kotlin.io.path.toPath
 
 class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
@@ -34,7 +32,7 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
     private val completion: CompletionProvider = ANTLRCompletion()
     private val diagnostics: DiagnosticProvider = VerilatorDiagnostics()
     private var client: LanguageClient? = null
-    private val executor = Executors.newCachedThreadPool()
+    private val executor = ForkJoinPool.commonPool()
 
     /** Called when the LSP is shutting down. May be called more than once. */
     fun onShutdown() {
@@ -80,33 +78,43 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
             }
 
             // parse the text document to produce a tree, if we don't already have one on file
-            var tokenType = TokenType.Unknown
-            if (entry.tree == null) {
+            if (entry.tree == null || entry.completion == null) {
                 Logger.debug("Parsing document $path")
                 try {
-                    // this determines both the abstract parse tree and the active token
-                    val (parseTree, token) = completion.parseDocument(entry.contents, position.position.line,
+                    // we need to both generate our abstract "document tree", so we know what things to return
+                    // to the user, AND completion information so we know _what_ from the document tree to
+                    // recommend.
+                    // this function returns both those things
+                    val result = completion.parseDocument(entry.contents, position.position.line,
                         position.position.character)
 
-                    // store parse tree back into the index, and the token type locally
-                    entry.tree = parseTree
-                    tokenType = token
+                    // this is stored for the sake of full project indexing and serialisation in the future
+                    // if we don't end up doing that, it can probably be removed
+                    entry.tree = result.document
+                    entry.completion = result
                 } catch (e: CompletionException) {
                     Logger.warn("Completion failed for $path:")
                     Logger.warn(e)
                     return@supplyAsync EMPTY_COMPLETION
                 }
+            } else {
+                // TODO consider how often this happens and maybe just re-insert every time?
+                Logger.debug("Document $path already has parse tree and completion")
             }
 
-            if (tokenType == TokenType.Unknown) {
-                Logger.warn("Unable to determine active token in document $path, cannot run completion")
+            val completion = entry.completion!!
+            if (completion.recommendations.size == 1 && completion.recommendations[0] == CompletionTypes.None) {
+                Logger.warn("No completion recommendations available for $path, cannot run completion")
                 return@supplyAsync EMPTY_COMPLETION
             }
 
-            val item = CompletionItem("ctr").apply {
-                kind = CompletionItemKind.Text
-            }
-            return@supplyAsync Either.forLeft(mutableListOf(item))
+            Logger.warn("Recommendations: ${completion.recommendations}")
+
+            // the CompletionSelector uses the extracted SvDocument, so we understand the document, and
+            // completion recommendations so we know what types of things to send to the user. it then
+            // generates actual CompletionItem instances to return to the LSP
+            val selector = CompletionSelector(completion)
+            return@supplyAsync Either.forLeft(selector.generate().toMutableList())
         }
     }
 
@@ -132,6 +140,7 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
 
     override fun connect(client: LanguageClient) {
         Logger.debug("Client connected in text document service")
+        Logger.debug("Common thread pool uses ${executor.parallelism} threads")
         this.client = client
     }
 

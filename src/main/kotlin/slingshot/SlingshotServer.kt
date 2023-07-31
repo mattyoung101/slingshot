@@ -33,7 +33,6 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
                 false,
                 TRIGGER_CHARACTERS
             )
-            Logger.debug("Trigger characters: $TRIGGER_CHARACTERS")
             // we only provide per-file diagnostics at the moment, and not for the whole "workspace"
             caps.diagnosticProvider = DiagnosticRegistrationOptions(false, false)
 

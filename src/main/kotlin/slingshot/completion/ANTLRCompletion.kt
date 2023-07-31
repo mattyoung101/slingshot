@@ -11,19 +11,18 @@ package slingshot.completion
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.tree.ParseTreeWalker
+import org.eclipse.lsp4j.Position
 import org.tinylog.kotlin.Logger
 import slingshot.parser.SystemVerilogLexer
 import slingshot.parser.SystemVerilogParser
-import slingshot.parsing.SvParseTreeVisitor
-import slingshot.parsing.SvDocument
-import slingshot.parsing.TokenType
+import slingshot.parsing.*
 
 /**
  * Completion provider that uses an ANTLR 4 grammar to generate an [SvDocument].
  * This is the best completion provider for Slingshot.
  */
 class ANTLRCompletion : CompletionProvider {
-    override fun parseDocument(document: String, line: Int, pos: Int): Pair<SvDocument, TokenType> {
+    override fun parseDocument(document: String, line: Int, pos: Int): CompletionResult {
         val begin = System.nanoTime()
 
         val lexer = SystemVerilogLexer(CharStreams.fromString(document))
@@ -36,15 +35,23 @@ class ANTLRCompletion : CompletionProvider {
         parser.addErrorListener(LogErrorListener)
 
         val tree = parser.source_text()
-        val visitor = SvParseTreeVisitor()
-        ParseTreeWalker.DEFAULT.walk(visitor, tree)
-        visitor.document.finishModule()
+
+        // construct the SvDocument
+        val documentVisitor = SvParseTreeVisitor()
+        ParseTreeWalker.DEFAULT.walk(documentVisitor, tree)
+        documentVisitor.document.finishModule()
+
+        // figure out what to recommend to the user
+        val cursorVisitor = CursorParseTreeVisitor(Position(line, pos))
+        ParseTreeWalker.DEFAULT.walk(cursorVisitor, tree)
+
+        Logger.debug("Cursor visitor: ${cursorVisitor.tokenTypes}, ${cursorVisitor.moduleName}")
 
        // val ruleNames = SystemVerilogParser.ruleNames.toList()
        // Logger.debug("\n${TreeUtils.toPrettyTree(tree, ruleNames)}")
 
         Logger.debug("Parse took ${(System.nanoTime() - begin) / 1e+6} ms")
 
-        return Pair(visitor.document, TokenType.Unknown)
+        return CompletionResult(documentVisitor.document, cursorVisitor.tokenTypes, cursorVisitor.moduleName)
     }
 }

@@ -8,6 +8,7 @@
 
 package slingshot.completion
 
+import slingshot.parsing.CompletionTypes
 import slingshot.parsing.SvDocument
 import slingshot.parsing.TokenType
 
@@ -16,12 +17,12 @@ import slingshot.parsing.TokenType
  */
 interface CompletionProvider {
     /**
-     * Parses a document to an [SvDocument] instance, and determines the token that the user currently has
-     * active. Throws a [CompletionException] in case the document could not be parsed.
+     * Parses a document to an [SvDocument] instance, and determines the tokens that should be recommended
+     * to the user. Throws a [CompletionException] in case the document could not be parsed.
      * @param document current document
      * @param line current line (0 indexed)
      * @param pos current position in current line (0 indexed)
      */
     @Throws(CompletionException::class)
-    fun parseDocument(document: String, line: Int, pos: Int): Pair<SvDocument, TokenType>
+    fun parseDocument(document: String, line: Int, pos: Int): CompletionResult
 }

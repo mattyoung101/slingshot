@@ -8,6 +8,7 @@
 
 package slingshot.parsing
 
+import org.eclipse.lsp4j.Position
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -74,5 +75,43 @@ class ParseUtilsTest {
         val document = "/* doc comment */"
         assertTrue(ParseUtils.isInBlockComment(document, 0))
         assertTrue(ParseUtils.isInAnyComment(document, 0, 5))
+    }
+
+    @Test
+    fun testPositionContains_NotInBlock() {
+        val start = Position(31, 26)
+        val end = Position(35, 12)
+        val cursor = Position(25, 29)
+        assertFalse(cursor.containedIn(start, end))
+    }
+
+    @Test
+    fun testPositionContains_SameLine() {
+        val start = Position(5, 1)
+        val end = Position(5, 100)
+        val cursor = Position(5, 50)
+        assertTrue(cursor.containedIn(start, end))
+    }
+
+    @Test
+    fun testPositionContains_NotSameLine() {
+        val start = Position(5, 10)
+        val end = Position(5, 20)
+        val cursor = Position(5, 50)
+        assertFalse(cursor.containedIn(start, end))
+    }
+
+    @Test
+    fun testPositionContains_Block() {
+        val start = Position(1, 5)
+        val end = Position(100, 25)
+        val cursor = Position(50, 100)
+        assertTrue(cursor.containedIn(start, end))
+    }
+
+    @Test
+    fun testPositionContains_ZeroWidth() {
+        val start = Position(1, 1)
+        assertTrue(start.containedIn(start, start))
     }
 }
