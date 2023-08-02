@@ -29,7 +29,7 @@ data class SvDocument(
      * existing module.
      */
     fun newModule(name: String) {
-        if (curEnum != null) throw CompletionException("Cannot start a new module when an enum is active!")
+        if (curEnum != null) return Logger.warn("Cannot start a new module when an enum is active!")
         finishModule()
         Logger.debug("Starting new module: $name")
         curModule = SvModule(name, mutableListOf(), mutableListOf(), this)
@@ -45,13 +45,13 @@ data class SvDocument(
     }
 
     fun addVariable(name: String) {
-        curModule ?: throw CompletionException("Trying to add variable $name, but no module is active!")
+        curModule ?: return Logger.warn("Trying to add variable $name, but no module is active!")
         Logger.debug("    Adding variable: $name to module: ${curModule!!.name}")
         curModule!!.variables.add(SvToken(name, TokenType.Variable, curModule!!))
     }
 
     fun addPort(name: String) {
-        curModule ?: throw CompletionException("Trying to add port $name, but no module is active!")
+        curModule ?: return Logger.warn("Trying to add port $name, but no module is active!")
         Logger.debug("    Adding port: $name to module: ${curModule!!.name}")
         curModule!!.ports.add(SvToken(name, TokenType.Port, curModule!!))
     }
@@ -60,8 +60,23 @@ data class SvDocument(
      * Starts a new enum in the document if one is not currently started, otherwise, ends the existing enum.
      */
     fun newEnum(name: String) {
-        if (curModule != null) throw CompletionException("Cannot start new enum when a module is active!")
-        // TODO
+        if (curModule != null) return Logger.warn("Cannot start new enum when a module is active!")
+        finishEnum()
+        Logger.debug("Starting new enum: $name")
+        curEnum = SvEnum(name, mutableListOf(), this)
+    }
+
+    fun addEnumValue(name: String) {
+        curEnum ?: Logger.warn("Trying to add enum value $name, but no enum is active!")
+        Logger.debug("    Adding enm value: $name to enum: ${curEnum!!.name}")
+        curEnum!!.enumValues.add(SvToken(name, TokenType.EnumValue, curEnum!!))
+    }
+
+    fun finishEnum() {
+        curEnum ?: return
+        Logger.debug("Finishing current enum: ${curEnum?.name}")
+        enums.add(curEnum!!)
+        curEnum = null
     }
 
     /**
@@ -74,5 +89,9 @@ data class SvDocument(
 
     fun getModuleByName(name: String): SvModule {
         return modules.first { it.name == name }
+    }
+
+    fun isEnumActive(): Boolean {
+        return curEnum != null
     }
 }

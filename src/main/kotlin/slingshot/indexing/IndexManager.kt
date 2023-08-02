@@ -44,6 +44,7 @@ class IndexManager {
         index.documents.putIfAbsent(path, IndexEntry(document))?.apply {
             contents = document
             tree = null
+            completion = null
         }
         Logger.trace("(Re)inserted document $path with hash ${java.lang.Long.toHexString(hash)}")
     }

@@ -1,6 +1,6 @@
 # Slingshot - SystemVerilog LSP
 **Slingshot** is a **work in progress** language server for the **SystemVerilog** hardware description language.
-It also supports **Verilog**, which is a strict subset of SystemVerilog.
+It also partially supports Verilog.
 
 Slingshot is written in Kotlin and runs on a Java 17 compliant JVM or higher.
 
@@ -89,6 +89,8 @@ This is the setup I use for development as well.
 - No false positives: If Verilator accepts the input, slingshot should as well
 - Low latency: The LSP should respond quickly to user inputs, even at the cost of CPU usage. This is our most
 important metric.
+- Snippet support
+  - e.g. if you type `always_ff` it should auto-generate an `always_ff` block
 
 **Suggested:**
 - Semantic tokens for semantic highlighting

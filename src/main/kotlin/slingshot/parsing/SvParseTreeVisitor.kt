@@ -43,13 +43,24 @@ class SvParseTreeVisitor : SystemVerilogParserBaseListener() {
             "Unable to determine name for variable declaration: ${ctx?.text}"
         )
 
-        // special case: if this is a variable identifier, make sure we haven't previously recorded it as
-        // a port
-        // TODO check if this still applies to ANTLR parser, we could skip this expensive check
-        if (!document.isVarDeclaredAsPort(name)) {
-            document.addVariable(name)
-        } else {
-            Logger.debug("    Skipping variable $name which was already declared as port")
+        document.addVariable(name)
+    }
+
+    override fun enterType_declaration(ctx: SystemVerilogParser.Type_declarationContext) {
+        if (ctx.data_type()?.ENUM() == null) {
+            Logger.debug("Typedef is not enum, skipping")
+            return
         }
+        val enumName = ctx.type_identifier(0).identifier().text
+        document.newEnum(enumName)
+    }
+
+    override fun enterEnum_identifier(ctx: SystemVerilogParser.Enum_identifierContext) {
+        if (!document.isEnumActive()) return
+        document.addEnumValue(ctx.identifier().text)
+    }
+
+    override fun exitType_declaration(ctx: SystemVerilogParser.Type_declarationContext?) {
+        document.finishEnum()
     }
 }

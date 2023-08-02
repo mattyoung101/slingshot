@@ -34,6 +34,40 @@ class CompletionSelector(private val completion: CompletionResult) {
         }
     }
 
+    private fun generateModule(): List<CompletionItem> {
+        return completion.document.modules.map {
+            CompletionItem(it.name).apply { kind = CompletionItemKind.Module }
+        }
+    }
+
+    private fun generateEdge(): List<CompletionItem> {
+        val posedge = CompletionItem("posedge").apply { kind = CompletionItemKind.Event }
+        val negedge = CompletionItem("negedge").apply { kind = CompletionItemKind.Event }
+        return listOf(posedge, negedge)
+    }
+
+    private fun generateLogic(): List<CompletionItem> {
+        val logic = CompletionItem("logic").apply { kind = CompletionItemKind.Keyword }
+        // maybe add wire, reg if people ask for verilog support
+        return listOf(logic)
+    }
+
+    private fun generateEnum(): List<CompletionItem> {
+        return completion.document.enums.map {
+            CompletionItem(it.name).apply { kind = CompletionItemKind.Enum }
+        }
+    }
+
+    // this currently generates enum values for all enums in the document
+    private fun generateEnumValue(): List<CompletionItem> {
+        return completion.document.enums.flatMap { it.enumValues }.map {
+            CompletionItem(it.name).apply { kind = CompletionItemKind.EnumMember }
+        }
+    }
+
+    /**
+     * Generates completion items to return to the user based on the provided [completion]
+     */
     fun generate(): List<CompletionItem> {
         val out = mutableListOf<CompletionItem>()
 
@@ -41,11 +75,14 @@ class CompletionSelector(private val completion: CompletionResult) {
             when (rec) {
                 CompletionTypes.VariableSameModule -> out.addAll(generateVariableSameModule())
                 CompletionTypes.PortSameModule -> out.addAll(generatePortSameModule())
+                CompletionTypes.Edge -> out.addAll(generateEdge())
+                CompletionTypes.Logic -> out.addAll(generateLogic())
+                CompletionTypes.Module -> out.addAll(generateModule())
+                CompletionTypes.Enum -> out.addAll(generateEnum())
+                CompletionTypes.EnumValue -> out.addAll(generateEnumValue())
                 else -> Logger.warn("Unhandled recommendation type: $rec")
             }
         }
-
-        Logger.debug("Completion items: $out")
 
         return out
     }

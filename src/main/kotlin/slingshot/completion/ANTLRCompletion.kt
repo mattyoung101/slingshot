@@ -45,11 +45,9 @@ class ANTLRCompletion : CompletionProvider {
         val cursorVisitor = CursorParseTreeVisitor(Position(line, pos))
         ParseTreeWalker.DEFAULT.walk(cursorVisitor, tree)
 
+        // consider running walkers in parallel if performance becomes an issue, profile first though!
+        // we are still like 2 ms so I expect we're completely fine for the forseeable future
         Logger.debug("Cursor visitor: ${cursorVisitor.tokenTypes}, ${cursorVisitor.moduleName}")
-
-       // val ruleNames = SystemVerilogParser.ruleNames.toList()
-       // Logger.debug("\n${TreeUtils.toPrettyTree(tree, ruleNames)}")
-
         Logger.debug("Parse took ${(System.nanoTime() - begin) / 1e+6} ms")
 
         return CompletionResult(documentVisitor.document, cursorVisitor.tokenTypes, cursorVisitor.moduleName)

@@ -26,6 +26,8 @@ import java.util.concurrent.TimeUnit
  */
 class VerilatorDiagnostics : DiagnosticProvider {
     override fun diagnose(path: Path, document: String): List<Diagnostic> {
+        val begin = System.nanoTime()
+
         val process = ProcessBuilder(VERILATOR_ARGS)
             .redirectError(ProcessBuilder.Redirect.PIPE)
             .redirectOutput(ProcessBuilder.Redirect.PIPE)
@@ -93,6 +95,8 @@ class VerilatorDiagnostics : DiagnosticProvider {
             )
             diagnostics.add(diagnostic)
         }
+
+        Logger.debug("Verilator took ${(System.nanoTime() - begin) / 1e+6} ms")
 
         return diagnostics
     }

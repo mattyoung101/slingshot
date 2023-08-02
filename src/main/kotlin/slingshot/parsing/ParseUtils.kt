@@ -18,6 +18,9 @@ fun Token.toPosition(): Position {
     return Position(line, charPositionInLine)
 }
 
+/**
+ * Returns true if this position is contained in [start] to [end], inclusive.
+ */
 fun Position.containedIn(start: Position, end: Position): Boolean {
     // if it's the exact same position we do actually say it's contained in
     if (start == this && end == this) return true
@@ -42,18 +45,18 @@ object ParseUtils {
     }
 
     fun isInBlockComment(document: String, line: Int): Boolean {
-        // Logger.debug("Checking if line $line in doc comment")
         var isOpening = true
         var opening = -1
         for ((i, lineStr) in document.lines().withIndex()) {
             // quick check for single line block comments
+            // FIXME this will not work for: /* comment */ [cursor here]
             if ("/*" in lineStr && "*/" in lineStr && i == line) {
                 Logger.trace("Found single line doc comment for line $i")
                 return true
             }
 
             val lookingFor = if (isOpening) "/*" else "*/"
-            // no comment in line
+            // continue on if no comment in line
             if (lookingFor !in lineStr) continue
 
             if (isOpening) {
@@ -66,7 +69,7 @@ object ParseUtils {
                     Logger.trace("Contains line $line")
                     return true
                 }
-                // try look for another block comment
+                // no luck, try look for another block comment
                 isOpening = true
             }
         }

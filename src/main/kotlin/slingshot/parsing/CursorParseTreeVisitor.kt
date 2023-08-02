@@ -33,7 +33,6 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
     private fun start(ctx: ParserRuleContext) {
         val start = ctx.start.toPosition()
         val end = ctx.stop.toPosition()
-
         Logger.debug("Parse rule ${ctx.javaClass.simpleName} start ${ctx.start.text} stop ${ctx.stop.text}")
 
         if (!Positions.isBefore(start, end)) {
@@ -63,12 +62,20 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
         recommend(CompletionTypes.PortSameModule, ctx)
     }
 
-    override fun enterModule_declaration(ctx: SystemVerilogParser.Module_declarationContext?) {
-        val start = ctx?.start?.toPosition() ?: return
-        val end = ctx.stop?.toPosition() ?: return
+    override fun enterModule_declaration(ctx: SystemVerilogParser.Module_declarationContext) {
+        // generate module name, if cursor is in module
+        val start = ctx.start.toPosition()
+        val end = ctx.stop.toPosition()
         if (cursor.containedIn(start, end)) {
             moduleName = ctx.module_header()?.module_identifier()?.text
         }
+
+        // in this state, we can basically recommend to complete all top level items
+        start(ctx)
+        recommend(CompletionTypes.Module, ctx)
+        recommend(CompletionTypes.Enum, ctx)
+        recommend(CompletionTypes.Macro, ctx)
+        recommend(CompletionTypes.Logic, ctx)
     }
 
     // in event expressions like @(posedge clk) we should suggest variable names
@@ -76,21 +83,18 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
         start(ctx)
         recommendVariableTypes(ctx)
         recommend(CompletionTypes.Edge, ctx)
-        Logger.debug("Enter event expr")
     }
 
     // in an if statement, recommend a variable
     override fun enterCond_predicate(ctx: SystemVerilogParser.Cond_predicateContext) {
         start(ctx)
         recommendVariableTypes(ctx)
-        Logger.debug("Enter cond predicate")
     }
 
     // in normal code (sequential block) recommend a variable
     override fun enterSeq_block(ctx: SystemVerilogParser.Seq_blockContext) {
         start(ctx)
         recommendVariableTypes(ctx)
-        Logger.debug("Enter seq block")
     }
 
     // this seems to occur a lot when parse fails, but it's typically a top level declaration so we should
@@ -101,6 +105,11 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
         recommend(CompletionTypes.Enum, ctx)
         recommend(CompletionTypes.Macro, ctx)
         recommend(CompletionTypes.Logic, ctx)
-        Logger.debug("Enter module identifier")
+    }
+
+    // in ranges like [1:5] we want to explicitly _not_ complete
+    override fun enterConstant_range(ctx: SystemVerilogParser.Constant_rangeContext) {
+        start(ctx)
+        recommend(CompletionTypes.None, ctx)
     }
 }
