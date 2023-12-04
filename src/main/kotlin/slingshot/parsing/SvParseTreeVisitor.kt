@@ -14,7 +14,7 @@ import slingshot.parser.SystemVerilogParser
 import slingshot.parser.SystemVerilogParserBaseListener
 
 /**
- * This visitor visits the ANTLR tree for a SystemVerilog file and turns it into a SvDocument
+ * This visitor visits the ANTLR tree for a SystemVerilog file and turns it into a [SvDocument]
  * which will be used in completion and indexing.
  */
 class SvParseTreeVisitor : SystemVerilogParserBaseListener() {
@@ -48,7 +48,7 @@ class SvParseTreeVisitor : SystemVerilogParserBaseListener() {
 
     override fun enterType_declaration(ctx: SystemVerilogParser.Type_declarationContext) {
         if (ctx.data_type()?.ENUM() == null) {
-            Logger.debug("Typedef is not enum, skipping")
+            Logger.debug("This typedef ( ${ctx.text} ) is not enum, skipping")
             return
         }
         val enumName = ctx.type_identifier(0).identifier().text

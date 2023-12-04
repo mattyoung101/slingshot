@@ -68,6 +68,9 @@ enum class CompletionTypes {
 
     /** The keyword `logic` */
     Logic,
+
+    /** Always blocks: `always_ff`, `always_comb`, `always_latch` */
+    Always,
 }
 
 interface SvTopLevelObject

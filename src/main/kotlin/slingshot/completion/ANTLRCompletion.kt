@@ -47,7 +47,7 @@ class ANTLRCompletion : CompletionProvider {
 
         // consider running walkers in parallel if performance becomes an issue, profile first though!
         // we are still like 2 ms so I expect we're completely fine for the forseeable future
-        Logger.debug("Cursor visitor: ${cursorVisitor.tokenTypes}, ${cursorVisitor.moduleName}")
+        Logger.debug("Cursor visitor will recommend: ${cursorVisitor.tokenTypes}, inside module: ${cursorVisitor.moduleName}")
         Logger.debug("Parse took ${(System.nanoTime() - begin) / 1e+6} ms")
 
         return CompletionResult(documentVisitor.document, cursorVisitor.tokenTypes, cursorVisitor.moduleName)

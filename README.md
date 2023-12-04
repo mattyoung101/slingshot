@@ -4,11 +4,10 @@ It also partially supports Verilog.
 
 Slingshot is written in Kotlin and runs on a Java 17 compliant JVM or higher.
 
-Although there are a few existing LSPs for SystemVerilog, I found them not quite perfect enough for my needs.
-Most SV LSPs have inaccurate and hacky completion, which I found problematic. I thought I might be able to do 
-this better by taking a _completion-first_ approach, and that's why Slingshot was created. The ultimate goal 
-is to create the _ultimate_ SystemVerilog LSP, with all the features you know and love from mature LSPs like 
-clangd and pyright. I'm still not sure if I can actually achieve this, but here's to trying, right?
+Although there are a few existing LSPs for SystemVerilog, I decided to create Slingshot specifically with a
+focus on completion, which some existing SV LSPs are lacking. Slingshot's goal is to create the ultimate 
+SystemVerilog LSP, with all the features you know and love from mature LSPs like clangd and pyright. This is
+a pretty ambitious goal that I may not actually be able to achieve, but here's to trying!
 
 **Current state:** Slingshot is still unstable and work in progress. Right now, it is capable of providing
 Verilator linting and _some_ completion. I'm working on adding more completion items and stabilising the
@@ -24,7 +23,7 @@ This is the list of _currently_ implemented features. See below for the full lis
 features.
 
 - Diagnostics (powered by Verilator)
-  - Fully in-memory, does not write any temp files to reduce disk trashing
+  - Fully in-memory, does not write any temp files to reduce disk thrashing
 - Completion (powered by ANTLR)
   - Slingshot is aware of both line and block comments, and does not suggest completions when you are inside
     a comment
@@ -46,7 +45,7 @@ Then, restart the IDE.
 
 **Running**
 
-Currently I have only tested Slingshot in Neovim.
+Currently, I have only tested Slingshot in Neovim.
 
 When Slingshot is a more capable LSP, it will (hopefully) be available in upstream LSP projects like
 [mason.nvim](https://github.com/williamboman/mason.nvim) and [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).

@@ -20,7 +20,9 @@ import slingshot.parser.SystemVerilogParserBaseListener
  * also what the name of the module the user is editing in.
  */
 class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParserBaseListener() {
+    /** completion tokens we should recommend to the user */
     var tokenTypes = mutableListOf(CompletionTypes.None)
+    /** name of the module the cursor is in */
     var moduleName: String? = null
 
     // note: we don't have to check depth because we will naturally keep updating tokenType as we go deeper
@@ -33,7 +35,6 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
     private fun start(ctx: ParserRuleContext) {
         val start = ctx.start.toPosition()
         val end = ctx.stop.toPosition()
-        Logger.debug("Parse rule ${ctx.javaClass.simpleName} start ${ctx.start.text} stop ${ctx.stop.text}")
 
         if (!Positions.isBefore(start, end)) {
             Logger.warn("Start $start is not before end $end for rule ${ctx.javaClass.simpleName}")
@@ -76,6 +77,7 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
         recommend(CompletionTypes.Enum, ctx)
         recommend(CompletionTypes.Macro, ctx)
         recommend(CompletionTypes.Logic, ctx)
+        recommend(CompletionTypes.Always, ctx)
     }
 
     // in event expressions like @(posedge clk) we should suggest variable names

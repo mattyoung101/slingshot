@@ -21,7 +21,9 @@ data class SvDocument(
     val modules: MutableList<SvModule> = mutableListOf(),
     val enums: MutableList<SvEnum> = mutableListOf()
 ) {
+    /** Currently processing SV module */
     private var curModule: SvModule? = null
+    /** Currently processing SV enum typedef */
     private var curEnum: SvEnum? = null
 
     /**
@@ -45,13 +47,13 @@ data class SvDocument(
     }
 
     fun addVariable(name: String) {
-        curModule ?: return Logger.warn("Trying to add variable $name, but no module is active!")
+        curModule ?: return Logger.debug("Trying to add variable $name, but no module is active!")
         Logger.debug("    Adding variable: $name to module: ${curModule!!.name}")
         curModule!!.variables.add(SvToken(name, TokenType.Variable, curModule!!))
     }
 
     fun addPort(name: String) {
-        curModule ?: return Logger.warn("Trying to add port $name, but no module is active!")
+        curModule ?: return Logger.debug("Trying to add port $name, but no module is active!")
         Logger.debug("    Adding port: $name to module: ${curModule!!.name}")
         curModule!!.ports.add(SvToken(name, TokenType.Port, curModule!!))
     }
@@ -67,8 +69,8 @@ data class SvDocument(
     }
 
     fun addEnumValue(name: String) {
-        curEnum ?: Logger.warn("Trying to add enum value $name, but no enum is active!")
-        Logger.debug("    Adding enm value: $name to enum: ${curEnum!!.name}")
+        curEnum ?: Logger.debug("Trying to add enum value $name, but no enum is active!") // TODO maybe we just start
+        Logger.debug("    Adding enum value: $name to enum: ${curEnum!!.name}")
         curEnum!!.enumValues.add(SvToken(name, TokenType.EnumValue, curEnum!!))
     }
 

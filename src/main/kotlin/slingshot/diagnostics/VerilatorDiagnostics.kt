@@ -32,7 +32,7 @@ class VerilatorDiagnostics : DiagnosticProvider {
             .redirectError(ProcessBuilder.Redirect.PIPE)
             .redirectOutput(ProcessBuilder.Redirect.PIPE)
             .redirectInput(ProcessBuilder.Redirect.PIPE)
-            .directory(path.parent?.toFile() ?: throw DiagnosticException("Path $path has no parent"))
+            .directory(path.parent?.toFile() ?: throw DiagnosticException("Document path $path has no parent"))
             .start()
         val diagnostics = mutableListOf<Diagnostic>()
 
@@ -42,7 +42,7 @@ class VerilatorDiagnostics : DiagnosticProvider {
         process.outputWriter().use { it.write(document) }
         if (!process.waitFor(5, TimeUnit.SECONDS)) {
             process.destroyForcibly()
-            throw DiagnosticException("Verilator timed out")
+            throw DiagnosticException("Verilator timed out?! Waited 5 seconds")
         }
 
         val stderr = process.errorReader().use { it.readText() }
@@ -53,8 +53,8 @@ class VerilatorDiagnostics : DiagnosticProvider {
             Logger.trace("Verilator exited with error status: ${process.exitValue()}")
 
             if (!("Error" in stderr || "Warning" in stderr)) {
-                throw DiagnosticException("Verilator did not return any warning/error " +
-                 "messages\n$stdout\n$stderr")
+                throw DiagnosticException("Verilator exited with status ${process.exitValue()}, but did not " +
+                 "return any warning or error messages! Something else is wrong?\n$stdout\n$stderr")
             }
         }
 

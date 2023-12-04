@@ -52,6 +52,12 @@ class CompletionSelector(private val completion: CompletionResult) {
         return listOf(logic)
     }
 
+    private fun generateAlways(): List<CompletionItem> {
+        return listOf("always_ff", "always_comb", "always_latch").map {
+            CompletionItem(it).apply { kind = CompletionItemKind.Keyword }
+        }
+    }
+
     private fun generateEnum(): List<CompletionItem> {
         return completion.document.enums.map {
             CompletionItem(it.name).apply { kind = CompletionItemKind.Enum }
@@ -80,6 +86,7 @@ class CompletionSelector(private val completion: CompletionResult) {
                 CompletionTypes.Module -> out.addAll(generateModule())
                 CompletionTypes.Enum -> out.addAll(generateEnum())
                 CompletionTypes.EnumValue -> out.addAll(generateEnumValue())
+                CompletionTypes.Always -> out.addAll(generateAlways())
                 else -> Logger.warn("Unhandled recommendation type: $rec")
             }
         }

@@ -1,17 +1,18 @@
 `timescale 1ns/1ns
 `default_nettype none
 
+// This is a Thing_t
 typedef enum logic[2:0] {
     ENUM_A,
     ENUM_B
 } Thing_t;
 
+// This is a typedef
 typedef struct {
     logic[2:0] x;
 } Struct_t;
 
 // This module implements a 6 MHz -> 1 MHz clock divider
-// TODO parameterise this
 module clk_div_6to1 (
     // Input 6 MHz clock
     input logic i_clk,
@@ -29,7 +30,7 @@ module clk_div_6to1 (
 
     /*
      * this is a block comment and that's why the block comment is like this
-     */
+    */
 
     always_ff @(posedge i_clk) begin
         if (i_rst) begin
