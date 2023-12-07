@@ -17,6 +17,15 @@ group = 'com.mattyoung101'
 version = '1.0-SNAPSHOT'
 apply plugin: 'java'
 apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'idea'
+
+// https://stackoverflow.com/a/33653146/5007892
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
 
 repositories {
     mavenCentral()

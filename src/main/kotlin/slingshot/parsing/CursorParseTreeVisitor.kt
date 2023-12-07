@@ -10,7 +10,6 @@ package slingshot.parsing
 
 import org.antlr.v4.runtime.ParserRuleContext
 import org.eclipse.lsp4j.Position
-import org.eclipse.lsp4j.util.Positions
 import org.tinylog.kotlin.Logger
 import slingshot.parser.SystemVerilogParser
 import slingshot.parser.SystemVerilogParserBaseListener
@@ -30,37 +29,33 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
 
     /**
      * Starts a new completion recommendation by removing the current one iff the cursor is contained by the
-     * parse item
+     * parse item. If it is, then the code in the block will be executed
      */
-    private fun start(ctx: ParserRuleContext) {
+    private fun start(ctx: ParserRuleContext, block: () -> Unit) {
         val start = ctx.start.toPosition()
         val end = ctx.stop.toPosition()
-
-        if (!Positions.isBefore(start, end)) {
-            Logger.warn("Start $start is not before end $end for rule ${ctx.javaClass.simpleName}")
-        }
+        Logger.debug("Rule ${ctx.javaClass.simpleName}, start: ${start.toShortString()}, end: ${end.toShortString()}, cursor: ${cursor.toShortString()}")
 
         if (cursor.containedIn(start, end)) {
+            Logger.debug("    Start new completion: ${ctx.javaClass.simpleName}")
             tokenTypes.clear()
+            block()
+        } else {
+            Logger.debug("    Not contained by cursor.")
         }
     }
 
-    /** Recommends a completion item iff the cursor is contained by the parse item */
-    private fun recommend(token: CompletionTypes, ctx: ParserRuleContext) {
-        val start = ctx.start.toPosition()
-        val end = ctx.stop.toPosition()
-
-        if (cursor.containedIn(start, end)) {
-            tokenTypes.add(token)
-        }
+    /** Recommends a completion item. Must call [start] first. */
+    private fun recommend(token: CompletionTypes) {
+        tokenTypes.add(token)
     }
 
     /** Recommends general variable types */
-    private fun recommendVariableTypes(ctx: ParserRuleContext) {
-        recommend(CompletionTypes.Macro, ctx)
-        recommend(CompletionTypes.EnumValue, ctx)
-        recommend(CompletionTypes.VariableSameModule, ctx)
-        recommend(CompletionTypes.PortSameModule, ctx)
+    private fun recommendVariableTypes() {
+        recommend(CompletionTypes.Macro)
+        recommend(CompletionTypes.EnumValue)
+        recommend(CompletionTypes.VariableSameModule)
+        recommend(CompletionTypes.PortSameModule)
     }
 
     override fun enterModule_declaration(ctx: SystemVerilogParser.Module_declarationContext) {
@@ -72,46 +67,61 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
         }
 
         // in this state, we can basically recommend to complete all top level items
-        start(ctx)
-        recommend(CompletionTypes.Module, ctx)
-        recommend(CompletionTypes.Enum, ctx)
-        recommend(CompletionTypes.Macro, ctx)
-        recommend(CompletionTypes.Logic, ctx)
-        recommend(CompletionTypes.Always, ctx)
+        start(ctx) {
+            recommend(CompletionTypes.Module)
+            recommend(CompletionTypes.Enum)
+            recommend(CompletionTypes.Macro)
+            recommend(CompletionTypes.Logic)
+            recommend(CompletionTypes.Always)
+        }
     }
 
     // in event expressions like @(posedge clk) we should suggest variable names
     override fun enterEvent_expression(ctx: SystemVerilogParser.Event_expressionContext) {
-        start(ctx)
-        recommendVariableTypes(ctx)
-        recommend(CompletionTypes.Edge, ctx)
+        start(ctx) {
+            recommendVariableTypes()
+            recommend(CompletionTypes.Edge)
+        }
+    }
+
+    // in event expressions like @(posedge clk) we should suggest variable names
+    // FIXME we should _not_ have to recommend on enterEvent_control, but the range on enterEvent_expression is wrong
+    override fun enterEvent_control(ctx: SystemVerilogParser.Event_controlContext) {
+        start(ctx) {
+            recommendVariableTypes()
+            recommend(CompletionTypes.Edge)
+        }
     }
 
     // in an if statement, recommend a variable
     override fun enterCond_predicate(ctx: SystemVerilogParser.Cond_predicateContext) {
-        start(ctx)
-        recommendVariableTypes(ctx)
+        start(ctx) {
+            recommendVariableTypes()
+        }
     }
 
     // in normal code (sequential block) recommend a variable
     override fun enterSeq_block(ctx: SystemVerilogParser.Seq_blockContext) {
-        start(ctx)
-        recommendVariableTypes(ctx)
+        start(ctx) {
+            recommendVariableTypes()
+        }
     }
 
     // this seems to occur a lot when parse fails, but it's typically a top level declaration so we should
     // recommend data types and stuff
     override fun enterModule_identifier(ctx: SystemVerilogParser.Module_identifierContext) {
-        start(ctx)
-        recommend(CompletionTypes.Module, ctx)
-        recommend(CompletionTypes.Enum, ctx)
-        recommend(CompletionTypes.Macro, ctx)
-        recommend(CompletionTypes.Logic, ctx)
+        start(ctx) {
+            recommend(CompletionTypes.Module)
+            recommend(CompletionTypes.Enum)
+            recommend(CompletionTypes.Macro)
+            recommend(CompletionTypes.Logic)
+        }
     }
 
     // in ranges like [1:5] we want to explicitly _not_ complete
     override fun enterConstant_range(ctx: SystemVerilogParser.Constant_rangeContext) {
-        start(ctx)
-        recommend(CompletionTypes.None, ctx)
+        start(ctx) {
+            recommend(CompletionTypes.None)
+        }
     }
 }

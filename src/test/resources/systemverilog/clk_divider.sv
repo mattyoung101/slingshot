@@ -1,6 +1,10 @@
 `timescale 1ns/1ns
 `default_nettype none
 
+`define TEST_MACRO 1
+`define TEST_MACRO2
+`define TEST_SCRIMBLE "testing"
+
 // This is a Thing_t
 typedef enum logic[2:0] {
     ENUM_A,
@@ -32,7 +36,11 @@ module clk_div_6to1 (
      * this is a block comment and that's why the block comment is like this
     */
 
-    always_ff @(posedge i_clk) begin
+    always_ff @(posedge o_clk) begin
+
+    end
+
+    always_ff @(posedge i_rst) begin
         if (i_rst) begin
             ctr <= 0;
         end else begin

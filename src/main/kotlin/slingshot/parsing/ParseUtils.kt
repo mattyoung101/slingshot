@@ -15,7 +15,13 @@ import org.tinylog.kotlin.Logger
 import java.lang.IllegalArgumentException
 
 fun Token.toPosition(): Position {
-    return Position(line, charPositionInLine)
+    // ANTLR is 1-indexed for the line, LSP is 0-indexed
+    // I don't know why the charPositionInLine isn't zero indexed either?
+    return Position(line - 1, charPositionInLine)
+}
+
+fun Position.toShortString(): String {
+    return "($line, $character)"
 }
 
 /**

@@ -28,6 +28,11 @@ class VerilatorDiagnostics : DiagnosticProvider {
     override fun diagnose(path: Path, document: String): List<Diagnostic> {
         val begin = System.nanoTime()
 
+        if (System.getProperty("os.name").lowercase().contains("windows")) {
+            throw DiagnosticException("VerilatorDiagnostics is currently not supported on Windows due to " +
+             "use of /dev/stdin");
+        }
+
         val process = ProcessBuilder(VERILATOR_ARGS)
             .redirectError(ProcessBuilder.Redirect.PIPE)
             .redirectOutput(ProcessBuilder.Redirect.PIPE)
