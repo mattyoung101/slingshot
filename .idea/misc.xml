@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ANTLRGenerationPreferences">
     <option name="perGrammarGenerationSettings">
@@ -14,6 +15,16 @@
         </PerGrammarGenerationSettings>
         <PerGrammarGenerationSettings>
           <option name="fileName" value="$PROJECT_DIR$/src/main/antlr/SystemVerilogParser.g4" />
+          <option name="autoGen" value="true" />
+          <option name="outputDir" value="$PROJECT_DIR$/src/main/java" />
+          <option name="libDir" value="$PROJECT_DIR$/src/main/antlr" />
+          <option name="encoding" value="" />
+          <option name="pkg" value="slingshot.parser" />
+          <option name="language" value="Java" />
+          <option name="generateVisitor" value="true" />
+        </PerGrammarGenerationSettings>
+        <PerGrammarGenerationSettings>
+          <option name="fileName" value="$PROJECT_DIR$/src/main/antlr/SystemVerilogPreParser.g4" />
           <option name="autoGen" value="true" />
           <option name="outputDir" value="$PROJECT_DIR$/src/main/java" />
           <option name="libDir" value="$PROJECT_DIR$/src/main/antlr" />

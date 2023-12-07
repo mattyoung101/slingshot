@@ -2,7 +2,7 @@
 `default_nettype none
 
 `define TEST_MACRO 1
-`define TEST_MACRO2
+`define TEST_MACRO2 3
 `define TEST_SCRIMBLE "testing"
 
 // This is a Thing_t
@@ -36,13 +36,9 @@ module clk_div_6to1 (
      * this is a block comment and that's why the block comment is like this
     */
 
-    always_ff @(posedge o_clk) begin
-
-    end
-
     always_ff @(posedge i_rst) begin
         if (i_rst) begin
-            ctr <= 0;
+            ctr <= `TEST_MACRO;
         end else begin
             // every 6 cycles, give a rising edge to i_clk, this should mean i_clk is 1 MHz as required
             if (ctr == 6) begin

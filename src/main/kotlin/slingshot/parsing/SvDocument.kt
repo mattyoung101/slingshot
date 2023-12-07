@@ -19,7 +19,8 @@ import slingshot.completion.CompletionException
  */
 data class SvDocument(
     val modules: MutableList<SvModule> = mutableListOf(),
-    val enums: MutableList<SvEnum> = mutableListOf()
+    val enums: MutableList<SvEnum> = mutableListOf(),
+    val macros: MutableList<SvMacro> = mutableListOf()
 ) {
     /** Currently processing SV module */
     private var curModule: SvModule? = null
@@ -79,6 +80,11 @@ data class SvDocument(
         Logger.debug("Finishing current enum: ${curEnum?.name}")
         enums.add(curEnum!!)
         curEnum = null
+    }
+
+    fun addMacro(name: String, value: String?) {
+        Logger.debug("Adding macro $name with value: $value")
+        macros.add(SvMacro(name, value))
     }
 
     /**

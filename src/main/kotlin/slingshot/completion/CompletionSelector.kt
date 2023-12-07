@@ -71,6 +71,10 @@ class CompletionSelector(private val completion: CompletionResult) {
         }
     }
 
+    private fun generateMacros(): List<CompletionItem> {
+        return completion.document.macros.map { CompletionItem(it.name).apply { kind = CompletionItemKind.Variable } }
+    }
+
     /**
      * Generates completion items to return to the user based on the provided [completion]
      */
@@ -87,6 +91,7 @@ class CompletionSelector(private val completion: CompletionResult) {
                 CompletionTypes.Enum -> out.addAll(generateEnum())
                 CompletionTypes.EnumValue -> out.addAll(generateEnumValue())
                 CompletionTypes.Always -> out.addAll(generateAlways())
+                CompletionTypes.Macro -> out.addAll(generateMacros())
                 else -> Logger.warn("Unhandled recommendation type: $rec")
             }
         }

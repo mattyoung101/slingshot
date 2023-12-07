@@ -73,6 +73,7 @@ enum class CompletionTypes {
     Always,
 }
 
+/** A top level object in a SystemVerilog document */
 interface SvTopLevelObject
 
 /** A SvToken contains the name of the token and its type */
@@ -100,6 +101,7 @@ data class SvModule(val name: String, val ports: MutableList<SvToken>, val varia
 }
 
 /** A SystemVerilog enum */
-data class SvEnum(val name: String, val enumValues: MutableList<SvToken>, val parent: SvDocument): SvTopLevelObject {
+data class SvEnum(val name: String, val enumValues: MutableList<SvToken>, val parent: SvDocument): SvTopLevelObject
 
-}
+/** A SystemVerilog `define macro, with an optional value */
+data class SvMacro(val name: String, val value: String?) : SvTopLevelObject

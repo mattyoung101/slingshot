@@ -9,9 +9,9 @@ focus on completion, which some existing SV LSPs are lacking. Slingshot's goal i
 SystemVerilog LSP, with all the features you know and love from mature LSPs like clangd and pyright. This is
 a pretty ambitious goal that I may not actually be able to achieve, but here's to trying!
 
-**Current state:** Slingshot is still unstable and work in progress. Right now, it is capable of providing
+**Current state:** Slingshot is almost stable, but still a work in progress. Right now, it is capable of providing
 Verilator linting and _some_ completion. I'm working on adding more completion items and stabilising the
-server.
+server. It's probably useful in _very simple_ SystemVerilog projects right now.
 
 **Timeline:** Due to university, my time is extremely limited. However, I am hoping to get Slingshot fully
 functional by no later than June 2024, so I can use it to develop the SV code for my thesis.
@@ -25,9 +25,12 @@ features.
 - Diagnostics (powered by Verilator)
   - Fully in-memory, does not write any temp files to reduce disk thrashing
 - Completion (powered by ANTLR)
+  - Context-sensitive completion based on cursor's position in the ANTLR parse tree 
   - Slingshot is aware of both line and block comments, and does not suggest completions when you are inside
     a comment
-  - Completion items for "variables" (logic, wire, etc) and ports in the current module
+  - Completion for "variables" (logic, wire, etc) and ports in the current module
+  - Completion for various keywords, e.g. `always_ff`, `always_comb`, `posedge` (snippet support to auto-complete the entire block TBA)
+  - Completion for macros
 
 ## Building and running
 **Toolchain**
@@ -76,70 +79,10 @@ lspconfig.slingshot.setup{}
 This is the setup I use for development as well.
 
 ## Design goals
-**Mandatory:**
-- Complete-as-you-type
-    - Should recommend wires, ports and macros available in the current scope
-    - When you're typing ports in a module, it should suggest ports to fill
-    - Like clangd, should only suggest completions when it semantically makes sense to do so
-- Diagnostics engine for warnings/errors
-    - Should have a pluggable backend to support Verilator, Slang, Verible, and others
-- Whole project indexing
-    - Slingshot should discover referenced files and add them to an index cache
-- No false positives: If Verilator accepts the input, slingshot should as well
-- Low latency: The LSP should respond quickly to user inputs, even at the cost of CPU usage. This is our most
-important metric.
-- Snippet support
-  - e.g. if you type `always_ff` it should auto-generate an `always_ff` block
-
-**Suggested:**
-- Semantic tokens for semantic highlighting
-- Go to definition 
-- Documentation on hover (extract from comments)
-    - Requires our parser to match comments or us to regex it
-- No false negatives: If Verilator reports an error in the code, slingshot should as well
-    - This is probably harder than no false positives to achieve, based on how the project indexing will likely
-    work
-
-**Current NON-goals:**
-- CPU usage: SV parsing is expensive, and we are prioritising lower latency. That being said, we still do _care_
-about CPU usage (we don't want like 100% CPU all the time), but it's not the #1 priority here.
-- Low memory: This was originally a goal when Slingshot was written in compiled languages, but now that we are
-using the JVM, low memory usage is difficult without reducing our most important metric: latency.
-- Full-compliance with SystemVerilog: SV is a complex language, and I do not (yet!) work in the
-industry, so I am basing this plugin off my own personal workload and the support of open-source tools.
-    - If a document fails to parse, this is most likely an upstream issue, either with Verilator or the ANTLR
-    grammar in use.
-    - If Slingshot is unable to understand your project structure (and you've configured it correctly), this is
-    a bug in Slingshot and should be reported to me.
-    - If you are able to share snippets of code from your industry projects, or produce minimum
-    reproducible examples, these would be greatly appreciated. I can also work with log files (/tmp/slingshot.log).
+See [docs/design_goals.md](docs/design_goals.md)
 
 ## Implementation details
-Fundamentally, Slingshot is a fully modular interface between "engines", that do the real parsing work, and
-the LSP protocol. All LSP features, from completion to diagnostics, are driven by
-a backend "engine". Currently, completion is driven by 
-[this ANTLR grammar](https://github.com/antlr/grammars-v4/tree/master/verilog/systemverilog)
-and diagnostics are driven by Verilator. ANTLR was specifically chosen because of its readily available SV and its support
-for error recovery. Things Slingshot handles itself are project indexing, analysing the parse tree to figure out _what_ 
-to send back to the editor, and LSP communications.
-
-Because I am extremely indecisive, Slingshot has been through many language iterations. It was originally written in
-a mix of C++20 and Rust, where the C++20 side handled parsing through the Slang frontend and the Rust side handled
-LSP communication. Unfortunately, that was a bit of a nightmare: near constant segfaulting and a hellish build process.
-
-I then decided to Rewrite it in Rust (TM) (R) and use sv-parser. This was actually getting somewhere until we came
-to the stage of completion. The Rust sv-parser frontend does not support error recovery, so refuses to generate syntax
-trees unless the document is 100% valid. Unfortunately, this means we cannot use it for completion, beacuse we need
-to parse the line the user is currently typing to figure out _what_ we should complete for them. With sv-parser, we
-would have to recycle old document spans that may not map directly to the currently edited document. antlr-rust is
-currently abandoned, and the beta version does not parse documents in the same way as Java (it generates errors for
-perfectly valid SV documents, whereas Java does not).
-
-Slingshot is now being written in Kotlin and using Java 17 as the runtime. This _will_ increase memory usage somewhat, 
-however, the modern JVM has an extremely powerful JIT and GC, so I don't expect latencies to be significantly impacted.
-Kotlin is also a significantly more productive language than Rust, so development velocity may be improved.
-
-TODO: simplify this section and explain how completion works (copy and paste the rest into docs/history.md)
+See [docs/impl_details.md](docs/impl_details.md)
 
 ## Licence
 Mozilla Public License v2.0
