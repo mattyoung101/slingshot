@@ -10,6 +10,7 @@ package slingshot.completion
 
 import org.eclipse.lsp4j.CompletionItem
 import org.eclipse.lsp4j.CompletionItemKind
+import org.eclipse.lsp4j.InsertTextFormat
 import org.tinylog.kotlin.Logger
 import slingshot.parsing.CompletionTypes
 import slingshot.parsing.SvDocument
@@ -20,6 +21,7 @@ import slingshot.parsing.SvDocument
  * [SvDocument], generate the actual completion items by analysing the SvDocument instance.
  */
 class CompletionSelector(private val completion: CompletionResult) {
+    /** Recommends "variables" (ports, wires, etc) in the current module */
     private fun generateVariableSameModule(): List<CompletionItem> {
         completion.activeModule ?: return listOf()
         return completion.document.getModuleByName(completion.activeModule).variables.map {
@@ -27,6 +29,7 @@ class CompletionSelector(private val completion: CompletionResult) {
         }
     }
 
+    /** Recommends only ports in the current module */
     private fun generatePortSameModule(): List<CompletionItem> {
         completion.activeModule ?: return listOf()
         return completion.document.getModuleByName(completion.activeModule).ports.map {
@@ -34,43 +37,64 @@ class CompletionSelector(private val completion: CompletionResult) {
         }
     }
 
+    /** Recommends the name of a module in the current document */
     private fun generateModule(): List<CompletionItem> {
         return completion.document.modules.map {
             CompletionItem(it.name).apply { kind = CompletionItemKind.Module }
         }
     }
 
+    /** Recommends "posedge" or "negedge" */
     private fun generateEdge(): List<CompletionItem> {
-        val posedge = CompletionItem("posedge").apply { kind = CompletionItemKind.Event }
-        val negedge = CompletionItem("negedge").apply { kind = CompletionItemKind.Event }
+        val posedge = CompletionItem("posedge").apply { kind = CompletionItemKind.Keyword }
+        val negedge = CompletionItem("negedge").apply { kind = CompletionItemKind.Keyword }
         return listOf(posedge, negedge)
     }
 
+    /** Recommends "logic" */
     private fun generateLogic(): List<CompletionItem> {
         val logic = CompletionItem("logic").apply { kind = CompletionItemKind.Keyword }
         // maybe add wire, reg if people ask for verilog support
         return listOf(logic)
     }
 
+    /** Recommends snippets for "always_comb", "always_ff" and "always_latch" */
     private fun generateAlways(): List<CompletionItem> {
-        return listOf("always_ff", "always_comb", "always_latch").map {
-            CompletionItem(it).apply { kind = CompletionItemKind.Keyword }
+        val alwaysComb = CompletionItem("always_comb").apply {
+            insertText = "always_comb begin\n$0\nend"
+            kind = CompletionItemKind.Snippet
+            insertTextFormat = InsertTextFormat.Snippet
         }
+        val alwaysLatch = CompletionItem("always_latch").apply {
+            insertText = "always_latch begin\n$0\nend"
+            kind = CompletionItemKind.Snippet
+            insertTextFormat = InsertTextFormat.Snippet
+
+        }
+        val alwaysFf = CompletionItem("always_ff").apply {
+            insertText = "always_ff @($0) begin\n\nend"
+            kind = CompletionItemKind.Snippet
+            insertTextFormat = InsertTextFormat.Snippet
+        }
+
+        return listOf(alwaysComb, alwaysFf, alwaysLatch)
     }
 
+    /** Recommends the name of an enum */
     private fun generateEnum(): List<CompletionItem> {
         return completion.document.enums.map {
             CompletionItem(it.name).apply { kind = CompletionItemKind.Enum }
         }
     }
 
-    // this currently generates enum values for all enums in the document
+    /** Recommends the contents of an enum */
     private fun generateEnumValue(): List<CompletionItem> {
         return completion.document.enums.flatMap { it.enumValues }.map {
             CompletionItem(it.name).apply { kind = CompletionItemKind.EnumMember }
         }
     }
 
+    /** Recommends a macro */
     private fun generateMacros(): List<CompletionItem> {
         return completion.document.macros.map { CompletionItem(it.name).apply { kind = CompletionItemKind.Variable } }
     }

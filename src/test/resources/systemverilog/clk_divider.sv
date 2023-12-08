@@ -32,10 +32,6 @@ module clk_div_6to1 (
     logic[4:0] xyz;
     Thing_t thingt;
 
-    /*
-     * this is a block comment and that's why the block comment is like this
-    */
-
     always_ff @(posedge i_rst) begin
         if (i_rst) begin
             ctr <= `TEST_MACRO;
