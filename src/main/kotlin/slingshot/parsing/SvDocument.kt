@@ -18,9 +18,9 @@ import slingshot.completion.CompletionException
  * more information, see docs/index_design.md which covers this as well.
  */
 data class SvDocument(
-    val modules: MutableList<SvModule> = mutableListOf(),
-    val enums: MutableList<SvEnum> = mutableListOf(),
-    val macros: MutableList<SvMacro> = mutableListOf()
+    val modules: MutableSet<SvModule> = mutableSetOf(),
+    val enums: MutableSet<SvEnum> = mutableSetOf(),
+    val macros: MutableSet<SvMacro> = mutableSetOf()
 ) {
     /** Currently processing SV module */
     private var curModule: SvModule? = null
@@ -35,7 +35,7 @@ data class SvDocument(
         if (curEnum != null) return Logger.warn("Cannot start a new module when an enum is active!")
         finishModule()
         Logger.debug("Starting new module: $name")
-        curModule = SvModule(name, mutableListOf(), mutableListOf(), this)
+        curModule = SvModule(name, mutableSetOf(), mutableSetOf(), this)
     }
 
     /** Finishes the current module if and only if one is active */
@@ -66,7 +66,7 @@ data class SvDocument(
         if (curModule != null) return Logger.warn("Cannot start new enum when a module is active!")
         finishEnum()
         Logger.debug("Starting new enum: $name")
-        curEnum = SvEnum(name, mutableListOf(), this)
+        curEnum = SvEnum(name, mutableSetOf(), this)
     }
 
     fun addEnumValue(name: String) {

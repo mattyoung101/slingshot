@@ -77,7 +77,20 @@ enum class CompletionTypes {
 interface SvTopLevelObject
 
 /** A SvToken contains the name of the token and its type */
-data class SvToken(val name: String, val tokenType: TokenType, val parent: SvTopLevelObject)
+data class SvToken(val name: String, val tokenType: TokenType, val parent: SvTopLevelObject) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as SvToken
+
+        return name == other.name
+    }
+
+    override fun hashCode(): Int {
+        return name.hashCode()
+    }
+}
 
 /**
  * A SystemVerilog module which contains a public set of ports and private set of variables
@@ -86,7 +99,8 @@ data class SvToken(val name: String, val tokenType: TokenType, val parent: SvTop
  * @param variables private logic, wire, etc, tokens to this module
  * @param parent owner document
  */
-data class SvModule(val name: String, val ports: MutableList<SvToken>, val variables: MutableList<SvToken>, val parent: SvDocument): SvTopLevelObject {
+data class SvModule(val name: String, val ports: MutableSet<SvToken>, val variables: MutableSet<SvToken>,
+val parent: SvDocument): SvTopLevelObject {
     /**
      * Locates a port in this module by a partial string. This is used for auto-complete. Currently
      * this uses a naive slow algorithm but could be made more optimal in future.
@@ -98,10 +112,61 @@ data class SvModule(val name: String, val ports: MutableList<SvToken>, val varia
     fun findVar(variable: String): SvToken ? {
         return variables.firstOrNull { it.name.contains(variable) }
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as SvModule
+
+        if (name != other.name) return false
+        if (ports != other.ports) return false
+        if (variables != other.variables) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + ports.hashCode()
+        result = 31 * result + variables.hashCode()
+        return result
+    }
 }
 
 /** A SystemVerilog enum */
-data class SvEnum(val name: String, val enumValues: MutableList<SvToken>, val parent: SvDocument): SvTopLevelObject
+data class SvEnum(val name: String, val enumValues: MutableSet<SvToken>, val parent: SvDocument): SvTopLevelObject {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as SvEnum
+
+        if (name != other.name) return false
+        if (enumValues != other.enumValues) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + enumValues.hashCode()
+        return result
+    }
+}
 
 /** A SystemVerilog `define macro, with an optional value */
-data class SvMacro(val name: String, val value: String?) : SvTopLevelObject
+data class SvMacro(val name: String, val value: String?) : SvTopLevelObject {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as SvMacro
+
+        return name == other.name
+    }
+
+    override fun hashCode(): Int {
+        return name.hashCode()
+    }
+}
