@@ -71,6 +71,9 @@ enum class CompletionTypes {
 
     /** Always blocks: `always_ff`, `always_comb`, `always_latch` */
     Always,
+
+    /** An SV system task, e.g. $display, $error, etc */
+    SystemTask,
 }
 
 /** A top level object in a SystemVerilog document */

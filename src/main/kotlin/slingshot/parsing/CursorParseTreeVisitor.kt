@@ -73,6 +73,7 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
             recommend(CompletionTypes.Macro)
             recommend(CompletionTypes.Logic)
             recommend(CompletionTypes.Always)
+            recommend(CompletionTypes.SystemTask)
         }
     }
 
@@ -100,10 +101,11 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
         }
     }
 
-    // in normal code (sequential block) recommend a variable
+    // in normal code (sequential block) recommend a variable or system task
     override fun enterSeq_block(ctx: SystemVerilogParser.Seq_blockContext) {
         start(ctx) {
             recommendVariableTypes()
+            recommend(CompletionTypes.SystemTask)
         }
     }
 
@@ -115,6 +117,7 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
             recommend(CompletionTypes.Enum)
             recommend(CompletionTypes.Macro)
             recommend(CompletionTypes.Logic)
+            recommend(CompletionTypes.SystemTask)
         }
     }
 

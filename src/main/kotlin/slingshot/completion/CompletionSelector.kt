@@ -99,6 +99,11 @@ class CompletionSelector(private val completion: CompletionResult) {
         return completion.document.macros.map { CompletionItem(it.name).apply { kind = CompletionItemKind.Variable } }
     }
 
+    /** Recommends SV system tasks */
+    private fun generateSystemTasks(): List<CompletionItem> {
+        return SYSTEM_TASKS.map { CompletionItem("$$it").apply { kind = CompletionItemKind.Function } }
+    }
+
     /**
      * Generates completion items to return to the user based on the provided [completion]
      */
@@ -116,10 +121,59 @@ class CompletionSelector(private val completion: CompletionResult) {
                 CompletionTypes.EnumValue -> out.addAll(generateEnumValue())
                 CompletionTypes.Always -> out.addAll(generateAlways())
                 CompletionTypes.Macro -> out.addAll(generateMacros())
+                CompletionTypes.SystemTask -> out.addAll(generateSystemTasks())
                 else -> Logger.warn("Unhandled recommendation type: $rec")
             }
         }
 
         return out
+    }
+
+    companion object {
+        /** Partial list of commonly used SystemVerilog system tasks */
+        private val SYSTEM_TASKS = setOf(
+            "display",
+            "monitor",
+            "write",
+            "strobe",
+            "error",
+            "fatal",
+            "info",
+            "warning",
+            "clog2",
+            "finish",
+            "stop",
+            "fopen",
+            "fscanf",
+            "fwrite",
+            "fgets",
+            "readmemb",
+            "readmemh",
+            "write",
+            "floor",
+            "ceil",
+            "countones",
+            "countbits",
+            "time",
+            "signed",
+            "unsigned"
+
+            // These pollute the completion list quite a bit, and I can't imagine they are seriously commonly
+            // used, so I'm not including them for now.
+//            "asin",
+//            "acos",
+//            "atan",
+//            "atan2",
+//            "sin",
+//            "cos",
+//            "tan",
+//            "ln",
+//            "log10",
+//            "exp",
+//            "sqrt",
+//            "hypot",
+//            "pow",
+
+        )
     }
 }

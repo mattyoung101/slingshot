@@ -1,6 +1,6 @@
 # Slingshot - SystemVerilog LSP
 **Slingshot** is a **work in progress** language server for the **SystemVerilog** hardware description language.
-It also partially supports Verilog.
+It also partially supports **Verilog**.
 
 Slingshot is written in Kotlin and runs on a Java 17 compliant JVM or higher.
 
@@ -9,12 +9,22 @@ focus on completion, which some existing SV LSPs are lacking. Slingshot's goal i
 SystemVerilog LSP, with all the features you know and love from mature LSPs like clangd and pyright. This is
 a pretty ambitious goal that I may not actually be able to achieve, but here's to trying!
 
-**Current state:** Slingshot is almost stable, but still a work in progress. Right now, it is capable of providing
-Verilator linting and _some_ completion. I'm working on adding more completion items and stabilising the
-server. It's probably useful in _very simple_ SystemVerilog projects right now.
+### Current state
+Slingshot is almost stable, but still a work in progress. Right now, it is capable of providing
+Verilator linting and some completion. I'm working on adding more completion items and stabilising the
+server. It's probably useful in _very simple_ SystemVerilog projects right now - feel free to give it a spin!
 
-**Timeline:** Due to university, my time is extremely limited. However, I am hoping to get Slingshot fully
-functional by no later than June 2024, so I can use it to develop the SV code for my thesis.
+The big feature that remains to be implemented is multi-file support, so you can reference modules in other
+files. Currently, Slingshot does not understand this, but works pretty well for single files.
+
+### Timeline 
+Slingshot is currently in active use by myself while working on my thesis project, which is
+implemented entirely in SystemVerilog. So, rest assured, over the 1.5 years or so it *should* receive constant
+improvements and updates.
+
+During the university semester, my time is extremely limited, and I'm not really able to work on this program.
+I have more time to work on it over the holidays and whenever my workload is light. All in all, I am hoping to 
+get Slingshot fully functional by no later than June 2024, so I can use it to develop my thesis.
 
 **Author:** Matt Young (m.young2@uqconnect.edu.au)
 
@@ -33,12 +43,10 @@ features.
   - Completion for macros
 
 ## Building and running
-**Toolchain**
+**Building and environment**
 
-You will need:
-- Java 17 or higher
-
-**Building Slingshot**
+First, you need Java 17 or higher. Slingshot will also currently only run on Linux and probably other *nix
+systems (FreeBSD, etc). Windows is not yet supported and will be only added if significant demand exists.
 
 The program can be built with `./gradlew build`, which also generates JAR files in the `build/libs` directory.
 
