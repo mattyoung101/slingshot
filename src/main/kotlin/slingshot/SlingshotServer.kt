@@ -13,6 +13,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.eclipse.lsp4j.services.*
 import org.tinylog.kotlin.Logger
 import java.util.concurrent.CompletableFuture
+import kotlin.system.exitProcess
 
 /**
  * Instance of the Slingshot language server
@@ -48,16 +49,14 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
 
     override fun shutdown(): CompletableFuture<Any> {
         return CompletableFuture.supplyAsync {
-            Logger.info("LSP shutdown()")
-            textDocumentService.onShutdown()
-            exit()
+//            Logger.info("LSP shutdown()")
+//            exit()
         }
     }
 
     override fun exit() {
         Logger.info("LSP exit()")
-        textDocumentService.onShutdown()
-        exit()
+        exitProcess(0)
     }
 
     override fun getTextDocumentService(): TextDocumentService {
