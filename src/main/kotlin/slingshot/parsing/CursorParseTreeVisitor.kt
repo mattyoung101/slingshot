@@ -127,4 +127,12 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
             recommend(CompletionTypes.None)
         }
     }
+
+    // do not generate any recommendations inside a string
+    // FIXME the range on this is not working???
+    override fun enterString_literal(ctx: SystemVerilogParser.String_literalContext) {
+        start(ctx) {
+            recommend(CompletionTypes.None)
+        }
+    }
 }

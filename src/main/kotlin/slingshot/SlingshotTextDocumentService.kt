@@ -77,6 +77,12 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
                 return@supplyAsync EMPTY_COMPLETION
             }
 
+            // also check if we are in double quotes
+            if (ParseUtils.isInDoubleQuotes(entry.contents, position.position.line, position.position.character)) {
+                Logger.debug("In double quotes, will not complete")
+                return@supplyAsync EMPTY_COMPLETION
+            }
+
             // parse the text document to produce a tree, if we don't already have one on file
             if (entry.tree == null || entry.completion == null) {
                 Logger.debug("Parsing document $path")
@@ -113,7 +119,7 @@ class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
             // the CompletionSelector uses the extracted SvDocument, so we understand the document, and
             // completion recommendations so we know what types of things to send to the user. it then
             // generates actual CompletionItem instances to return to the LSP
-            val selector = CompletionSelector(completion)
+            val selector = CompletionGenerator(completion)
             return@supplyAsync Either.forLeft(selector.generate().toMutableList())
         }
     }

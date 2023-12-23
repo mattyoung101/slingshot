@@ -114,4 +114,12 @@ class ParseUtilsTest {
         val start = Position(1, 1)
         assertTrue(start.containedIn(start, start))
     }
+
+    @Test
+    fun testInDoubleQuotes_Simple() {
+        val document = "\$system(\"testing\");"
+        assertTrue(ParseUtils.isInDoubleQuotes(document, 0, 11))
+        assertFalse(ParseUtils.isInDoubleQuotes(document, 0, 2))
+        assertFalse(ParseUtils.isInDoubleQuotes(document, 0, 27))
+    }
 }

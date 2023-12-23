@@ -50,12 +50,14 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
         return CompletableFuture.supplyAsync {
             Logger.info("LSP shutdown()")
             textDocumentService.onShutdown()
+            exit()
         }
     }
 
     override fun exit() {
         Logger.info("LSP exit()")
         textDocumentService.onShutdown()
+        exit()
     }
 
     override fun getTextDocumentService(): TextDocumentService {

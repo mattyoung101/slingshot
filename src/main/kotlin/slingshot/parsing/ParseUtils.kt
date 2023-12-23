@@ -10,9 +10,7 @@ package slingshot.parsing
 
 import org.antlr.v4.runtime.Token
 import org.eclipse.lsp4j.Position
-import org.eclipse.lsp4j.util.Positions
 import org.tinylog.kotlin.Logger
-import java.lang.IllegalArgumentException
 
 fun Token.toPosition(): Position {
     // ANTLR is 1-indexed for the line, LSP is 0-indexed
@@ -84,5 +82,16 @@ object ParseUtils {
 
     fun isInAnyComment(document: String, line: Int, pos: Int): Boolean {
         return isInLineComment(document, line, pos) || isInBlockComment(document, line)
+    }
+
+    fun isInDoubleQuotes(document: String, line: Int, pos: Int): Boolean {
+        val lineStr = document.lines()[line]
+        val firstQuote = lineStr.indexOf("\"")
+        if (firstQuote == -1) return false
+
+        val lastQuote = lineStr.lastIndexOf("\"")
+        if (lastQuote == -1) return false
+
+        return pos in firstQuote..lastQuote
     }
 }
