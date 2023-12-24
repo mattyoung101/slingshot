@@ -4,7 +4,7 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath "gradle.plugin.com.github.johnrengelman:shadow:7.1.2"
+        classpath "gradle.plugin.com.github.johnrengelman:shadow:8.0.0"
     }
 }
 
@@ -34,7 +34,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.eclipse.lsp4j:org.eclipse.lsp4j:0.21.0'
+    implementation 'org.eclipse.lsp4j:org.eclipse.lsp4j:0.21.1'
     testImplementation 'org.jetbrains.kotlin:kotlin-test:1.8.10'
     implementation "org.antlr:antlr4-runtime:4.12.0"
     implementation 'org.tinylog:tinylog-api-kotlin:2.6.1'
