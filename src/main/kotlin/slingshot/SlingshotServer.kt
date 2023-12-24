@@ -12,6 +12,8 @@ import org.eclipse.lsp4j.*
 import org.eclipse.lsp4j.jsonrpc.messages.Either
 import org.eclipse.lsp4j.services.*
 import org.tinylog.kotlin.Logger
+import slingshot.config.ConfigUtils
+import slingshot.config.SlingshotConfig
 import java.util.concurrent.CompletableFuture
 import kotlin.system.exitProcess
 
@@ -22,6 +24,7 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
     private val textDocumentService = SlingshotTextDocumentService()
     private val workspaceService = SlingshotWorkspaceService()
     private var client: LanguageClient? = null
+    private var config: SlingshotConfig? = null
 
     override fun initialize(params: InitializeParams): CompletableFuture<InitializeResult> {
         return CompletableFuture.supplyAsync {
@@ -36,6 +39,20 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
             )
             // we only provide per-file diagnostics at the moment, and not for the whole "workspace"
             caps.diagnosticProvider = DiagnosticRegistrationOptions(false, false)
+
+            if (params.workspaceFolders.isEmpty()) {
+                Logger.error("Client workspaceFolders is empty, won't be able to find config!")
+            } else {
+                config = ConfigUtils.loadConfigFromUriString(params.workspaceFolders[0].uri)
+            }
+
+            if (config != null) {
+                Logger.info("Acquired Slingshot config:\n$config")
+            } else {
+                Logger.error("Could NOT acquire Slingshot config!")
+            }
+
+            textDocumentService.config = config
 
             InitializeResult(
                 caps,

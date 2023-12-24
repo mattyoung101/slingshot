@@ -15,6 +15,7 @@ import org.eclipse.lsp4j.services.LanguageClientAware
 import org.eclipse.lsp4j.services.TextDocumentService
 import org.tinylog.kotlin.Logger
 import slingshot.completion.*
+import slingshot.config.SlingshotConfig
 import slingshot.diagnostics.DiagnosticException
 import slingshot.diagnostics.DiagnosticProvider
 import slingshot.diagnostics.VerilatorDiagnostics
@@ -27,7 +28,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ForkJoinPool
 import kotlin.io.path.toPath
 
-class SlingshotTextDocumentService : TextDocumentService, LanguageClientAware {
+class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDocumentService, LanguageClientAware {
     private val indexManager = IndexManager()
     private val completion: CompletionProvider = ANTLRCompletion()
     private val diagnostics: DiagnosticProvider = VerilatorDiagnostics()

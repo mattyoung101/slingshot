@@ -43,10 +43,12 @@ features.
   - Completion for macros
 
 ## Building and running
-**Building and environment**
+### Building and environment
 
-First, you need Java 17 or higher. Slingshot will also currently only run on Linux and probably other *nix
-systems (FreeBSD, etc). Windows is not yet supported and will be only added if significant demand exists.
+**Important:** Slingshot currently only runs on Linux and other *nix systems. Windows is not 
+currently supported, and no support is currently planned.
+
+You need Java 17 or higher. 
 
 The program can be built with `./gradlew build`, which also generates JAR files in the `build/libs` directory.
 
@@ -54,7 +56,7 @@ Because the SystemVerilog generated parser is so massive, you will need to modif
 size to be larger. Go to Help -> Edit Custom Properties and insert `idea.max.intellisense.filesize=999999`.
 Then, restart the IDE.
 
-**Running**
+### Running
 
 Currently, I have only tested Slingshot in Neovim.
 
@@ -84,7 +86,30 @@ end
 lspconfig.slingshot.setup{}
 ```
 
+**Important:** Please read [docs/config.md](docs/config.md) for instructions on how to create a
+`.slingshot.yaml` file to configure the server. This is mandatory for multi-file (read: most) projects.
+
 This is the setup I use for development as well.
+
+### Troubleshooting
+
+Slingshot issues can be diagnosed by reading the log file. This is located in 
+`~/.local/share/slingshot/slingshot.$PID.log`, where `$PID` is the Slingshot process ID. You can
+just read the most recent log file. Currently, the 5 most recent log files are retained in that
+directory. The `lnav` tool is very useful for reading Slingshot log files.
+
+If Verilator syntax checking is not working, please make sure Verilator is installed and is in your
+$PATH. The log file will also contain the exact cause of why the Verilator didn't work.
+
+If there are errors about missing includes or not being able to find certainn files, please make
+sure you have read [docs/config.md](docs/config.md) and created your `.slingshot.yaml` file. Then,
+read the log to make sure that Slingshot has the correct root directory. The best way to ensure this
+is invoking Neovim by typing `nvim .` in the project's root directory - don't edit individual files.
+
+If the above steps do not resolve your issue, please open a bug ticket in the GitHub issue tracker.
+You must include your log file, detailed description of the issue, and also a SystemVerilog code
+example if possible. As my time is extremely limited, I may not be able to respond to or 
+fix most bug tickets. Pull requests are welcome as well, but may take some time to review.
 
 ## Design goals
 See [docs/design_goals.md](docs/design_goals.md)
