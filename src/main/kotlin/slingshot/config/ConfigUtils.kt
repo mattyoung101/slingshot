@@ -16,6 +16,7 @@ import kotlin.io.path.readText
 import kotlin.io.path.toPath
 
 object ConfigUtils {
+    /** Tries to load and deserialise a Slingshot config from the project root directory. */
     fun loadConfigFromUriString(uriString: String): SlingshotConfig? {
         val path = URI(uriString).toPath()
         val configYamlPath = path.resolve(".slingshot.yaml")

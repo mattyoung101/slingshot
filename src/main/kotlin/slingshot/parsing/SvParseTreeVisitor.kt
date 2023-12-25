@@ -35,6 +35,7 @@ class SvParseTreeVisitor : SystemVerilogParserBaseListener() {
         val name = ctx?.port_identifier()?.identifier()?.text ?: throw CompletionException(
             "Unable to determine name for port declaration: ${ctx?.text}"
         )
+
         document.addPort(name)
     }
 

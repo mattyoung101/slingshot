@@ -51,7 +51,7 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
             if (config != null) {
                 Logger.info("Acquired Slingshot config:\n$config")
             } else {
-                Logger.error("Could NOT acquire Slingshot config!")
+                Logger.error("Could NOT acquire Slingshot config!\nNote: Project root is ${params.workspaceFolders[0].uri}")
             }
 
             val baseDir = URI(params.workspaceFolders[0].uri).toPath()

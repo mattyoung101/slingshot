@@ -109,13 +109,13 @@ class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDo
                 return@supplyAsync EMPTY_COMPLETION
             }
 
-            Logger.warn("Recommendations: ${completion.recommendations}")
+            Logger.info("Recommendations: ${completion.recommendations}")
 
             // the CompletionSelector uses the extracted SvDocument, so we understand the document, and
             // completion recommendations so we know what types of things to send to the user. it then
             // generates actual CompletionItem instances to return to the LSP
-            val selector = CompletionGenerator(completion)
-            return@supplyAsync Either.forLeft(selector.generate().toMutableList())
+            val generator = CompletionGenerator(completion)
+            return@supplyAsync Either.forLeft(generator.generate().toMutableList())
         }
     }
 

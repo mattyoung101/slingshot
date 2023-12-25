@@ -13,5 +13,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SlingshotConfig(
     val version: String = "",
-    val globs: List<String> = listOf(),
+    val includeDirs: List<String> = listOf(),
 )
