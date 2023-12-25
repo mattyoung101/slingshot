@@ -9,12 +9,10 @@
 package slingshot.config
 
 import com.charleskorn.kaml.Yaml
-import com.charleskorn.kaml.decodeFromStream
 import org.tinylog.kotlin.Logger
 import java.net.URI
 import kotlin.io.path.exists
 import kotlin.io.path.readText
-import kotlin.io.path.reader
 import kotlin.io.path.toPath
 
 object ConfigUtils {

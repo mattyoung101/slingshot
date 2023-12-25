@@ -32,6 +32,18 @@ globs:
   - "rtl/*.svh"
 ```
 
+### Note on globbing
+It turns out that globbing, especially in Java, is pretty complicated, and so the glob system is
+probably not very stable at the moment. If you experience any issues locating files, please open
+a bug ticket with your config YAML and directory layout.
+
+Internally, if you provide a glob such as `rtl/*.sv`, it will be changed by `DiagnosticUtils` into
+`**/rtl/*.sv` to work correctly in Java. The criteria for adding this implicit `**/` is that the
+glob does NOT start with `**` already, and contains at least one slash character.
+
+There is also a hardcoded blacklist for directories that do not need searching, currently just
+`.git`. In the future this blacklist may be configurable.
+
 ## Config file version history
 ### v1.0.0
 - Initial release

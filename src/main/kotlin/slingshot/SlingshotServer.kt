@@ -14,7 +14,9 @@ import org.eclipse.lsp4j.services.*
 import org.tinylog.kotlin.Logger
 import slingshot.config.ConfigUtils
 import slingshot.config.SlingshotConfig
+import java.net.URI
 import java.util.concurrent.CompletableFuture
+import kotlin.io.path.toPath
 import kotlin.system.exitProcess
 
 /**
@@ -41,10 +43,10 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
             caps.diagnosticProvider = DiagnosticRegistrationOptions(false, false)
 
             if (params.workspaceFolders.isEmpty()) {
-                Logger.error("Client workspaceFolders is empty, won't be able to find config!")
-            } else {
-                config = ConfigUtils.loadConfigFromUriString(params.workspaceFolders[0].uri)
+                throw IllegalArgumentException("Client returned empty workspaceFolders, cannot initialise")
             }
+
+            config = ConfigUtils.loadConfigFromUriString(params.workspaceFolders[0].uri)
 
             if (config != null) {
                 Logger.info("Acquired Slingshot config:\n$config")
@@ -52,7 +54,8 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
                 Logger.error("Could NOT acquire Slingshot config!")
             }
 
-            textDocumentService.config = config
+            val baseDir = URI(params.workspaceFolders[0].uri).toPath()
+            textDocumentService.onPostInit(baseDir, config)
 
             InitializeResult(
                 caps,

@@ -9,6 +9,7 @@
 package slingshot.diagnostics
 
 import org.eclipse.lsp4j.Diagnostic
+import slingshot.config.SlingshotConfig
 import java.nio.file.Path
 import kotlin.jvm.Throws
 
@@ -22,4 +23,14 @@ interface DiagnosticProvider {
     */
     @Throws(DiagnosticException::class)
     fun diagnose(path: Path, document: String): List<Diagnostic>
+
+    /**
+     * Called when the workspace base directory is found.
+     */
+    fun updateBaseDir(path: Path)
+
+    /**
+     * Called when the config is loaded.
+     */
+    fun updateConfig(config: SlingshotConfig)
 }

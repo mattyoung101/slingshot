@@ -13,6 +13,7 @@ import org.eclipse.lsp4j.DiagnosticSeverity
 import org.eclipse.lsp4j.Position
 import org.eclipse.lsp4j.Range
 import org.tinylog.kotlin.Logger
+import slingshot.config.SlingshotConfig
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
@@ -25,12 +26,25 @@ import java.util.concurrent.TimeUnit
  * write a workaround for them using a temp file.
  */
 class VerilatorDiagnostics : DiagnosticProvider {
+    private var sourceFiles: List<Path>? = null
+    private var baseDir: Path? = null
+    private var config: SlingshotConfig? = null
+
     override fun diagnose(path: Path, document: String): List<Diagnostic> {
         val begin = System.nanoTime()
 
         if (System.getProperty("os.name").lowercase().contains("windows")) {
             throw DiagnosticException("VerilatorDiagnostics is currently not supported on Windows due to " +
              "use of /dev/stdin");
+        }
+
+        if (config == null) {
+            Logger.warn("No config provided, Verilator linting may be inaccurate!")
+        }
+
+        if (config != null && baseDir != null && sourceFiles == null) {
+            Logger.info("Attempting to update source files with base dir: $baseDir")
+            sourceFiles = DiagnosticUtils.findFilesByGlobs(baseDir!!, config!!.globs)
         }
 
         val process = ProcessBuilder(VERILATOR_ARGS)
@@ -77,6 +91,7 @@ class VerilatorDiagnostics : DiagnosticProvider {
             val msg = capture.groupValues[5]
 
             // Sometimes Verilator returns diagnostics for a file we are not in, so ignore them
+            // TODO or, report multi-file diagnostics which is possible
             if ("/dev/stdin" !in fileName) {
                 Logger.trace("Verilator diagnostic applies to unrelated file $fileName - skipping")
                 continue
@@ -104,6 +119,26 @@ class VerilatorDiagnostics : DiagnosticProvider {
         Logger.debug("Verilator took ${(System.nanoTime() - begin) / 1e+6} ms")
 
         return diagnostics
+    }
+
+    override fun updateBaseDir(path: Path) {
+        Logger.debug("Received base directory: $path")
+        this.baseDir = path
+
+        if (config != null) {
+            Logger.info("Attempting to update source files in updateBaseDir")
+            sourceFiles = DiagnosticUtils.findFilesByGlobs(path, config!!.globs)
+        } else {
+            // updateBaseDir is sometimes called before updateConfig
+            Logger.info("Config is null, can't yet update source files. Will try again later.")
+        }
+
+        Logger.debug("Source files: $sourceFiles")
+    }
+
+    override fun updateConfig(config: SlingshotConfig) {
+        Logger.debug("Received config: $config")
+        this.config = config
     }
 
     companion object {

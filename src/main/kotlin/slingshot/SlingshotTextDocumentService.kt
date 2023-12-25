@@ -35,12 +35,6 @@ class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDo
     private var client: LanguageClient? = null
     private val executor = ForkJoinPool.commonPool()
 
-    /** Called when the LSP is shutting down. May be called more than once. */
-    fun onShutdown() {
-        Logger.info("LSP shutting down")
-        // nothing at the moment, but we would flush the index
-    }
-
     /**
      * Called whenever the text document was changed. This function is assumed to _not_ be called from a
      * completable future, hence why the executor is used, so we don't block stuff running elsewhere.
@@ -149,6 +143,12 @@ class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDo
         Logger.debug("Client connected in text document service")
         Logger.debug("Common thread pool uses ${executor.parallelism} threads")
         this.client = client
+    }
+
+    fun onPostInit(path: Path, config: SlingshotConfig?) {
+        Logger.debug("Running onPostInit with baseDir: $path, config: $config")
+        if (config != null) diagnostics.updateConfig(config)
+        diagnostics.updateBaseDir(path)
     }
 
     companion object {
