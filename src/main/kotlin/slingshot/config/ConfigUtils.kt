@@ -25,10 +25,14 @@ object ConfigUtils {
         try {
             if (configYamlPath.exists()) {
                 // deserialise
-                return Yaml.default.decodeFromString(SlingshotConfig.serializer(), configYamlPath.readText())
+                val config = Yaml.default.decodeFromString(SlingshotConfig.serializer(), configYamlPath.readText())
+                ensureCompatibleVersion(config)
+                return config
             } else if (configYmlPath.exists()) {
                 // deserialise
-                return Yaml.default.decodeFromString(SlingshotConfig.serializer(), configYmlPath.readText())
+                val config = Yaml.default.decodeFromString(SlingshotConfig.serializer(), configYmlPath.readText())
+                ensureCompatibleVersion(config)
+                return config
             } else {
                 // can't find it
                 Logger.error("Cannot find Slingshot config! Tried:\n- $configYamlPath" +
@@ -39,6 +43,14 @@ object ConfigUtils {
             Logger.error("Failed to parse config YAML:\n${e.stackTraceToString().trim()}")
             Logger.error("Note: Tried either $configYamlPath or $configYmlPath")
             return null
+        }
+    }
+
+    private fun ensureCompatibleVersion(config: SlingshotConfig) {
+        // TODO use some more sophisticated logic checking for this (same major version)
+        if (config.version != CONFIG_VERSION) {
+            throw IllegalArgumentException("Your config version ${config.version} is not compatible" +
+             " with the current Slingshot server config version $CONFIG_VERSION")
         }
     }
 }

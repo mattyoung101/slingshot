@@ -32,8 +32,17 @@ enum class TokenType {
     /** A "variable": logic, wire or register */
     Variable,
 
-    /** A port in a module */
-    Port,
+    /** An input port in a module */
+    PortInput,
+
+    /** An output port in a module */
+    PortOutput,
+
+    /** An inout port in a module */
+    PortInOut,
+
+    /** A port in a module whose direction could not be determined */
+    PortUnknown,
 
     /** A`defined macro */
     Macro,
@@ -81,9 +90,19 @@ enum class CompletionTypes {
     SystemTask,
 }
 
+/** SystemVerilog port direction */
+@Serializable
+enum class PortDirection {
+    Unknown,
+    Input,
+    Output,
+    InOut,
+}
+
 /** A top level object in a SystemVerilog document */
 interface SvTopLevelObject
 
+/** Unknown object placeholder */
 class SvNull : SvTopLevelObject
 
 /** A SvToken contains the name of the token and its type */

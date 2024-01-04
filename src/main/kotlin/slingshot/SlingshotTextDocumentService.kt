@@ -189,12 +189,14 @@ class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDo
             diagnostics.updateIncludeDirs(includeDirs)
 
             // find verilog files in the resolved include dirs, parse and index them
+            // this ideally resolves files in much the same way that Verilator would
             Logger.info("Discovering and indexing SV documents in include dirs")
             for (file in DiagnosticUtils.walkIncludeDirs(includeDirs)) {
+                Logger.info("Indexing discovered document: $file")
                 parseAndIndex(file)
             }
 
-            // flush index
+            // flush project index
             indexManager.flush(baseDir)
         } else {
             Logger.warn("Config is null, can't resolve include dirs!")

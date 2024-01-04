@@ -10,8 +10,11 @@ package slingshot.config
 
 import kotlinx.serialization.Serializable
 
+/** Current Slingshot config version */
+const val CONFIG_VERSION = "1.0.0"
+
 @Serializable
 data class SlingshotConfig(
-    val version: String = "",
+    val version: String,
     val includeDirs: List<String> = listOf(),
 )

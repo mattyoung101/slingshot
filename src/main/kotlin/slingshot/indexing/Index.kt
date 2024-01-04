@@ -13,7 +13,7 @@ import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
 /** Current Slingshot index version */
-const val INDEX_VERSION = "0.1.0"
+const val INDEX_VERSION = "1.0.0"
 
 /**
  * This is the actual index that is written to disk. Note that the index, like clangd's, is per
@@ -23,7 +23,7 @@ const val INDEX_VERSION = "0.1.0"
 @Serializable
 data class Index(
     /** Version of the index file */
-    val version: String = INDEX_VERSION,
+    val version: String,
 
     // note that we are using ConcurrentHashMap because Index is accessed from multiple threads
 

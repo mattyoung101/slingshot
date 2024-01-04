@@ -54,10 +54,18 @@ data class SvDocument(
         curModule!!.variables.add(SvToken(name, TokenType.Variable, curModule!!))
     }
 
-    fun addPort(name: String) {
+    fun addPort(name: String, direction: PortDirection) {
         curModule ?: return Logger.debug("Trying to add port $name, but no module is active!")
-        Logger.debug("    Adding port: $name to module: ${curModule!!.name}")
-        curModule!!.ports.add(SvToken(name, TokenType.Port, curModule!!))
+
+        val tokenType = when(direction) {
+            PortDirection.Input -> TokenType.PortInput
+            PortDirection.InOut -> TokenType.PortInOut
+            PortDirection.Output -> TokenType.PortOutput
+            else -> TokenType.PortUnknown
+        }
+
+        Logger.debug("    Adding port: $name (direction: $tokenType, $direction) to module: ${curModule!!.name}")
+        curModule!!.ports.add(SvToken(name, tokenType, curModule!!))
     }
 
     /**
@@ -86,14 +94,6 @@ data class SvDocument(
     fun addMacro(name: String, value: String?) {
         Logger.debug("Adding macro $name with value: $value")
         macros.add(SvMacro(name, value))
-    }
-
-    /**
-     * Returns true if the given variable token has already been declared in the current module as
-     * a port.
-     */
-    fun isVarDeclaredAsPort(name: String): Boolean {
-        return curModule?.ports?.any { it.name == name && it.tokenType == TokenType.Port } ?: false
     }
 
     fun getModuleByName(name: String): SvModule {

@@ -21,10 +21,13 @@ import kotlin.io.path.writeText
 
 /**
  * This is the tool for managing the index cache of all files.
+ *
+ * Note: We use xxHash to keep track of file modifications, because the implementation is known,
+ * fast and stable, whereas Java's String hashCode() is technically not.
  */
 class IndexManager {
     /** Currently loaded index. Either empty if no index exists yet or partially filled. */
-    private val index = Index()
+    private val index = Index(INDEX_VERSION)
 
     // currently we aren't supporting saving/writing yet like in the Rust version, because it slows down
     // programming and probably won't work that well anyway
@@ -70,6 +73,13 @@ class IndexManager {
         val json = Json { allowStructuredMapKeys = true; prettyPrint = true }
         val document = json.encodeToString(Index.serializer(), index)
         output.writeText(document)
+    }
+
+    private fun ensureVersionCompatibility() {
+        if (index.version != INDEX_VERSION) {
+            throw IllegalArgumentException("On-disk index version ${index.version} is not compatible" +
+             " with server index version $INDEX_VERSION")
+        }
     }
 
     companion object {
