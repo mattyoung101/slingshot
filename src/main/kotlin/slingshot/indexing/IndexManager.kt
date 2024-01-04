@@ -8,11 +8,16 @@
 
 package slingshot.indexing
 
+import kotlinx.serialization.json.Json
 import net.jpountz.xxhash.XXHashFactory
 import org.tinylog.kotlin.Logger
 import slingshot.parsing.SvDocument
 import java.nio.ByteBuffer
 import java.nio.file.Path
+import java.nio.file.Paths
+import kotlin.io.path.absolute
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.writeText
 
 /**
  * This is the tool for managing the index cache of all files.
@@ -30,7 +35,8 @@ class IndexManager {
         // this part is mostly done for the sake of not flushing the index when serialisation was implemented,
         // and may be expensive -> TODO we should consider skipping
         val hash = HASHER.hash64().hash(ByteBuffer.wrap(document.toByteArray()), 0x1337L)
-        val existing = index.hashes[path]
+        val pathString = path.absolutePathString()
+        val existing = index.hashes[pathString]
         if (existing != null && existing == hash) {
             Logger.trace("No need to insert document at $path with hash " +
              "${java.lang.Long.toHexString(hash)}: already exists")
@@ -38,19 +44,32 @@ class IndexManager {
         }
 
         // update the index with the latest xxHash
-        index.hashes[path] = hash
+        index.hashes[pathString] = hash
         // if the document is not yet in the index, insert it. then, update the contents and clear any
         // existing document trees which would now be invalid.
-        index.documents.putIfAbsent(path, IndexEntry(document))?.apply {
+        index.documents.putIfAbsent(pathString, IndexEntry(document))?.apply {
             contents = document
             tree = null
-            completion = null
         }
         Logger.trace("(Re)inserted document $path with hash ${java.lang.Long.toHexString(hash)}")
     }
 
     fun retrieve(path: Path): IndexEntry? {
-        return index.documents[path]
+        val pathString = path.absolutePathString()
+        return index.documents[pathString]
+    }
+
+    fun flush(baseDir: Path) {
+        // FIXME this may not properly support paths with a dollar sign already in them
+        val baseDirStr = baseDir.absolutePathString().replace("/", "$").replace("\\", "$")
+        val home = System.getProperty("user.home")
+        // this is $XDG_DATA_HOME
+        val output = Paths.get(home, ".local", "share", "slingshot", "index_$baseDirStr.json")
+        Logger.info("Flushing index to path: $output")
+
+        val json = Json { allowStructuredMapKeys = true; prettyPrint = true }
+        val document = json.encodeToString(Index.serializer(), index)
+        output.writeText(document)
     }
 
     companion object {

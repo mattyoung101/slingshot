@@ -11,14 +11,14 @@ package slingshot.config
 import com.charleskorn.kaml.Yaml
 import org.tinylog.kotlin.Logger
 import java.net.URI
+import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.toPath
 
 object ConfigUtils {
     /** Tries to load and deserialise a Slingshot config from the project root directory. */
-    fun loadConfigFromUriString(uriString: String): SlingshotConfig? {
-        val path = URI(uriString).toPath()
+    fun loadConfigFromPath(path: Path): SlingshotConfig? {
         val configYamlPath = path.resolve(".slingshot.yaml")
         val configYmlPath = path.resolve(".slingshot.yml")
 

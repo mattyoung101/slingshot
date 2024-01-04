@@ -8,8 +8,8 @@
 
 package slingshot.parsing
 
+import kotlinx.serialization.Serializable
 import org.tinylog.kotlin.Logger
-import slingshot.completion.CompletionException
 
 
 /**
@@ -17,6 +17,7 @@ import slingshot.completion.CompletionException
  * simplified internal representation of an SV document for completion and indexing purposes. For
  * more information, see docs/index_design.md which covers this as well.
  */
+@Serializable
 data class SvDocument(
     val modules: MutableSet<SvModule> = mutableSetOf(),
     val enums: MutableSet<SvEnum> = mutableSetOf(),
@@ -32,7 +33,7 @@ data class SvDocument(
      * existing module.
      */
     fun newModule(name: String) {
-        if (curEnum != null) return Logger.warn("Cannot start a new module when an enum is active!")
+        if (curEnum != null) return Logger.warn("Cannot start a new module '$name' when an enum is active!")
         finishModule()
         Logger.debug("Starting new module: $name")
         curModule = SvModule(name, mutableSetOf(), mutableSetOf(), this)
@@ -63,7 +64,7 @@ data class SvDocument(
      * Starts a new enum in the document if one is not currently started, otherwise, ends the existing enum.
      */
     fun newEnum(name: String) {
-        if (curModule != null) return Logger.warn("Cannot start new enum when a module is active!")
+        if (curModule != null) return Logger.warn("Cannot start new enum '$name' when a module is active!")
         finishEnum()
         Logger.debug("Starting new enum: $name")
         curEnum = SvEnum(name, mutableSetOf(), this)

@@ -25,12 +25,7 @@ interface DiagnosticProvider {
     fun diagnose(path: Path, document: String): List<Diagnostic>
 
     /**
-     * Called when the workspace base directory is found.
+     * Called when a new list of include directories is determined.
      */
-    fun updateBaseDir(path: Path)
-
-    /**
-     * Called when the config is loaded.
-     */
-    fun updateConfig(config: SlingshotConfig)
+    fun updateIncludeDirs(includeDirs: List<Path>)
 }

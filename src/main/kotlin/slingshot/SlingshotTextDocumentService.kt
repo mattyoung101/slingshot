@@ -18,6 +18,7 @@ import slingshot.completion.*
 import slingshot.config.SlingshotConfig
 import slingshot.diagnostics.DiagnosticException
 import slingshot.diagnostics.DiagnosticProvider
+import slingshot.diagnostics.DiagnosticUtils
 import slingshot.diagnostics.VerilatorDiagnostics
 import slingshot.indexing.IndexManager
 import slingshot.parsing.CompletionTypes
@@ -26,6 +27,8 @@ import java.net.URI
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ForkJoinPool
+import kotlin.io.path.exists
+import kotlin.io.path.readText
 import kotlin.io.path.toPath
 
 class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDocumentService, LanguageClientAware {
@@ -79,20 +82,20 @@ class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDo
             }
 
             // parse the text document to produce a tree, if we don't already have one on file
-            if (entry.tree == null || entry.completion == null) {
+            var result: CompletionResult? = null
+            if (entry.tree == null) {
                 Logger.debug("Parsing document $path")
                 try {
                     // we need to both generate our abstract "document tree", so we know what things to return
                     // to the user, AND completion information so we know _what_ from the document tree to
                     // recommend.
                     // this function returns both those things
-                    val result = completion.parseDocument(entry.contents, position.position.line,
+                    result = completion.parseDocument(entry.contents, position.position.line,
                         position.position.character)
 
                     // this is stored for the sake of full project indexing and serialisation in the future
                     // if we don't end up doing that, it can probably be removed
                     entry.tree = result.document
-                    entry.completion = result
                 } catch (e: CompletionException) {
                     Logger.warn("Completion failed for $path:")
                     Logger.warn(e)
@@ -103,7 +106,7 @@ class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDo
                 Logger.debug("Document $path already has parse tree and completion")
             }
 
-            val completion = entry.completion!!
+            val completion = result!!
             if (completion.recommendations.size == 1 && completion.recommendations[0] == CompletionTypes.None) {
                 Logger.warn("No completion recommendations available for $path, cannot run completion")
                 return@supplyAsync EMPTY_COMPLETION
@@ -145,10 +148,57 @@ class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDo
         this.client = client
     }
 
-    fun onPostInit(path: Path, config: SlingshotConfig?) {
-        Logger.debug("Running onPostInit with baseDir: $path, config: $config")
-        if (config != null) diagnostics.updateConfig(config)
-        diagnostics.updateBaseDir(path)
+    private fun parseAndIndex(path: Path) {
+        Logger.debug("Parsing and indexing file: $path")
+
+        // we'll just read the file contents from disk, assume user is not editing it rn
+        val text = path.readText()
+        // we're required to specify a position in the document for the "cursor", but we are not
+        // editing this document - so let's just say 0,0. we only care about the SvDocument anyway.
+        val result = completion.parseDocument(text, 0, 0)
+
+        // insert the document into the index
+        // TODO make a method to insert the document and tree at the same time
+        indexManager.insert(path, text)
+        indexManager.retrieve(path)!!.tree = result.document
+    }
+
+    /**
+     * Must be called by [SlingshotServer] after it has been connected to an LSP client, determined
+     * the project base directory and loaded the config if possible.
+     */
+    fun onPostInit(baseDir: Path, config: SlingshotConfig?) {
+        Logger.debug("Running onPostInit with baseDir: $baseDir, config: $config")
+
+        // resolve include dirs against base directory
+        if (config != null) {
+            val includeDirs = mutableListOf<Path>()
+
+            for (dir in config.includeDirs) {
+                val includeDir = baseDir.resolve(dir)
+                if (!includeDir.exists()) {
+                    Logger.warn("Specified include dir '$dir' does not exist! Resolved " +
+                     "to '$includeDir' against base dir $baseDir")
+                     continue
+                }
+                includeDirs.add(includeDir)
+            }
+            Logger.info("Resolved include dirs: $includeDirs")
+
+            // forward to diagnostics
+            diagnostics.updateIncludeDirs(includeDirs)
+
+            // find verilog files in the resolved include dirs, parse and index them
+            Logger.info("Discovering and indexing SV documents in include dirs")
+            for (file in DiagnosticUtils.walkIncludeDirs(includeDirs)) {
+                parseAndIndex(file)
+            }
+
+            // flush index
+            indexManager.flush(baseDir)
+        } else {
+            Logger.warn("Config is null, can't resolve include dirs!")
+        }
     }
 
     companion object {

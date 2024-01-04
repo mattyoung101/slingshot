@@ -25,7 +25,6 @@ import slingshot.utils.TreeUtils
  * This is the best completion provider for Slingshot.
  */
 class ANTLRCompletion : CompletionProvider {
-
     private fun parseDocument(document: String): Pair<SvDocument, Source_textContext>  {
         Logger.debug("Parsing SV document")
         val lexer = SystemVerilogLexer(CharStreams.fromString(document))

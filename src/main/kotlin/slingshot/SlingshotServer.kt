@@ -45,16 +45,17 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
             if (params.workspaceFolders.isEmpty()) {
                 throw IllegalArgumentException("Client returned empty workspaceFolders, cannot initialise")
             }
+            val baseDir = URI(params.workspaceFolders[0].uri).toPath()
 
-            config = ConfigUtils.loadConfigFromUriString(params.workspaceFolders[0].uri)
-
+            // attempt to load config
+            config = ConfigUtils.loadConfigFromPath(baseDir)
             if (config != null) {
                 Logger.info("Acquired Slingshot config:\n$config")
             } else {
                 Logger.error("Could NOT acquire Slingshot config!\nNote: Project root is ${params.workspaceFolders[0].uri}")
             }
 
-            val baseDir = URI(params.workspaceFolders[0].uri).toPath()
+            // apply post init actions to diagnostics
             textDocumentService.onPostInit(baseDir, config)
 
             InitializeResult(

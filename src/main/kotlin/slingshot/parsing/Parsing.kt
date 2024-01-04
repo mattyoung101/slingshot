@@ -8,7 +8,11 @@
 
 package slingshot.parsing
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
+
 /** SystemVerilog token type */
+@Serializable
 enum class TokenType {
     /** A token type that does not matter to us for completion */
     NotInterested,
@@ -39,6 +43,7 @@ enum class TokenType {
 }
 
 /** Types of completions we can recommend to the user */
+@Serializable
 enum class CompletionTypes {
     None,
 
@@ -79,8 +84,15 @@ enum class CompletionTypes {
 /** A top level object in a SystemVerilog document */
 interface SvTopLevelObject
 
+class SvNull : SvTopLevelObject
+
 /** A SvToken contains the name of the token and its type */
-data class SvToken(val name: String, val tokenType: TokenType, val parent: SvTopLevelObject) {
+@Serializable
+data class SvToken(
+    val name: String,
+    val tokenType: TokenType,
+    @Transient val parent: SvTopLevelObject = SvNull()
+) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -102,8 +114,13 @@ data class SvToken(val name: String, val tokenType: TokenType, val parent: SvTop
  * @param variables private logic, wire, etc, tokens to this module
  * @param parent owner document
  */
-data class SvModule(val name: String, val ports: MutableSet<SvToken>, val variables: MutableSet<SvToken>,
-val parent: SvDocument): SvTopLevelObject {
+@Serializable
+data class SvModule(
+    val name: String,
+    val ports: MutableSet<SvToken>,
+    val variables: MutableSet<SvToken>,
+    @Transient val parent: SvDocument = SvDocument()
+) : SvTopLevelObject {
     /**
      * Locates a port in this module by a partial string. This is used for auto-complete. Currently
      * this uses a naive slow algorithm but could be made more optimal in future.
@@ -112,7 +129,7 @@ val parent: SvDocument): SvTopLevelObject {
         return ports.firstOrNull { it.name.contains(port) }
     }
 
-    fun findVar(variable: String): SvToken ? {
+    fun findVar(variable: String): SvToken? {
         return variables.firstOrNull { it.name.contains(variable) }
     }
 
@@ -138,7 +155,12 @@ val parent: SvDocument): SvTopLevelObject {
 }
 
 /** A SystemVerilog enum */
-data class SvEnum(val name: String, val enumValues: MutableSet<SvToken>, val parent: SvDocument): SvTopLevelObject {
+@Serializable
+data class SvEnum(
+    val name: String,
+    val enumValues: MutableSet<SvToken>,
+    @Transient val parent: SvDocument = SvDocument()
+) : SvTopLevelObject {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -159,6 +181,7 @@ data class SvEnum(val name: String, val enumValues: MutableSet<SvToken>, val par
 }
 
 /** A SystemVerilog `define macro, with an optional value */
+@Serializable
 data class SvMacro(val name: String, val value: String?) : SvTopLevelObject {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

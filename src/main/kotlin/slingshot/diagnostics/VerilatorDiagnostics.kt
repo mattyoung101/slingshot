@@ -30,8 +30,6 @@ import kotlin.io.path.exists
  */
 class VerilatorDiagnostics : DiagnosticProvider {
     private var includeDirs: List<String>? = null
-    private var baseDir: Path? = null
-    private var config: SlingshotConfig? = null
 
     override fun diagnose(path: Path, document: String): List<Diagnostic> {
         val begin = System.nanoTime()
@@ -39,15 +37,6 @@ class VerilatorDiagnostics : DiagnosticProvider {
         if (System.getProperty("os.name").lowercase().contains("windows")) {
             throw DiagnosticException("VerilatorDiagnostics is currently not supported on Windows due to " +
              "use of /dev/stdin");
-        }
-
-        if (config == null) {
-            Logger.warn("No config provided, Verilator linting may be inaccurate!")
-        }
-
-        // if include dirs was null, but we have config and base dir, we can try update them
-        if (config != null && baseDir != null && includeDirs == null) {
-            updateIncludeDirs()
         }
 
         val cmdline = constructVerilatorInvocation()
@@ -127,30 +116,6 @@ class VerilatorDiagnostics : DiagnosticProvider {
         return diagnostics
     }
 
-    /** Attempts to update [includeDirs] assuming [baseDir] and [config] are NOT null. */
-    private fun updateIncludeDirs() {
-        Logger.info("Attempting to update include dirs")
-        includeDirs = buildVerilatorIncludeDirs(baseDir!!, config!!.includeDirs)
-        Logger.info("Include dirs: $includeDirs")
-    }
-
-    override fun updateBaseDir(path: Path) {
-        Logger.debug("Received base directory: $path")
-        this.baseDir = path
-
-        if (config != null) {
-            updateIncludeDirs()
-        } else {
-            // updateBaseDir is sometimes called before updateConfig
-            Logger.info("Config is null, can't yet update source files. Will try again later.")
-        }
-    }
-
-    override fun updateConfig(config: SlingshotConfig) {
-        Logger.debug("Received config: $config")
-        this.config = config
-    }
-
     /** Constructs a Verilator invocation command line accounting for [includeDirs] */
     private fun constructVerilatorInvocation(): List<String> {
         val placeholderIdx = VERILATOR_ARGS.indexOf("INCLUDE_DIRS_PLACEHOLDER")
@@ -172,24 +137,16 @@ class VerilatorDiagnostics : DiagnosticProvider {
         return args
     }
 
-    /**
-     * Builds a list of Verilator -I<dir> arguments for include directories.
-     * @param baseDir project base dir
-     * @param includeDirs list of directories from config, relative to [baseDir] to include
-     * @return list of -I<dir> arguments for Verilator
-     */
-    private fun buildVerilatorIncludeDirs(baseDir: Path, includeDirs: List<String>): List<String> {
-        val out = mutableListOf<String>()
+    override fun updateIncludeDirs(includeDirs: List<Path>) {
+        Logger.info("Updating include dirs: $includeDirs")
 
+        val newDirs = mutableListOf<String>()
         for (dir in includeDirs) {
-            val includeDir = baseDir.resolve(dir)
-            if (!includeDir.exists()) {
-                Logger.warn("Specified include dir: $includeDir ($dir relative to $baseDir) does not exist!")
-                continue
-            }
-            out.add("-I${includeDir.absolutePathString()}")
+            newDirs.add("-I${dir.absolutePathString()}")
         }
-        return out
+        this.includeDirs = newDirs
+
+        Logger.info("Verilator include dirs: ${this.includeDirs}")
     }
 
     companion object {
