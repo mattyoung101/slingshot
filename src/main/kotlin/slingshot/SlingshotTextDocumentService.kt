@@ -117,7 +117,7 @@ class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDo
             // the CompletionSelector uses the extracted SvDocument, so we understand the document, and
             // completion recommendations so we know what types of things to send to the user. it then
             // generates actual CompletionItem instances to return to the LSP
-            val generator = CompletionGenerator(completion)
+            val generator = CompletionGenerator(completion, indexManager)
             return@supplyAsync Either.forLeft(generator.generate().toMutableList())
         }
     }

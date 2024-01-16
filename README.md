@@ -11,8 +11,9 @@ a pretty ambitious goal that I may not actually be able to achieve, but here's t
 
 ### Current state
 Slingshot is almost stable, but still a work in progress. Right now, it is capable of providing
-Verilator linting and some completion. I'm working on adding more completion items and stabilising the
-server. It's probably useful in _very simple_ SystemVerilog projects right now - feel free to give it a spin!
+Verilator linting and a fair amount of completion, including multi-file completion. I'm 
+working on adding more completion items and stabilising the server. It's probably useful in 
+moderately complicated SystemVerilog projects right now - feel free to give it a spin!
 
 The big feature that remains to be implemented is multi-file support, so you can reference modules in other
 files. Currently, Slingshot does not understand this, but works pretty well for single files.
@@ -41,6 +42,12 @@ features.
   - Completion for "variables" (logic, wire, etc) and ports in the current module
   - Completion for various keywords, e.g. `always_ff`, `always_comb`, `posedge` (snippet support to auto-complete the entire block TBA)
   - Completion for macros
+- Cross-file completion
+  - Slingshot can complete modules, enums and macros declared in other files
+- Simple configuration
+  - Slingshot is configured through a simple `.slingshot.yaml` file declared in the project's root
+  directory
+  - This format is documented in [docs/config.md](docs/config.md)
 
 ## Building and running
 ### Building and environment
@@ -86,13 +93,12 @@ end
 lspconfig.slingshot.setup{}
 ```
 
+This is the setup I use for development as well.
+
 **Important:** Please read [docs/config.md](docs/config.md) for instructions on how to create a
 `.slingshot.yaml` file to configure the server. This is mandatory for multi-file (read: most) projects.
 
-This is the setup I use for development as well.
-
 ### Troubleshooting
-
 Slingshot issues can be diagnosed by reading the log file. This is located in 
 `~/.local/share/slingshot/slingshot.$PID.log`, where `$PID` is the Slingshot process ID. You can
 just read the most recent log file. Currently, the 5 most recent log files are retained in that
@@ -101,7 +107,7 @@ directory. The `lnav` tool is very useful for reading Slingshot log files.
 If Verilator syntax checking is not working, please make sure Verilator is installed and is in your
 $PATH. The log file will also contain the exact cause of why the Verilator didn't work.
 
-If there are errors about missing includes or not being able to find certainn files, please make
+If there are errors about missing includes or not being able to find certain files, please make
 sure you have read [docs/config.md](docs/config.md) and created your `.slingshot.yaml` file. Then,
 read the log to make sure that Slingshot has the correct root directory. The best way to ensure this
 is invoking Neovim by typing `nvim .` in the project's root directory - don't edit individual files.
@@ -109,7 +115,7 @@ is invoking Neovim by typing `nvim .` in the project's root directory - don't ed
 If the above steps do not resolve your issue, please open a bug ticket in the GitHub issue tracker.
 You must include your log file, detailed description of the issue, and also a SystemVerilog code
 example if possible. As my time is extremely limited, I may not be able to respond to or 
-fix most bug tickets. Pull requests are welcome as well, but may take some time to review.
+fix bug tickets. Pull requests are welcome as well, but may take some time to review.
 
 ## Design goals
 See [docs/design_goals.md](docs/design_goals.md)

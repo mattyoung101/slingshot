@@ -23,7 +23,7 @@ import kotlin.io.path.writeText
  * This is the tool for managing the index cache of all files.
  *
  * Note: We use xxHash to keep track of file modifications, because the implementation is known,
- * fast and stable, whereas Java's String hashCode() is technically not.
+ * fast and stable, whereas Java's String hashCode() is technically not stable across JVM versions.
  */
 class IndexManager {
     /** Currently loaded index. Either empty if no index exists yet or partially filled. */
@@ -34,6 +34,11 @@ class IndexManager {
     // just reindex the project on startup
     // TODO support full project indexing in future with cache saving to disk
 
+    /**
+     * Inserts a document with the specified absolute path [path] and contents [document].
+     * The document hash is computed using xxHash64, if the document is already in the index,
+     * it will not be inserted.
+     */
     fun insert(path: Path, document: String) {
         // this part is mostly done for the sake of not flushing the index when serialisation was implemented,
         // and may be expensive -> TODO we should consider skipping
@@ -57,11 +62,19 @@ class IndexManager {
         Logger.trace("(Re)inserted document $path with hash ${java.lang.Long.toHexString(hash)}")
     }
 
+    /**
+     * Attempts to retrieve a document from the index.
+     */
     fun retrieve(path: Path): IndexEntry? {
         val pathString = path.absolutePathString()
         return index.documents[pathString]
     }
 
+    /**
+     * Serialises the index to disk as JSON. The [baseDir] is the project base directory.
+     * The serialised index is written to $XDG_DATA_HOME/slingshot/index_(basedir).json, where
+     * (basedir) is the base directory with / replaced with $.
+     */
     fun flush(baseDir: Path) {
         // FIXME this may not properly support paths with a dollar sign already in them
         val baseDirStr = baseDir.absolutePathString().replace("/", "$").replace("\\", "$")
@@ -80,6 +93,13 @@ class IndexManager {
             throw IllegalArgumentException("On-disk index version ${index.version} is not compatible" +
              " with server index version $INDEX_VERSION")
         }
+    }
+
+    /**
+     * Returns a list of all documents in the index.
+     */
+    fun getAllDocuments(): List<SvDocument> {
+        return index.documents.map { it.value.tree }.filterNotNull()
     }
 
     companion object {

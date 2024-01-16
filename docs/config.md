@@ -21,6 +21,7 @@ version: "1.0.0"
 # multi-file projects, so it's very important that this is correct and kept up to date.
 includeDirs:
   - "rtl"
+  # ... any other RTL source directories here ...
 ```
 
 If Slingshot is not behaving correctly, see the troubleshooting steps in the main README. I expect
