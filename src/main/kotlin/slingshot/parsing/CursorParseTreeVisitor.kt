@@ -74,6 +74,7 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
             recommend(CompletionTypes.Logic)
             recommend(CompletionTypes.Always)
             recommend(CompletionTypes.SystemTask)
+            recommend(CompletionTypes.Case)
         }
     }
 
@@ -106,6 +107,7 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
         start(ctx) {
             recommendVariableTypes()
             recommend(CompletionTypes.SystemTask)
+            recommend(CompletionTypes.Case)
         }
     }
 
@@ -118,6 +120,7 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
             recommend(CompletionTypes.Macro)
             recommend(CompletionTypes.Logic)
             recommend(CompletionTypes.SystemTask)
+            recommend(CompletionTypes.Case)
         }
     }
 

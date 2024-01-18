@@ -86,6 +86,12 @@ enum class CompletionTypes {
     /** Always blocks: `always_ff`, `always_comb`, `always_latch` */
     Always,
 
+    /** A case, casex, casez or unique case */
+    Case,
+
+    /** An `if` */
+    If,
+
     /** An SV system task, e.g. $display, $error, etc */
     SystemTask,
 }

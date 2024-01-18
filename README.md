@@ -1,59 +1,50 @@
 # Slingshot - SystemVerilog LSP
-**Slingshot** is a **work in progress** language server for the **SystemVerilog** hardware description language.
-It also partially supports **Verilog**.
+**Slingshot** is a language server for the **SystemVerilog** hardware description language, with
+a focus on accurate multi-file completion. The overarching goal is to make SystemVerilog 
+as intuitive to edit as C++ or Python.
 
-Slingshot is written in Kotlin and runs on a Java 17 compliant JVM or higher.
+Compared to other SV LSPs, the main feature that Slingshot brings to the table is a powerful completion 
+system, backed by ANTLR, that supports multi-file projects through automatic indexing. Slingshot also
+supports instant linting, backed by Verilator.
 
-Although there are a few existing LSPs for SystemVerilog, I decided to create Slingshot specifically with a
-focus on completion, which some existing SV LSPs are lacking. Slingshot's goal is to create the ultimate 
-SystemVerilog LSP, with all the features you know and love from mature LSPs like clangd and pyright. This is
-a pretty ambitious goal that I may not actually be able to achieve, but here's to trying!
+Slingshot is written in Kotlin and runs on a Java 17 JVM or higher.
 
-### Current state
-Slingshot is almost stable, but still a work in progress. Right now, it is capable of providing
-Verilator linting and a fair amount of completion, including multi-file completion. I'm 
-working on adding more completion items and stabilising the server. It's probably useful in 
-moderately complicated SystemVerilog projects right now - feel free to give it a spin!
-
-The big feature that remains to be implemented is multi-file support, so you can reference modules in other
-files. Currently, Slingshot does not understand this, but works pretty well for single files.
-
-### Timeline 
-Slingshot is currently in active use by myself while working on my thesis project, which is
-implemented entirely in SystemVerilog. So, rest assured, over the 1.5 years or so it *should* receive constant
-improvements and updates.
-
-During the university semester, my time is extremely limited, and I'm not really able to work on this program.
-I have more time to work on it over the holidays and whenever my workload is light. All in all, I am hoping to 
-get Slingshot fully functional by no later than June 2024, so I can use it to develop my thesis.
-
-**Author:** Matt Young (m.young2@uqconnect.edu.au)
-
-## Currently implemented features
-This is the list of _currently_ implemented features. See below for the full list of design goals and planned
-features.
-
+## Features
 - Diagnostics (powered by Verilator)
-  - Fully in-memory, does not write any temp files to reduce disk thrashing
+  - Fully in-memory, does not write any temporary files to disk
 - Completion (powered by ANTLR)
   - Context-sensitive completion based on cursor's position in the ANTLR parse tree 
   - Slingshot is aware of both line and block comments, and does not suggest completions when you are inside
     a comment
   - Completion for "variables" (logic, wire, etc) and ports in the current module
-  - Completion for various keywords, e.g. `always_ff`, `always_comb`, `posedge` (snippet support to auto-complete the entire block TBA)
+  - Completion for language keywords, e.g. `always_ff`, `always_comb`, `posedge`
+  - Snippets for various blocks, e.g. `always_ff`, `always_comb`, `case`, `if`
   - Completion for macros
 - Cross-file completion
   - Slingshot can complete modules, enums and macros declared in other files
+  - Every include path specified in the config file is searched and indexed automatically
 - Simple configuration
   - Slingshot is configured through a simple `.slingshot.yaml` file declared in the project's root
   directory
   - This format is documented in [docs/config.md](docs/config.md)
+  
+Future features are planned on the [issue tracker](https://github.com/mattyoung101/slingshot/issues).
+
+### Current state
+Slingshot is very close to a 1.0.0 release, with a few remaining tasks to do. I'm
+working on adding more completion items and testing the server on larger projects. It's probably useful in
+moderately complicated SystemVerilog projects right now - feel free to give it a spin and report
+any issues you encounter!
+
+### Timeline
+Slingshot is being actively developed for my processor design thesis project (expected to start midway
+through 2024). My aim is to get a 1.0.0 release out before the start of the thesis, and then provide
+light maintenance and improvements over the next 1 year while I complete my thesis.
 
 ## Building and running
 ### Building and environment
-
 **Important:** Slingshot currently only runs on Linux and other *nix systems. Windows is not 
-currently supported, and no support is currently planned.
+supported, and no support is currently planned (unless specifically requested).
 
 You need Java 17 or higher. 
 
@@ -63,8 +54,9 @@ Because the SystemVerilog generated parser is so massive, you will need to modif
 size to be larger. Go to Help -> Edit Custom Properties and insert `idea.max.intellisense.filesize=999999`.
 Then, restart the IDE.
 
-### Running
+You also need to download and install Verilator using your system's package manager.
 
+### Running
 Currently, I have only tested Slingshot in Neovim.
 
 When Slingshot is a more capable LSP, it will (hopefully) be available in upstream LSP projects like
@@ -124,4 +116,8 @@ See [docs/design_goals.md](docs/design_goals.md)
 See [docs/impl_details.md](docs/impl_details.md)
 
 ## Licence
-Mozilla Public License v2.0
+Copyright (c) 2023, 2024 Matt Young. Available under the Mozilla Public License v2.0
+
+> This Source Code Form is subject to the terms of the Mozilla Public
+> License, v. 2.0. If a copy of the MPL was not distributed with this
+> file, You can obtain one at https://mozilla.org/MPL/2.0/.

@@ -84,6 +84,19 @@ class CompletionGenerator(private val completion: CompletionResult, private val 
         return listOf(alwaysComb, alwaysFf, alwaysLatch)
     }
 
+    private fun generateCase(): List<CompletionItem> {
+        val out = mutableListOf<CompletionItem>()
+        for (case in listOf("case", "casex", "casez", "unique case")) {
+            val completion = CompletionItem(case).apply {
+                insertText = "$case ($0) begin\n    default: /* todo */ \nendcase"
+                kind = CompletionItemKind.Snippet
+                insertTextFormat = InsertTextFormat.Snippet
+            }
+            out.add(completion)
+        }
+        return out
+    }
+
     /** Recommends the name of an enum */
     private fun generateEnum(): List<CompletionItem> {
         return documents.flatMap { it.enums }.map {
@@ -128,6 +141,7 @@ class CompletionGenerator(private val completion: CompletionResult, private val 
                 CompletionTypes.Always -> out.addAll(generateAlways())
                 CompletionTypes.Macro -> out.addAll(generateMacros())
                 CompletionTypes.SystemTask -> out.addAll(generateSystemTasks())
+                CompletionTypes.Case -> out.addAll(generateCase())
                 else -> Logger.warn("Unhandled recommendation type: $rec")
             }
         }
