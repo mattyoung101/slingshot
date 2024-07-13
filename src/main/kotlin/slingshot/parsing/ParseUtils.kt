@@ -94,4 +94,21 @@ object ParseUtils {
 
         return pos in firstQuote..lastQuote
     }
+
+    /**
+     * Strips problematic macros (ifdef, ifndef, endif) by inserting comments
+     * FIXME this is a hack and it sucks
+     */
+    fun stripProblematicMacros(document: String): String {
+        return document.lines().joinToString("\n") {
+            if (it.trim().startsWith("`ifdef", true)
+                || it.trim().startsWith("`ifndef", true)
+                || it.trim().startsWith("`endif", true)
+            ) {
+                "// Slingshot removed problematic SV macro: $it"
+            } else {
+                it
+            }
+        }
+    }
 }

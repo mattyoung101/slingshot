@@ -27,7 +27,9 @@ import slingshot.utils.TreeUtils
 class ANTLRCompletion : CompletionProvider {
     private fun parseDocument(document: String): Pair<SvDocument, Source_textContext>  {
         Logger.debug("Parsing SV document")
-        val lexer = SystemVerilogLexer(CharStreams.fromString(document))
+
+        // remove problematic macros
+        val lexer = SystemVerilogLexer(CharStreams.fromString(ParseUtils.stripProblematicMacros(document)))
         lexer.removeErrorListeners()
         lexer.addErrorListener(LogErrorListener)
         val tokens = CommonTokenStream(lexer)
@@ -48,6 +50,7 @@ class ANTLRCompletion : CompletionProvider {
 
     private fun updateWithPreprocessor(document: String, svDocument: SvDocument) {
         Logger.debug("Parsing SV document with pre-processor")
+        // FIXME shouldn't we share macroLexer from this function and lexer from parseDocument?
         val macroLexer = SystemVerilogLexer(CharStreams.fromString(document))
 
         // change to directive channel: https://stackoverflow.com/a/18636296/5007892
