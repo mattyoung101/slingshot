@@ -40,7 +40,7 @@ class SlingshotServer : LanguageServer, LanguageClientAware {
                 TRIGGER_CHARACTERS
             )
             // we only provide per-file diagnostics at the moment, and not for the whole "workspace"
-            caps.diagnosticProvider = DiagnosticRegistrationOptions(false, false)
+            //caps.diagnosticProvider = DiagnosticRegistrationOptions(false, false)
 
             if (params.workspaceFolders.isEmpty()) {
                 throw IllegalArgumentException("Client returned empty workspaceFolders, cannot initialise")
