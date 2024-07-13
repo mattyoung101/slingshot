@@ -31,7 +31,7 @@ dependencies {
     implementation 'org.tinylog:tinylog-api-kotlin:2.7.0'
     implementation 'org.tinylog:tinylog-impl:2.7.0'
     implementation 'org.lz4:lz4-java:1.8.0' // this is just for xxHash
-    implementation "com.charleskorn.kaml:kaml:0.57.0"
+    implementation "com.charleskorn.kaml:kaml:0.59.0"
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3"
 }
 
