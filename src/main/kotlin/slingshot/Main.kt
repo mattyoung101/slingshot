@@ -12,6 +12,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode
 import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageClient
+import org.tinylog.jul.JulTinylogBridge
 import org.tinylog.kotlin.Logger
 import kotlin.system.exitProcess
 
@@ -20,6 +21,7 @@ const val SLINGSHOT_VERSION = "0.1.0"
 
 fun main(args: Array<String>) {
     System.setProperty("tinylog.configuration", "tinylog.properties")
+    JulTinylogBridge.activate()
     Logger.info("Slingshot LSP v${SLINGSHOT_VERSION} - Copyright (c) 2023 Matt Young. Mozilla Public License v2.0.")
 
     Thread.setDefaultUncaughtExceptionHandler { t, e ->

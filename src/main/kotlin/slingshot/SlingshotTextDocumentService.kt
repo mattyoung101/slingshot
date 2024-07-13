@@ -43,6 +43,8 @@ class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDo
      * completable future, hence why the executor is used, so we don't block stuff running elsewhere.
      */
     private fun changed(path: Path, document: String) {
+        Logger.trace("Document $path changed")
+
         // store document in index when it's changed
         executor.submit { indexManager.insert(path, document) }
 
