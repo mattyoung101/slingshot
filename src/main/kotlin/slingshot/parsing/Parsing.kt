@@ -109,6 +109,7 @@ enum class PortDirection {
 interface SvTopLevelObject
 
 /** Unknown object placeholder */
+@Serializable
 class SvNull : SvTopLevelObject
 
 /** A SvToken contains the name of the token and its type */

@@ -139,9 +139,10 @@ class SlingshotTextDocumentService(var config: SlingshotConfig? = null) : TextDo
     override fun didClose(params: DidCloseTextDocumentParams) {}
 
     override fun didSave(params: DidSaveTextDocumentParams) {
-        val uri = URI(params.textDocument.uri).toPath()
-        val document = params.text
-        changed(uri, document)
+        // server does not typically provide params.text, so don't bother with this
+//        val uri = URI(params.textDocument.uri).toPath()
+//        val document = params.text
+//        changed(uri, document)
     }
 
     override fun connect(client: LanguageClient) {

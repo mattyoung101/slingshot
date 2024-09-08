@@ -36,15 +36,20 @@ class SvParseTreeVisitor : SystemVerilogParserBaseListener() {
             "Unable to determine name for port declaration: ${ctx?.text}"
         )
 
-        val direction = if (ctx.port_direction().OUTPUT() != null) {
-            PortDirection.Output
-        } else if (ctx.port_direction().INPUT() != null) {
-            PortDirection.Input
-        } else if (ctx.port_direction().INOUT() != null) {
-            PortDirection.InOut
-        } else {
+        val direction = if (ctx.port_direction() == null) {
             Logger.warn("Unable to determine port direction for: '${ctx.text}'")
             PortDirection.Unknown
+        } else {
+            if (ctx.port_direction().OUTPUT() != null) {
+                PortDirection.Output
+            } else if (ctx.port_direction().INPUT() != null) {
+                PortDirection.Input
+            } else if (ctx.port_direction().INOUT() != null) {
+                PortDirection.InOut
+            } else {
+                Logger.warn("Unable to determine port direction for: '${ctx.text}'")
+                PortDirection.Unknown
+            }
         }
 
         document.addPort(name, direction)

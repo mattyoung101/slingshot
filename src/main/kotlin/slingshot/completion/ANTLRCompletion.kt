@@ -18,7 +18,7 @@ import slingshot.parser.SystemVerilogParser
 import slingshot.parser.SystemVerilogParser.Source_textContext
 import slingshot.parser.SystemVerilogPreParser
 import slingshot.parsing.*
-import slingshot.utils.TreeUtils
+import slingshot.parsing.TreeUtils
 
 /**
  * Completion provider that uses an ANTLR 4 grammar to generate an [SvDocument].
@@ -29,6 +29,7 @@ class ANTLRCompletion : CompletionProvider {
         Logger.debug("Parsing SV document")
 
         // remove problematic macros
+        // FIXME don't do this and deal with ANTLR modes correctly
         val lexer = SystemVerilogLexer(CharStreams.fromString(ParseUtils.stripProblematicMacros(document)))
         lexer.removeErrorListeners()
         lexer.addErrorListener(LogErrorListener)
@@ -39,6 +40,11 @@ class ANTLRCompletion : CompletionProvider {
         parser.addErrorListener(LogErrorListener)
 
         val tree = parser.source_text()
+
+//        Logger.trace("Parse tree:\n${
+//            TreeUtils.toPrettyTree(tree,
+//            SystemVerilogParser.ruleNames.toList()
+//        )}")
 
         // construct the SvDocument
         val documentVisitor = SvParseTreeVisitor()

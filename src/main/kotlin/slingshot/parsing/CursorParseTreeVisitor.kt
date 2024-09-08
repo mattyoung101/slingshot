@@ -32,8 +32,8 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
      * parse item. If it is, then the code in the block will be executed
      */
     private fun start(ctx: ParserRuleContext, block: () -> Unit) {
-        val start = ctx.start.toPosition()
-        val end = ctx.stop.toPosition()
+        val start = ctx.getStart().toPosition()
+        val end = ctx.getStop().toPosition()
         Logger.debug("Rule ${ctx.javaClass.simpleName}, start: ${start.toShortString()}, end: ${end.toShortString()}, cursor: ${cursor.toShortString()}")
 
         if (cursor.containedIn(start, end)) {
@@ -133,9 +133,28 @@ class CursorParseTreeVisitor(private val cursor: Position) : SystemVerilogParser
 
     // do not generate any recommendations inside a string
     // FIXME the range on this is not working???
+    //  this has been replaced with ParseUtils.isInQuotes but we should try and fix this
     override fun enterString_literal(ctx: SystemVerilogParser.String_literalContext) {
         start(ctx) {
             recommend(CompletionTypes.None)
+        }
+    }
+
+    // this is mainly intended for assign VAR = something;
+    // FIXME the range on this also doesn't work - but weirdly it does in the IJ plugin?
+//    override fun enterHierarchical_identifier(ctx: SystemVerilogParser.Hierarchical_identifierContext) {
+//        Logger.debug(ParseUtils.ruleBacktrace(ctx))
+//        start(ctx) {
+//            recommend(CompletionTypes.PortSameModule)
+//            recommend(CompletionTypes.VariableSameModule)
+//        }
+//    }
+
+    override fun enterPrimary(ctx: SystemVerilogParser.PrimaryContext) {
+        Logger.debug(ParseUtils.ruleBacktrace(ctx))
+        start(ctx) {
+            recommend(CompletionTypes.PortSameModule)
+            recommend(CompletionTypes.VariableSameModule)
         }
     }
 }

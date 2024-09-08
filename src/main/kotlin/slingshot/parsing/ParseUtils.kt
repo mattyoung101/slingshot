@@ -8,6 +8,7 @@
 
 package slingshot.parsing
 
+import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.Token
 import org.eclipse.lsp4j.Position
 import org.tinylog.kotlin.Logger
@@ -85,7 +86,7 @@ object ParseUtils {
     }
 
     fun isInDoubleQuotes(document: String, line: Int, pos: Int): Boolean {
-        val lineStr = document.lines()[line]
+        val lineStr = document.lines().getOrNull(line) ?: return false
         val firstQuote = lineStr.indexOf("\"")
         if (firstQuote == -1) return false
 
@@ -110,5 +111,26 @@ object ParseUtils {
                 it
             }
         }
+    }
+
+    /**
+     * Renders a backtrace from the current parse rule to the root.
+     * Used for debugging.
+     */
+    fun ruleBacktrace(node: ParserRuleContext): String {
+        var out = "==== Backtrace for ${node.javaClass.simpleName} ====\n"
+        var cur: ParserRuleContext? = node
+        var indent = ""
+        while (cur != null) {
+            out += "$indent${cur.javaClass.simpleName} "
+            out += "${cur.getStart().line}:${cur.getStart().charPositionInLine}"
+            out += "..."
+            out += "${cur.getStop().line}:${cur.getStop().charPositionInLine}"
+            out += "\n"
+            indent += "  "
+            cur = cur.getParent()
+        }
+
+        return out
     }
 }
