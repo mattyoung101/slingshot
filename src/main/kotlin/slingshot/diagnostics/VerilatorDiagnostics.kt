@@ -151,7 +151,7 @@ class VerilatorDiagnostics : DiagnosticProvider {
 
     companion object {
         private val VERILATOR_ARGS = listOf(
-            "verilator", "--lint-only", "-Wall", "-Wno-DECLFILENAME", "INCLUDE_DIRS_PLACEHOLDER", "/dev/stdin"
+            "verilator", "--lint-only", "--timing", "-Wall", "-Wno-DECLFILENAME", "INCLUDE_DIRS_PLACEHOLDER", "/dev/stdin"
         )
 
         // Verilator warning/error matcher regex
