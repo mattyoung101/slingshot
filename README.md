@@ -31,15 +31,20 @@ Slingshot is written in Kotlin and runs on a Java 17 JVM or higher.
 Future features are planned on the [issue tracker](https://github.com/mattyoung101/slingshot/issues).
 
 ### Current state
-Slingshot is very close to a 1.0.0 release, with a few remaining tasks to do. I'm
-working on adding more completion items and testing the server on larger projects. It's probably useful in
-moderately complicated SystemVerilog projects right now - feel free to give it a spin and report
-any issues you encounter!
+Slingshot may be useful in moderately complicated SystemVerilog projects right now - feel free to give it a
+spin and report any issues you encounter! Previously, I thought I was close to a 1.0.0 release, however I've
+decided I would like to rewrite the completion system using [slang](https://github.com/MikePopoloski/slang),
+which I will need to implement as a gRPC server (or JNA binding, or likewise) and will thus need some extra
+effort. The trade-off I think is that the server quality will be much better than it currently is with ANTLR.
 
 ### Timeline
-Slingshot is being actively developed for my processor design thesis project (expected to start midway
-through 2024). My aim is to get a 1.0.0 release out before the start of the thesis, and then provide
-light maintenance and improvements over the next 1 year while I complete my thesis.
+Unfortunately, Slingshot is not being actively developed at this time due to my busy schedule with thesis,
+other uni subjects, and work. Originally, my thesis was going to be on processor design, and Slingshot was
+going to be a secondary deliverable. However, the thesis now concerns fault-tolerant EDA, so I'm not writing
+much (if any) SystemVerilog code.
+
+Once my thesis is completed, I will probably return to Slingshot development more consistently, as I'm hoping
+to do my PhD on processor design, which will require SystemVerilog development.
 
 ## Building and running
 ### Building and environment
