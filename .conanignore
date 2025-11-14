@@ -1,0 +1,6 @@
+# Ignore all files
+*
+# But copy the profile
+# please work
+!profiles/**
+!profiles/default

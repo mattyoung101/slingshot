@@ -40,7 +40,7 @@ jobs:
           cache_packages: true
 
       - name: Setup Conan profile
-        run: conan profile detect --force
+        run: conan config install .
 
       - name: Setup Conan remote
         run: conan remote add lagoon https://conan.mlyoung.cool --force
