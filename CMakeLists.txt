@@ -17,6 +17,7 @@ include(CPack)
 
 add_executable(slingshot
     src/main.cpp
+    src/handlers.cpp
 )
 target_include_directories(slingshot PRIVATE include)
 
@@ -29,12 +30,10 @@ target_link_libraries(slingshot PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp
 
 # note on diagnostic colour: https://stackoverflow.com/a/73349744/5007892
 target_compile_options(slingshot PRIVATE "-Wall" "-Wextra" "-Wno-unused-parameter" "-ggdb"
-                                      "-fdiagnostics-color=always")
-if (DEFINED ${CMAKE_BUILD_TYPE} AND ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    message(STATUS "Debug build")
-    target_compile_definitions(slingshot PRIVATE -Dslingshot_DEBUG)
-endif()
+    "-fdiagnostics-color=always")
+target_compile_definitions(slingshot PRIVATE "-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE")
 
+#### LINKER
 message(STATUS "Checking if LLD is available")
 execute_process(COMMAND "lld" ERROR_VARIABLE LLD_RESULT)
 
@@ -44,3 +43,15 @@ if (LLD_RESULT MATCHES "lld is a generic driver")
 else()
     message(STATUS "LLD is NOT available, so we'll use the system default linker")
 endif()
+
+## SANITIZERS
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Debug build, adding sanitizers")
+
+    target_compile_options(slingshot PRIVATE "-fsanitize=address" "-fsanitize=undefined")
+
+    target_link_options(slingshot PRIVATE "-fsanitize=address" "-fsanitize=undefined")
+endif()
+
+## INSTALL
+install(TARGETS slingshot)
