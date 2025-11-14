@@ -26,7 +26,9 @@ find_package(fmt REQUIRED)
 find_package(slang REQUIRED)
 find_package(LLVM REQUIRED)
 find_package(lsp REQUIRED)
-target_link_libraries(slingshot PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp::lsp)
+find_package(SQLiteCpp)
+find_package(SQLite3)
+target_link_libraries(slingshot PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp::lsp SQLiteCpp SQLite::SQLite3)
 
 # note on diagnostic colour: https://stackoverflow.com/a/73349744/5007892
 target_compile_options(slingshot PRIVATE "-Wall" "-Wextra" "-Wno-unused-parameter" "-ggdb"

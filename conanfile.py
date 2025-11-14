@@ -6,7 +6,9 @@ class SlingshotConan(ConanFile):
         "spdlog/1.16.0",
         "slang/9.1",
         "yaml-cpp/0.8.0",
-        "lsp-framework/1.2.0"
+        "lsp-framework/1.2.0",
+        "sqlite3/3.50.4",
+        "sqlitecpp/3.3.3",
     ]
     settings = "os", "arch", "compiler", "build_type"
 
