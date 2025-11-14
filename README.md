@@ -1,19 +1,26 @@
 # Slingshot - SystemVerilog LSP
+> [!IMPORTANT]
+> **This is the new rewrite, in C++ using Slang. The old version of Slingshot is on the "legacy" branch.**
+
 **Slingshot** is a language server for the **SystemVerilog** hardware description language, with
 a focus on accurate multi-file completion. The overarching goal is to make SystemVerilog 
 as intuitive to edit as C++ or Python.
 
-Compared to other SV LSPs, the main feature that Slingshot brings to the table is a powerful completion 
-system, backed by ANTLR, that supports multi-file projects through automatic indexing. Slingshot also
-supports instant linting, backed by Verilator.
+Compared to other SV LSPs, the main feature that Slingshot brings to the table is a powerful completion
+system, backed by [Slang](https://github.com/MikePopoloski/slang), that supports multi-file projects through
+automatic indexing.
 
-Slingshot is written in Kotlin and runs on a Java 17 JVM or higher.
+Slingshot is (now) written in C++20. Previously, it was written in Kotlin and used ANTLR. This new rewrite
+aims to:
+- Improve speed and utility by using a proper SystemVerilog parser (Slang)
+- Reduce memory usage
 
 ## Features
-- Diagnostics (powered by Verilator)
-  - Fully in-memory, does not write any temporary files to disk
-- Completion (powered by ANTLR)
-  - Context-sensitive completion based on cursor's position in the ANTLR parse tree 
+**WORK IN PROGRESS**
+
+- Diagnostics
+- Completion
+  - Context-sensitive completion based on cursor's position in the parse tree
   - Slingshot is aware of both line and block comments, and does not suggest completions when you are inside
     a comment
   - Completion for "variables" (logic, wire, etc) and ports in the current module
@@ -31,35 +38,14 @@ Slingshot is written in Kotlin and runs on a Java 17 JVM or higher.
 Future features are planned on the [issue tracker](https://github.com/mattyoung101/slingshot/issues).
 
 ### Current state
-Slingshot may be useful in moderately complicated SystemVerilog projects right now - feel free to give it a
-spin and report any issues you encounter! Previously, I thought I was close to a 1.0.0 release, however I've
-decided I would like to rewrite the completion system using [slang](https://github.com/MikePopoloski/slang),
-which I will need to implement as a gRPC server (or JNA binding, or likewise) and will thus need some extra
-effort. The trade-off I think is that the server quality will be much better than it currently is with ANTLR.
+Slingshot is being rewritten and is not currently useful in any projects.
 
 ### Timeline
-Unfortunately, Slingshot is not being actively developed at this time due to my busy schedule with thesis,
-other uni subjects, and work. Originally, my thesis was going to be on processor design, and Slingshot was
-going to be a secondary deliverable. However, the thesis now concerns fault-tolerant EDA, so I'm not writing
-much (if any) SystemVerilog code.
-
-Once my thesis is completed, I will probably return to Slingshot development more consistently, as I'm hoping
-to do my PhD on processor design, which will require SystemVerilog development.
+Slingshot is being developed in my free time, and I'm hoping to work on it somewhat during my PhD.
 
 ## Building and running
 ### Building and environment
-**Important:** Slingshot currently only runs on Linux and other *nix systems. Windows is not 
-supported, and no support is currently planned (unless specifically requested).
-
-You need Java 17 or higher. 
-
-The program can be built with `./gradlew build`, which also generates JAR files in the `build/libs` directory.
-
-Because the SystemVerilog generated parser is so massive, you will need to modify IntelliJ's max file parse
-size to be larger. Go to Help -> Edit Custom Properties and insert `idea.max.intellisense.filesize=999999`.
-Then, restart the IDE.
-
-You also need to download and install Verilator using your system's package manager.
+**TODO**
 
 ### Running
 Currently, I have only tested Slingshot in Neovim.
@@ -68,6 +54,8 @@ When Slingshot is a more capable LSP, it will (hopefully) be available in upstre
 [mason.nvim](https://github.com/williamboman/mason.nvim) and [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).
 
 Until then, you can manually add Slingshot as a nvim-lspconfig server by inserting the following into `init.lua`:
+
+**TODO** rewrite
 
 ```lua
 local lspconfig = require 'lspconfig'
@@ -121,7 +109,7 @@ See [docs/design_goals.md](docs/design_goals.md)
 See [docs/impl_details.md](docs/impl_details.md)
 
 ## Licence
-Copyright (c) 2023, 2024 Matt Young. Available under the Mozilla Public License v2.0
+Copyright (c) 2023-2025 M. L. Young. Available under the Mozilla Public License v2.0
 
 > This Source Code Form is subject to the terms of the Mozilla Public
 > License, v. 2.0. If a copy of the MPL was not distributed with this
