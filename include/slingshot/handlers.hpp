@@ -10,8 +10,12 @@ namespace slingshot::handlers {
 
 lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Params &&params);
 
-lsp::requests::Shutdown::Result shutdown(const lsp::requests::Shutdown &&params);
+lsp::requests::Shutdown::Result shutdown();
 
-void exit(const lsp::notifications::Exit &&params);
+void exit();
+
+void textDocumentOpen(const lsp::notifications::TextDocument_DidOpen::Params &&params);
+
+void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params &&params);
 
 } // namespace slingshot::handlers

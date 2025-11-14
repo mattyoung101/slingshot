@@ -5,7 +5,6 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "lsp/connection.h"
-#include "lsp/io/socket.h"
 #include "lsp/io/standardio.h"
 #include "lsp/messagehandler.h"
 #include "lsp/messages.h"
@@ -24,6 +23,10 @@ namespace {
 
 void addCallbacks(lsp::MessageHandler &msgHandler) {
     msgHandler.add<lsp::requests::Initialize>(slingshot::handlers::initialise);
+    msgHandler.add<lsp::requests::Shutdown>(slingshot::handlers::shutdown);
+    msgHandler.add<lsp::notifications::Exit>(slingshot::handlers::exit);
+    msgHandler.add<lsp::notifications::TextDocument_DidOpen>(slingshot::handlers::textDocumentOpen);
+    msgHandler.add<lsp::notifications::TextDocument_DidChange>(slingshot::handlers::textDocumentChange);
 }
 
 void sigIntHandler(int signal) {
@@ -45,10 +48,11 @@ int main() {
     using namespace slingshot;
 
     spdlog::set_level(spdlog::level::trace);
-    spdlog::default_logger()->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%s:%# %!] %v");
+    spdlog::flush_on(spdlog::level::trace);
 
     // keep stderr free for the LSP
     auto stderr_sink = std::make_shared<spdlog::sinks::ansicolor_stderr_sink_mt>();
+    stderr_sink->set_level(spdlog::level::trace);
     spdlog::default_logger()->sinks().clear();
     spdlog::default_logger()->sinks().push_back(stderr_sink);
 
@@ -71,9 +75,15 @@ int main() {
     std::filesystem::path logPath
         = homeDir + "/.local/share/slingshot/slingshot-" + std::to_string(pid) + ".log";
     auto rotating = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logPath, 4096 * 1024, 5, false);
+    rotating->set_level(spdlog::level::trace);
     spdlog::default_logger()->sinks().push_back(rotating);
 
     signal(SIGINT, sigIntHandler);
+
+    spdlog::default_logger()->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%s:%# %!] %v");
+    for (auto &sink : spdlog::default_logger()->sinks()) {
+        sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%s:%# %!] %v");
+    }
 
     SPDLOG_INFO("Slingshot LSP - (c) 2023-2025 M. L. Young. Licenced under the MPL 2.0.");
     SPDLOG_INFO("Slang version: {}.{}", VersionInfo::getMajor(), VersionInfo::getMinor());

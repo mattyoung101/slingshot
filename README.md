@@ -85,12 +85,9 @@ This is the setup I use for development as well.
 
 ### Troubleshooting
 Slingshot issues can be diagnosed by reading the log file. This is located in 
-`~/.local/share/slingshot/slingshot.$PID.log`, where `$PID` is the Slingshot process ID. You can
+`~/.local/share/slingshot/slingshot-$PID.log`, where `$PID` is the Slingshot process ID. You can
 just read the most recent log file. Currently, the 5 most recent log files are retained in that
 directory. The `lnav` tool is very useful for reading Slingshot log files.
-
-If Verilator syntax checking is not working, please make sure Verilator is installed and is in your
-$PATH. The log file will also contain the exact cause of why the Verilator didn't work.
 
 If there are errors about missing includes or not being able to find certain files, please make
 sure you have read [docs/config.md](docs/config.md) and created your `.slingshot.yaml` file. Then,
