@@ -1,0 +1,69 @@
+name: "Build"
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-22.04
+    env:
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CC: /usr/lib/ccache/clang-20
+      CXX: /usr/lib/ccache/clang++-20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Clang
+        run: cd /tmp;
+          wget https://apt.llvm.org/llvm.sh;
+          chmod +x llvm.sh;
+          sudo ./llvm.sh 20
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          create-symlink: true
+
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '4.1.x'
+
+      - name: Install Just
+        uses: extractions/setup-just@v3
+
+      - name: Install Conan
+        uses: conan-io/setup-conan@v1
+        with:
+          cache_packages: true
+
+      - name: Setup Conan profile
+        run: conan profile detect --force
+
+      - name: Setup Conan remote
+        run: conan remote add lagoon https://conan.mlyoung.cool --force
+
+      - name: Install more system deps
+        run: sudo apt update; sudo apt install --yes clang ninja-build
+
+      - name: Build
+        run: just build
+
+      - name: Lint
+        uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          style: 'file'  # Use .clang-format config file
+          tidy-checks: '' # Use .clang-tidy config file
+          # only 'update' a single comment in a pull request thread.
+          thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
+
+      - name: Archive artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: slingshot
+          path: build/slingshot
