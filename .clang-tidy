@@ -10,23 +10,11 @@ Checks: >
   clang-analyzer-*,
   cppcoreguidelines-*,
   -readability-uppercase-literal-suffix,
-  -cppcoreguidelines-pro-type-vararg,
   -modernize-use-trailing-return-type,
   -readability-identifier-length,
-  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -readability-isolate-declaration,
   -cppcoreguidelines-macro-usage,
   -cppcoreguidelines-avoid-do-while,
   -cppcoreguidelines-avoid-magic-numbers,
-  -readability-magic-numbers
-
-# NOTES:
-# We would like pro-bounds-pointer-arithmetic but Yosys uses arithmetic in the ID($) macro
-# Same with readability-isolate-declaration
-
-# -bugprone-easily-swappable-parameters,
-# -cppcoreguidelines-avoid-c-arrays,
-# -modernize-avoid-c-arrays,
-# -cppcoreguidelines-pro-type-union-access,
-# -cppcoreguidelines-pro-bounds-pointer-arithmetic,
-# -cppcoreguidelines-pro-type-cstyle-cast,
+  -readability-magic-numbers,
+  -cppcoreguidelines-avoid-non-const-global-variables,

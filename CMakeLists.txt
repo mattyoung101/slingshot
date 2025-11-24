@@ -18,17 +18,18 @@ include(CPack)
 add_executable(slingshot
     src/main.cpp
     src/handlers.cpp
+    src/indexing.cpp
 )
 target_include_directories(slingshot PRIVATE include)
 
 find_package(spdlog REQUIRED)
 find_package(fmt REQUIRED)
 find_package(slang REQUIRED)
-find_package(LLVM REQUIRED)
 find_package(lsp REQUIRED)
-find_package(SQLiteCpp)
-find_package(SQLite3)
-target_link_libraries(slingshot PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp::lsp SQLiteCpp SQLite::SQLite3)
+find_package(unordered_dense REQUIRED)
+find_package(nlohmann_json REQUIRED)
+target_link_libraries(slingshot PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp::lsp
+    unordered_dense::unordered_dense nlohmann_json::nlohmann_json)
 
 # note on diagnostic colour: https://stackoverflow.com/a/73349744/5007892
 target_compile_options(slingshot PRIVATE "-Wall" "-Wextra" "-Wno-unused-parameter" "-ggdb"
@@ -49,9 +50,7 @@ endif()
 ## SANITIZERS
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(STATUS "Debug build, adding sanitizers")
-
     target_compile_options(slingshot PRIVATE "-fsanitize=address" "-fsanitize=undefined")
-
     target_link_options(slingshot PRIVATE "-fsanitize=address" "-fsanitize=undefined")
 endif()
 

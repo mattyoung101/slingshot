@@ -41,6 +41,7 @@ void sigIntHandler(int signal) {
 
 namespace slingshot {
 bool g_running = false;
+IndexManager g_indexManager = {};
 } // namespace slingshot
 
 int main() {
