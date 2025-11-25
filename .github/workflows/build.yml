@@ -34,19 +34,8 @@ jobs:
       - name: Install Just
         uses: extractions/setup-just@v3
 
-      - name: Install Conan
-        uses: conan-io/setup-conan@v1
-        with:
-          cache_packages: true
-
-      - name: Setup Conan profile
-        run: conan config install .
-
-      - name: Setup Conan remote
-        run: conan remote add lagoon https://conan.mlyoung.cool --force
-
       - name: Install more system deps
-        run: sudo apt update; sudo apt install --yes clang ninja-build
+        run: sudo apt update; sudo apt install --yes clang ninja-build libboost-all-dev
 
       - name: Build
         run: just build

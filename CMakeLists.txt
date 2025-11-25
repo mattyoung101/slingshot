@@ -14,6 +14,7 @@ cmake_policy(SET CMP0144 NEW)
 
 include(GNUInstallDirs)
 include(CPack)
+include(cmake/CPM.cmake)
 
 add_executable(slingshot
     src/main.cpp
@@ -22,13 +23,15 @@ add_executable(slingshot
 )
 target_include_directories(slingshot PRIVATE include)
 
-find_package(spdlog REQUIRED)
-find_package(fmt REQUIRED)
-find_package(slang REQUIRED)
-find_package(lsp REQUIRED)
-find_package(unordered_dense REQUIRED)
-find_package(nlohmann_json REQUIRED)
-target_link_libraries(slingshot PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp::lsp
+# find deps
+CPMAddPackage("gh:gabime/spdlog@1.16.0")
+CPMAddPackage("gh:fmtlib/fmt#12.1.0")
+CPMAddPackage("gh:MikePopoloski/slang@9.1")
+CPMAddPackage("gh:martinus/unordered_dense@4.8.1")
+CPMAddPackage("gh:nlohmann/json@3.12.0")
+CPMAddPackage("gh:leon-bckl/lsp-framework#1.3.0")
+
+target_link_libraries(slingshot PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp
     unordered_dense::unordered_dense nlohmann_json::nlohmann_json)
 
 # note on diagnostic colour: https://stackoverflow.com/a/73349744/5007892
