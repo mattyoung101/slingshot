@@ -6,7 +6,12 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022]
+        build_type: ["Debug", "Release"]
+    runs-on: ${{ matrix.os }}
     env:
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
       CMAKE_C_COMPILER_LAUNCHER: ccache
@@ -31,14 +36,15 @@ jobs:
         with:
           cmake-version: '4.1.x'
 
-      - name: Install Just
-        uses: extractions/setup-just@v3
-
       - name: Install more system deps
         run: sudo apt update; sudo apt install --yes clang ninja-build libboost-all-dev
+        if: ${{matrix.os}} != 'windows-2022'
 
       - name: Build
-        run: just build
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache;
+          cd build;
+          ninja
 
       - name: Lint
         uses: cpp-linter/cpp-linter-action@v2
