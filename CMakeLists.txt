@@ -20,6 +20,7 @@ add_executable(slingshot
     src/main.cpp
     src/handlers.cpp
     src/indexing.cpp
+    src/compiler.cpp
 )
 target_include_directories(slingshot PRIVATE include)
 
@@ -30,9 +31,13 @@ CPMAddPackage("gh:MikePopoloski/slang@9.1")
 CPMAddPackage("gh:martinus/unordered_dense@4.8.1")
 CPMAddPackage("gh:nlohmann/json@3.12.0")
 CPMAddPackage("gh:leon-bckl/lsp-framework#1.3.0")
+CPMAddPackage("gh:bshoshany/thread-pool@5.0.0")
+
+add_library(BS_thread_pool INTERFACE)
+target_include_directories(BS_thread_pool INTERFACE ${BS_thread_pool_SOURCE_DIR}/include)
 
 target_link_libraries(slingshot PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp
-    unordered_dense::unordered_dense nlohmann_json::nlohmann_json)
+    unordered_dense::unordered_dense nlohmann_json::nlohmann_json BS_thread_pool)
 
 # note on diagnostic colour: https://stackoverflow.com/a/73349744/5007892
 target_compile_options(slingshot PRIVATE "-Wall" "-Wextra" "-Wno-unused-parameter" "-ggdb"

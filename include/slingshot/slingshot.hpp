@@ -7,9 +7,12 @@
 #pragma once
 #include "ankerl/unordered_dense.h"
 #include "slingshot/indexing.hpp"
+#include "slingshot/compiler.hpp"
 
 namespace slingshot {
+
 extern bool g_running;
 extern IndexManager g_indexManager;
+extern CompilationManager g_compilerManager;
 
 } // namespace slingshot

@@ -65,6 +65,10 @@ void textDocumentOpen(const lsp::notifications::TextDocument_DidOpen::Params &&p
 
 void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params &&params) {
     SPDLOG_DEBUG("Change document: {}", params.textDocument.uri.path());
+
+	for (const lsp::TextDocumentContentChangeEvent &change : params.contentChanges) {
+		// FIXME variant visit
+	}
 }
 
 } // namespace slingshot::handlers

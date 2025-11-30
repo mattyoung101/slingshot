@@ -23,7 +23,7 @@ public:
     std::string version;
     std::string path;
     uint64_t hash;
-    // TODO tree
+    // TODO tree?
 };
 
 class IndexManager {
@@ -32,10 +32,15 @@ public:
     /// is computed using xxHash64, if the document is already in the index, it will not be inserted.
     void insert(const std::filesystem::path &path, const std::string &document);
 
-    std::optional<IndexEntry> retrieve(const std::filesystem::path &path);
+    [[nodiscard]] std::optional<IndexEntry> retrieve(const std::filesystem::path &path) const;
+
+    [[nodiscard]] std::optional<IndexEntry> retrieve(const std::filesystem::path &path, uint64_t hash) const;
 
     /// Serialises the index to disk. baseDir is the project root directory.
     void flush(const std::filesystem::path &baseDir);
+
+private:
+    ankerl::unordered_dense::map<std::filesystem::path, IndexEntry> index;
 };
 
 } // namespace slingshot

@@ -9,6 +9,7 @@
 #include "lsp/messagehandler.h"
 #include "lsp/messages.h"
 #include "slang/util/VersionInfo.h"
+#include "slingshot/compiler.hpp"
 #include "slingshot/handlers.hpp"
 #include "slingshot/slingshot.hpp"
 #include "spdlog/sinks/rotating_file_sink.h"
@@ -42,6 +43,7 @@ void sigIntHandler(int signal) {
 namespace slingshot {
 bool g_running = false;
 IndexManager g_indexManager = {};
+CompilationManager g_compilerManager = {};
 } // namespace slingshot
 
 int main() {
