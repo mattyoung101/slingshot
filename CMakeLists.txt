@@ -5,6 +5,7 @@ project(slingshot
     DESCRIPTION "SystemVerilog language server"
     HOMEPAGE_URL "https://github.com/mattyoung101/slingshot"
 )
+set(CPACK_PACKAGE_CONTACT "Matt Young <matt@mlyoung.cool>")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)

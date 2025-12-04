@@ -46,7 +46,32 @@ Slingshot is being developed in my free time, and I'm hoping to work on it somew
 
 ## Building and running
 ### Building and environment
-**TODO**
+You will need:
+- CMake 3.20+
+- A C++20 compiler (Clang recommended)
+- Ninja
+- ccache (optional)
+- Just (optional)
+
+The simplest way to build, with Just, is to run `just build` and/or `just build_debug`.
+
+If that doesn't work, you can do it yourself:
+
+```bash
+    # remove references to ccache if you don't have it
+    cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache
+    cd build
+    ninja
+```
+
+C++ dependency management is a fucking disaster, as is the language itself, as I have complained extensively
+about [1](https://tech.lgbt/@mlyoung/115604990686028947), [2](https://tech.lgbt/@mlyoung/115605004052848993),
+[3](https://tech.lgbt/@mlyoung/115605019086603912). This project uses the CMake CPM package manager, which is
+basically a thin wrapper around `FetchContent`.
+
+We vendor _all_ our dependencies. This should mean, by the grace of god, it'll compile on your system. The
+price to pay is that you have to compile _all_ your deps from scratch each time, sorry. Use ccache.
 
 ### Running
 Currently, I have only tested Slingshot in Neovim.

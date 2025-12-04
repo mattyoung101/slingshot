@@ -72,6 +72,12 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
             auto result = parseConfigToml(tomlFile);
             if (result == std::nullopt) {
                 SPDLOG_ERROR("Failed to parse config toml. See above.");
+            } else {
+                // we have the index file
+                SPDLOG_INFO("Config TOML parsed successfully");
+                for (const auto &dir : *result) {
+                    g_indexManager.walkDir(dir);
+                }
             }
         } else {
             SPDLOG_ERROR("Could not locate .slingshot.toml file. Index may be non-functional!");

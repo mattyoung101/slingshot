@@ -32,9 +32,14 @@ public:
     /// is computed using xxHash64, if the document is already in the index, it will not be inserted.
     void insert(const std::filesystem::path &path, const std::string &document);
 
+    void insert(const std::filesystem::path &path);
+
     [[nodiscard]] std::optional<IndexEntry> retrieve(const std::filesystem::path &path) const;
 
     [[nodiscard]] std::optional<IndexEntry> retrieve(const std::filesystem::path &path, uint64_t hash) const;
+
+    /// Recursively walks and indexes files in the given directory
+    void walkDir(const std::filesystem::path &path);
 
     /// Serialises the index to disk. baseDir is the project root directory.
     void flush(const std::filesystem::path &baseDir);
