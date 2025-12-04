@@ -12,29 +12,36 @@
 #include <lsp/types.h>
 #include <optional>
 #include <spdlog/spdlog.h>
+#include <toml++/toml.hpp>
 #include <vector>
-#include <yaml-cpp/node/node.h>
-#include <yaml-cpp/node/parse.h>
 
 namespace {
 std::optional<std::vector<std::string>> TRIGGER_CHARS {};
 
-std::optional<std::vector<std::string>> parseConfigYaml(std::filesystem::path &path) {
+std::optional<std::vector<std::string>> parseConfigToml(std::filesystem::path &path) {
     try {
-        YAML::Node config = YAML::LoadFile(path.string());
+        auto config = toml::parse_file(path.string());
 
-        auto version = config["version"].as<std::string>();
-        if (version != slingshot::CONFIG_VERSION) {
-            SPDLOG_ERROR("Config version mismatch. Project uses {}, but server uses {}", version,
-                slingshot::CONFIG_VERSION);
+        if (!config.contains("version") || !config.contains("include_dirs")) {
+            SPDLOG_ERROR("Configuration is missing version or include_dirs keys");
             return std::nullopt;
         }
 
-        auto includeDirs = config["includeDirs"].as<std::vector<std::string>>();
+        auto *version = config["version"].as_string();
+        if (*version != slingshot::CONFIG_VERSION) {
+            SPDLOG_ERROR("Config version mismatch. Project uses {}, but server uses {}",
+                std::string(*version), slingshot::CONFIG_VERSION);
+            return std::nullopt;
+        }
 
-        return includeDirs;
+        auto *include_dirs = config["include_dirs"].as_array();
+        std::vector<std::string> out;
+        for (const auto &dir : *include_dirs) {
+            out.emplace_back(*dir.as_string());
+        }
+        return out;
     } catch (const std::exception &e) {
-        SPDLOG_ERROR("Failed to parse config YAML: {}", e.what());
+        SPDLOG_ERROR("Failed to parse config toml: {}", e.what());
         return std::nullopt;
     }
 }
@@ -56,26 +63,19 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
         SPDLOG_ERROR("No root URI path specified!");
     } else {
         auto root = params.rootUri->path();
-        SPDLOG_INFO("Attempting to locate .slingshot.yaml file in {}", root);
+        SPDLOG_INFO("Attempting to locate .slingshot.toml file in {}", root);
 
-        auto yamlFile = std::filesystem::path(std::string(root) + "/.slingshot.yaml");
-        auto ymlFile = std::filesystem::path(std::string(root) + "/.slingshot.yml");
+        auto tomlFile = std::filesystem::path(std::string(root) + "/.slingshot.toml");
 
-        if (std::filesystem::exists(yamlFile)) {
+        if (std::filesystem::exists(tomlFile)) {
             // parse it
-            auto result = parseConfigYaml(yamlFile);
+            auto result = parseConfigToml(tomlFile);
             if (result == std::nullopt) {
-                SPDLOG_ERROR("Failed to parse config YAML. See above.");
-            }
-        } else if (std::filesystem::exists(ymlFile)) {
-            // parse it
-            auto result = parseConfigYaml(ymlFile);
-            if (result == std::nullopt) {
-                SPDLOG_ERROR("Failed to parse config YAML. See above.");
+                SPDLOG_ERROR("Failed to parse config toml. See above.");
             }
         } else {
-            SPDLOG_ERROR("Could not locate .slingshot.yaml file. Index may be non-functional!");
-            SPDLOG_ERROR("Tried: {}, {}", yamlFile.string(), ymlFile.string());
+            SPDLOG_ERROR("Could not locate .slingshot.toml file. Index may be non-functional!");
+            SPDLOG_ERROR("Tried: {}", tomlFile.string());
             // TODO warn client
         }
     }

@@ -3,7 +3,7 @@
 > **This is the new rewrite, in C++ using Slang. The old version of Slingshot is on the "legacy" branch.**
 
 **Slingshot** is a language server for the **SystemVerilog** hardware description language, with
-a focus on accurate multi-file completion. The overarching goal is to make SystemVerilog 
+a focus on accurate multi-file completion. The overarching goal is to make SystemVerilog
 as intuitive to edit as C++ or Rust.
 
 Compared to other SV LSPs, the main feature that Slingshot brings to the table is a completion-first approach,
@@ -32,10 +32,10 @@ aims to:
   - Slingshot can complete modules, enums and macros declared in other files
   - Every include path specified in the config file is searched and indexed automatically
 - Simple configuration
-  - Slingshot is configured through a simple `.slingshot.yaml` file declared in the project's root
+  - Slingshot is configured through a simple `.slingshot.toml` file declared in the project's root
   directory
   - This format is documented in [docs/config.md](docs/config.md)
-  
+
 Future features are planned on the [issue tracker](https://github.com/mattyoung101/slingshot/issues).
 
 ### Current state
@@ -61,7 +61,7 @@ Until then, you can manually add Slingshot as a nvim-lspconfig server by inserti
 ```lua
 vim.lsp.config("sv-slingshot", {
     cmd = { "<PATH_TO_SLINGSHOT_ROOT>/build/slingshot" },
-    root_markers = { ".git", ".slingshot.yaml" },
+    root_markers = { ".git", ".slingshot.toml" },
     filetypes = {
         "systemverilog",
         "verilog",
@@ -74,22 +74,22 @@ vim.lsp.enable("sv-slingshot")
 This is the setup I use for development as well.
 
 **Important:** Please read [docs/config.md](docs/config.md) for instructions on how to create a
-`.slingshot.yaml` file to configure the server. This is mandatory for multi-file (read: most) projects.
+`.slingshot.toml` file to configure the server. This is mandatory for multi-file (read: most) projects.
 
 ### Troubleshooting
-Slingshot issues can be diagnosed by reading the log file. This is located in 
+Slingshot issues can be diagnosed by reading the log file. This is located in
 `~/.local/share/slingshot/slingshot-$PID.log`, where `$PID` is the Slingshot process ID. You can
 just read the most recent log file. Currently, the 5 most recent log files are retained in that
 directory. The `lnav` tool is very useful for reading Slingshot log files.
 
 If there are errors about missing includes or not being able to find certain files, please make
-sure you have read [docs/config.md](docs/config.md) and created your `.slingshot.yaml` file. Then,
+sure you have read [docs/config.md](docs/config.md) and created your `.slingshot.toml` file. Then,
 read the log to make sure that Slingshot has the correct root directory. The best way to ensure this
 is invoking Neovim by typing `nvim .` in the project's root directory - don't edit individual files.
 
 If the above steps do not resolve your issue, please open a bug ticket in the GitHub issue tracker.
 You must include your log file, detailed description of the issue, and also a SystemVerilog code
-example if possible. As my time is extremely limited, I may not be able to respond to or 
+example if possible. As my time is extremely limited, I may not be able to respond to or
 fix bug tickets. Pull requests are welcome as well, but may take some time to review.
 
 ## Design goals
