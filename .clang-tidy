@@ -18,3 +18,6 @@ Checks: >
   -cppcoreguidelines-avoid-magic-numbers,
   -readability-magic-numbers,
   -cppcoreguidelines-avoid-non-const-global-variables,
+  -performance-enum-size,
+  -cppcoreguidelines-avoid-c-arrays,
+  -readability-redundant-member-init,

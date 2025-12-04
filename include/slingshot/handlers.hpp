@@ -19,4 +19,6 @@ void textDocumentOpen(const lsp::notifications::TextDocument_DidOpen::Params &&p
 
 void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params &&params);
 
+lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(const lsp::requests::TextDocument_Diagnostic::Params &&params);
+
 } // namespace slingshot::handlers

@@ -28,6 +28,7 @@ void addCallbacks(lsp::MessageHandler &msgHandler) {
     msgHandler.add<lsp::notifications::Exit>(slingshot::handlers::exit);
     msgHandler.add<lsp::notifications::TextDocument_DidOpen>(slingshot::handlers::textDocumentOpen);
     msgHandler.add<lsp::notifications::TextDocument_DidChange>(slingshot::handlers::textDocumentChange);
+    msgHandler.add<lsp::requests::TextDocument_Diagnostic>(slingshot::handlers::textDocumentDiagnostic);
 }
 
 void sigIntHandler(int signal) {

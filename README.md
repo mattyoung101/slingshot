@@ -4,11 +4,12 @@
 
 **Slingshot** is a language server for the **SystemVerilog** hardware description language, with
 a focus on accurate multi-file completion. The overarching goal is to make SystemVerilog 
-as intuitive to edit as C++ or Python.
+as intuitive to edit as C++ or Rust.
 
-Compared to other SV LSPs, the main feature that Slingshot brings to the table is a powerful completion
-system, backed by [Slang](https://github.com/MikePopoloski/slang), that supports multi-file projects through
-automatic indexing.
+Compared to other SV LSPs, the main feature that Slingshot brings to the table is a completion-first approach,
+using the powerful [Slang](https://github.com/MikePopoloski/slang) frontend. The intent is to provide fast,
+accurate and robust completion even in complex projects. The trade-off is this does mean that features such as
+"go-to-reference" take somewhat of a backseat.
 
 Slingshot is (now) written in C++20. Previously, it was written in Kotlin and used ANTLR. This new rewrite
 aims to:
@@ -51,31 +52,23 @@ Slingshot is being developed in my free time, and I'm hoping to work on it somew
 Currently, I have only tested Slingshot in Neovim.
 
 When Slingshot is a more capable LSP, it will (hopefully) be available in upstream LSP projects like
-[mason.nvim](https://github.com/williamboman/mason.nvim) and [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).
+[mason.nvim](https://github.com/williamboman/mason.nvim) and [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig);
+although both of these projects are surprisingly quite restrictive about what LSPs they allow, and it's
+possible Slingshot may never make the cut.
 
 Until then, you can manually add Slingshot as a nvim-lspconfig server by inserting the following into `init.lua`:
 
-**TODO** rewrite
-
 ```lua
-local lspconfig = require 'lspconfig'
-local configs = require 'lspconfig.configs'
+vim.lsp.config("sv-slingshot", {
+    cmd = { "<PATH_TO_SLINGSHOT_ROOT>/build/slingshot" },
+    root_markers = { ".git", ".slingshot.yaml" },
+    filetypes = {
+        "systemverilog",
+        "verilog",
+    },
+})
 
-if not configs.slingshot then
-  -- this require lspconfig.configs is the trick required to make it work
-  require("lspconfig.configs").slingshot = {
-    default_config = {
-      cmd = {'<PATH_TO_SLINGSHOT>/slingshot/build/slingshot'};
-      filetypes = {'verilog', 'systemverilog'};
-      root_dir = function(fname)
-        return lspconfig.util.find_git_ancestor(fname) or vim.loop.os_homedir()
-      end;
-      settings = {};
-    };
-  }
-end
-
-lspconfig.slingshot.setup{}
+vim.lsp.enable("sv-slingshot")
 ```
 
 This is the setup I use for development as well.

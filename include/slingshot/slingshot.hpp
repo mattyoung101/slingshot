@@ -15,4 +15,6 @@ extern bool g_running;
 extern IndexManager g_indexManager;
 extern CompilationManager g_compilerManager;
 
+constexpr std::string CONFIG_VERSION = "1.0.0";
+
 } // namespace slingshot

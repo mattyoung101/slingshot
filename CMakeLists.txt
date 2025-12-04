@@ -32,12 +32,16 @@ CPMAddPackage("gh:martinus/unordered_dense@4.8.1")
 CPMAddPackage("gh:nlohmann/json@3.12.0")
 CPMAddPackage("gh:leon-bckl/lsp-framework#1.3.0")
 CPMAddPackage("gh:bshoshany/thread-pool@5.0.0")
+CPMAddPackage("gh:jbeder/yaml-cpp#bbf8bdb087bb3f3621ca0a5ace06047805f4e9f3") # tip of master as of 4/12/2025
 
 add_library(BS_thread_pool INTERFACE)
 target_include_directories(BS_thread_pool INTERFACE ${BS_thread_pool_SOURCE_DIR}/include)
 
 target_link_libraries(slingshot PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp
     unordered_dense::unordered_dense nlohmann_json::nlohmann_json BS_thread_pool)
+
+# due to the fact that yaml-cpp is fucking stupid
+target_link_libraries(slingshot PUBLIC yaml-cpp::yaml-cpp)
 
 # note on diagnostic colour: https://stackoverflow.com/a/73349744/5007892
 target_compile_options(slingshot PRIVATE "-Wall" "-Wextra" "-Wno-unused-parameter" "-ggdb"

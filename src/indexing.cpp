@@ -5,22 +5,14 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/indexing.hpp"
+#include "slingshot/slingshot.hpp"
+#include "slingshot/compiler.hpp"
 #include <ankerl/unordered_dense.h>
 #include <optional>
 #include <spdlog/spdlog.h>
 
 using json = nlohmann::json;
 using namespace slingshot;
-
-void to_json(json &j, const IndexEntry &entry) {
-    j = json { { "version", entry.version }, { "path", entry.path }, { "hash", entry.hash } };
-}
-
-void from_json(const json &j, IndexEntry &p) {
-    j.at("version").get_to(p.version);
-    j.at("path").get_to(p.path);
-    j.at("hash").get_to(p.hash);
-}
 
 void IndexManager::insert(const std::filesystem::path &path, const std::string &document) {
     SPDLOG_DEBUG("IndexManager::insert {}", path.string());
@@ -31,11 +23,13 @@ void IndexManager::insert(const std::filesystem::path &path, const std::string &
     if (retrieve(path, hash) == std::nullopt) {
         SPDLOG_DEBUG("Not yet in index, so inserting it");
         index[path] = entry;
+
+        // and also schedule a compilation job for this
+        g_compilerManager.submitCompilationJob(document, path);
     } else {
-        SPDLOG_DEBUG("Already in index, not inserted");
+        SPDLOG_DEBUG("Already in index with this path and hash, not inserted");
     }
 }
-
 
 std::optional<IndexEntry> IndexManager::retrieve(const std::filesystem::path &path, uint64_t hash) const {
     if (!index.contains(path)) {
