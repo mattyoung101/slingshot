@@ -16,8 +16,6 @@
 #include <vector>
 
 namespace {
-std::optional<std::vector<std::string>> TRIGGER_CHARS {};
-
 std::optional<std::vector<std::string>> parseConfigToml(std::filesystem::path &path) {
     try {
         auto config = toml::parse_file(path.string());
@@ -53,12 +51,6 @@ namespace slingshot::handlers {
 lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Params &&params) {
     SPDLOG_INFO("Received init");
 
-    // FIXME I feel like this is kind of dumb and we could do better
-    TRIGGER_CHARS->emplace_back(".");
-    TRIGGER_CHARS->emplace_back("`"); // macro
-    TRIGGER_CHARS->emplace_back("(");
-    TRIGGER_CHARS->emplace_back("[");
-
     if (params.rootUri.isNull()) {
         SPDLOG_ERROR("No root URI path specified!");
     } else {
@@ -78,6 +70,7 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
                 for (const auto &dir : *result) {
                     g_indexManager.walkDir(dir);
                 }
+                g_indexManager.includeDirs = *result;
             }
         } else {
             SPDLOG_ERROR("Could not locate .slingshot.toml file. Index may be non-functional!");
@@ -97,7 +90,7 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
 						.save      = true
 					},
 					.completionProvider = lsp::CompletionOptions {
-						.triggerCharacters = TRIGGER_CHARS,
+                        .triggerCharacters = std::vector<std::string>{".", "`", "[", "{"}
 					},
 					.diagnosticProvider = lsp::DiagnosticOptions {
 						.interFileDependencies = false, // TODO this should eventually be true
@@ -127,7 +120,6 @@ void textDocumentOpen(const lsp::notifications::TextDocument_DidOpen::Params &&p
     SPDLOG_DEBUG("Open document: {}", params.textDocument.uri.path());
 
     // register in the document database
-    // g_documents[std::string(params.textDocument.uri.path())] = params.textDocument.text;
     g_indexManager.insert(params.textDocument.uri.path(), params.textDocument.text);
 }
 
@@ -154,6 +146,23 @@ void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params
 
 lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
     const lsp::requests::TextDocument_Diagnostic::Params &&params) {
+    auto path = params.textDocument.uri.path();
+
+    auto lock = g_indexManager.acquireLock();
+    auto result = g_indexManager.retrieve(path);
+    if (!result.has_value()) {
+        SPDLOG_WARN("Document {} is not in index", path);
+        return {};
+    }
+    if ((*result)->tree == nullptr) {
+        SPDLOG_WARN("Document {} has not yet been parsed", path);
+        return {};
+    }
+
+    lsp::FullDocumentDiagnosticReport diagnostics {};
+    for (const auto &diag : (*result)->tree->diagnostics()) {
+    }
+
     return {};
 }
 

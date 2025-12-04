@@ -9,7 +9,11 @@
 #include "nlohmann/json.hpp"
 #include <cstdint>
 #include <filesystem>
+#include <memory>
+#include <mutex>
 #include <optional>
+#include <slang/diagnostics/Diagnostics.h>
+#include <slang/syntax/SyntaxTree.h>
 #include <string>
 #include <vector>
 
@@ -23,7 +27,12 @@ public:
     std::string version;
     std::string path;
     uint64_t hash;
-    // TODO tree?
+
+    /// Parse tree
+    /// WARNING May be nullptr if not yet parsed
+    std::shared_ptr<slang::syntax::SyntaxTree> tree;
+
+    using Ptr = std::shared_ptr<IndexEntry>;
 };
 
 class IndexManager {
@@ -34,9 +43,14 @@ public:
 
     void insert(const std::filesystem::path &path);
 
-    [[nodiscard]] std::optional<IndexEntry> retrieve(const std::filesystem::path &path) const;
+    /// Associates parse data with a path in the syntax tree
+    void associateParse(
+        const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree);
 
-    [[nodiscard]] std::optional<IndexEntry> retrieve(const std::filesystem::path &path, uint64_t hash) const;
+    [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(const std::filesystem::path &path) const;
+
+    [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(
+        const std::filesystem::path &path, uint64_t hash) const;
 
     /// Recursively walks and indexes files in the given directory
     void walkDir(const std::filesystem::path &path);
@@ -44,8 +58,15 @@ public:
     /// Serialises the index to disk. baseDir is the project root directory.
     void flush(const std::filesystem::path &baseDir);
 
+    std::vector<std::string> includeDirs;
+
+    [[nodiscard]] auto acquireLock() {
+        return std::lock_guard<std::mutex>(lock);
+    }
+
 private:
-    ankerl::unordered_dense::map<std::filesystem::path, IndexEntry> index;
+    std::mutex lock;
+    ankerl::unordered_dense::map<std::filesystem::path, IndexEntry::Ptr> index;
 };
 
 } // namespace slingshot

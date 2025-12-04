@@ -32,8 +32,6 @@ private:
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
     ankerl::unordered_dense::map<std::filesystem::path, SourceBuffer> slangBufs;
     SourceManager sourceMgr;
-    std::mutex mutex;
-
 };
 
 } // namespace slingshot
