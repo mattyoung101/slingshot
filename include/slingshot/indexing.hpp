@@ -9,6 +9,7 @@
 #include "nlohmann/json.hpp"
 #include <cstdint>
 #include <filesystem>
+#include <lsp/types.h>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -32,6 +33,9 @@ public:
     /// WARNING May be nullptr if not yet parsed
     std::shared_ptr<slang::syntax::SyntaxTree> tree;
 
+    /// Processed LSP diagnostics, only really valid if tree != nullptr
+    std::vector<lsp::Diagnostic> diagnostics;
+
     using Ptr = std::shared_ptr<IndexEntry>;
 };
 
@@ -46,6 +50,10 @@ public:
     /// Associates parse data with a path in the syntax tree
     void associateParse(
         const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree);
+
+    /// Associates processed diagnotsic data from the LSPDiagnosticClient in compiler.hpp
+    void associateDiagnostics(
+        const std::filesystem::path &path, const std::vector<lsp::Diagnostic> &diagnostics);
 
     [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(const std::filesystem::path &path) const;
 

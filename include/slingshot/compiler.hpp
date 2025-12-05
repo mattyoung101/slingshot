@@ -8,20 +8,44 @@
 #include "BS_thread_pool.hpp"
 #include "ankerl/unordered_dense.h"
 #include "slang/diagnostics/AllDiags.h"
+#include "slang/diagnostics/DiagnosticClient.h"
+#include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/diagnostics/Diagnostics.h"
 #include "slang/text/SourceManager.h"
 #include <filesystem>
+#include <lsp/types.h>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <slang/text/SourceLocation.h>
 #include <string>
+#include <vector>
 
 namespace slingshot {
 
 using namespace slang;
 
+/// A slang::DiagnosticClient that turns Slang diagnostics into LSP diagnostics
+class LSPDiagnosticClient : public DiagnosticClient {
+public:
+    auto getLspDiagnostics() {
+        return lspDiags;
+    }
+
+    void report(const ReportedDiagnostic &diagnostic) override;
+
+    using Ptr = std::shared_ptr<LSPDiagnosticClient>;
+
+private:
+    std::vector<lsp::Diagnostic> lspDiags;
+};
+
 class CompilationManager {
 public:
+    // CompilationManager() {
+    //     diagEngine.addClient(diagClient);
+    // }
+
     /// Submits a compilation job asynchronously
     void submitCompilationJob(const std::string &document, const std::filesystem::path &path);
 

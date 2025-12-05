@@ -146,6 +146,7 @@ void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params
 
 lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
     const lsp::requests::TextDocument_Diagnostic::Params &&params) {
+    SPDLOG_DEBUG("Diagnostic info request");
     auto path = params.textDocument.uri.path();
 
     auto lock = g_indexManager.acquireLock();
@@ -159,11 +160,11 @@ lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
         return {};
     }
 
-    lsp::FullDocumentDiagnosticReport diagnostics {};
-    for (const auto &diag : (*result)->tree->diagnostics()) {
-    }
+    lsp::RelatedFullDocumentDiagnosticReport output;
+    output.items = (*result)->diagnostics;
+    SPDLOG_DEBUG("Returning {} diagnostics", output.items.size());
 
-    return {};
+    return output;
 }
 
 } // namespace slingshot::handlers
