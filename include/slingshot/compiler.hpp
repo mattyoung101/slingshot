@@ -7,7 +7,6 @@
 #pragma once
 #include "BS_thread_pool.hpp"
 #include "ankerl/unordered_dense.h"
-#include "slang/diagnostics/AllDiags.h"
 #include "slang/diagnostics/DiagnosticClient.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/diagnostics/Diagnostics.h"
@@ -15,7 +14,6 @@
 #include <filesystem>
 #include <lsp/types.h>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <slang/text/SourceLocation.h>
 #include <string>
@@ -32,20 +30,21 @@ public:
         return lspDiags;
     }
 
+    void setSourceManager(const std::shared_ptr<SourceManager> &sourceMgr) {
+        this->sourceMgr = sourceMgr;
+    }
+
     void report(const ReportedDiagnostic &diagnostic) override;
 
     using Ptr = std::shared_ptr<LSPDiagnosticClient>;
 
 private:
     std::vector<lsp::Diagnostic> lspDiags;
+    std::shared_ptr<SourceManager> sourceMgr;
 };
 
 class CompilationManager {
 public:
-    // CompilationManager() {
-    //     diagEngine.addClient(diagClient);
-    // }
-
     /// Submits a compilation job asynchronously
     void submitCompilationJob(const std::string &document, const std::filesystem::path &path);
 
@@ -55,7 +54,7 @@ private:
     BS::thread_pool<> pool;
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
     ankerl::unordered_dense::map<std::filesystem::path, SourceBuffer> slangBufs;
-    SourceManager sourceMgr;
+    std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
 };
 
 } // namespace slingshot
