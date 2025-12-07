@@ -10,22 +10,22 @@ import socket
 
 
 def main():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(("localhost", 6942))
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    addr = ("localhost", 6942)
 
     print("Slingshot Remote Debugger")
 
     while True:
         try:
-            cmd = input("> ")
+            cmd = input("> ").strip()
         except EOFError:
             print("Goodbye.")
             return
 
-        s.send(cmd.encode("ascii"))
+        s.sendto(cmd.encode("ascii"), addr)
 
-        response = s.recv(512).decode("ascii")
-        print(response)
+        response, server = s.recvfrom(1024)
+        print(response.decode("ascii").strip())
 
 
 if __name__ == "__main__":
