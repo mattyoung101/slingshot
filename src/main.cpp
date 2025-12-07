@@ -45,6 +45,7 @@ namespace slingshot {
 bool g_running = false;
 IndexManager g_indexManager = {};
 CompilationManager g_compilerManager = {};
+RemoteDebugger g_debugger = {};
 } // namespace slingshot
 
 int main() {
@@ -91,6 +92,8 @@ int main() {
 
     SPDLOG_INFO("Slingshot LSP - (c) 2023-2025 M. L. Young. Licenced under the MPL 2.0.");
     SPDLOG_INFO("Slang version: {}.{}", VersionInfo::getMajor(), VersionInfo::getMinor());
+
+    g_debugger.boot(REMOTE_DEBUGGER_PORT);
 
     try {
         SPDLOG_INFO("Booting language server");

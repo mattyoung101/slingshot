@@ -22,6 +22,7 @@ add_executable(slingshot
     src/handlers.cpp
     src/indexing.cpp
     src/compiler.cpp
+    src/remote_debug.cpp
 )
 target_include_directories(slingshot PRIVATE include)
 
