@@ -15,6 +15,8 @@
 #include <optional>
 #include <slang/syntax/SyntaxTree.h>
 #include <spdlog/spdlog.h>
+#include <sstream>
+#include <string>
 
 using json = nlohmann::json;
 using namespace slingshot;
@@ -110,13 +112,23 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
     if (!std::filesystem::is_directory(path)) {
         // we lie a bit here, submit directly for indexing if they told us its a path but it's actually a
         // single file
-        SPDLOG_INFO("Discovered document: {}", path.string());
+        SPDLOG_INFO("Discovered (direct) document: {}", path.string());
         insert(path);
         return;
     }
 
     for (const auto &dirEntry : std::filesystem::recursive_directory_iterator(path)) {
-        SPDLOG_INFO("Discovered document: {}", path.string());
+        SPDLOG_INFO("Discovered document: {}", dirEntry.path().string());
         insert(dirEntry);
     }
+}
+
+std::string IndexManager::debugDump() {
+    std::stringstream stream;
+    for (const auto &entry : index) {
+        const auto &[key, value] = entry;
+        // stream << key.string() << '\n';
+        stream << fmt::format("{}: 0x{:X}\n", key.string(), value->hash);
+    }
+    return stream.str();
 }

@@ -16,6 +16,7 @@
 #include <memory>
 #include <optional>
 #include <slang/text/SourceLocation.h>
+#include <spdlog/spdlog.h>
 #include <string>
 #include <vector>
 
@@ -49,6 +50,13 @@ public:
     void submitCompilationJob(const std::string &document, const std::filesystem::path &path);
 
     std::optional<Diagnostics> getDiagnostics(const std::filesystem::path &path);
+
+    void addIncludeDir(const std::string &dir) {
+        auto err = sourceMgr->addUserDirectories(dir);
+        if (err) {
+            SPDLOG_ERROR("Failed to add include dir '{}': {}", dir, err.message());
+        }
+    }
 
 private:
     BS::thread_pool<> pool;

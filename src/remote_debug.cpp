@@ -37,7 +37,7 @@ void RemoteDebugger::debuggerThread() {
         // copy the socket data into a string (should be ASCII)
         std::string str(buf.data(), n);
 
-        SPDLOG_DEBUG("str is: {}", str);
+        SPDLOG_DEBUG("str is: {} size: {}", str, str.size());
 
         // parse command and return the response
         auto response = processMsg(str);
@@ -59,7 +59,15 @@ std::string RemoteDebugger::processMsg(std::string msg) {
     SPDLOG_DEBUG("Received message: {}", msg);
 
     // this is pretty nasty, we'll fix it up eventually
-    if (msg == "dump") {
+    if (msg == "dump index") {
+        return g_indexManager.debugDump();
+    }
+    if (msg == "sigtrap") {
+        raise(SIGTRAP);
+        return "OK";
+    }
+    if (msg == "die") {
+        exit(1);
         return "OK";
     }
 

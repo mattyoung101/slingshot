@@ -37,6 +37,7 @@ std::optional<std::vector<std::string>> parseConfigToml(std::filesystem::path &p
         for (const auto &dir : *include_dirs) {
             out.emplace_back(*dir.as_string());
         }
+
         return out;
     } catch (const std::exception &e) {
         SPDLOG_ERROR("Failed to parse config toml: {}", e.what());
@@ -69,6 +70,7 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
                 SPDLOG_INFO("Config TOML parsed successfully");
                 for (const auto &dir : *result) {
                     g_indexManager.walkDir(dir);
+                    g_compilerManager.addIncludeDir(dir);
                 }
                 g_indexManager.includeDirs = *result;
             }

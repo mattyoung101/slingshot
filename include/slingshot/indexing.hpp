@@ -66,6 +66,8 @@ public:
     /// Serialises the index to disk. baseDir is the project root directory.
     void flush(const std::filesystem::path &baseDir);
 
+    std::string debugDump();
+
     std::vector<std::string> includeDirs;
 
     [[nodiscard]] auto acquireLock() {
