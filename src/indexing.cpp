@@ -127,7 +127,6 @@ std::string IndexManager::debugDump() {
     std::stringstream stream;
     for (const auto &entry : index) {
         const auto &[key, value] = entry;
-        // stream << key.string() << '\n';
         stream << fmt::format(
             "{}    0x{:X}    {} diags\n", key.string(), value->hash, value->diagnostics.size());
     }

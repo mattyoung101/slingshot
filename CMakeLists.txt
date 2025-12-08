@@ -50,14 +50,14 @@ target_compile_options(slingshot PRIVATE "-Wall" "-Wextra" "-Wno-unused-paramete
 target_compile_definitions(slingshot PRIVATE "-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE")
 
 #### LINKER
-message(STATUS "Checking if LLD is available")
-execute_process(COMMAND "lld" ERROR_VARIABLE LLD_RESULT)
+message(STATUS "Checking if mold is available")
+execute_process(COMMAND "mold" "--version" OUTPUT_VARIABLE MOLD_RESULT)
 
-if (LLD_RESULT MATCHES "lld is a generic driver")
-    message(STATUS "LLD is available, it will be used")
-    target_link_options(slingshot PRIVATE "-fuse-ld=lld")
+if (MOLD_RESULT MATCHES "mold 2")
+    message(STATUS "mold is available, it will be used")
+    target_link_options(slingshot PRIVATE "-fuse-ld=mold")
 else()
-    message(STATUS "LLD is NOT available, so we'll use the system default linker")
+    message(STATUS "mold is NOT available, so we'll use the system default linker")
 endif()
 
 ## SANITIZERS

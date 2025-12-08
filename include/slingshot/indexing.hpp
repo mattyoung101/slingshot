@@ -68,11 +68,11 @@ public:
 
     std::string debugDump();
 
-    std::vector<std::string> includeDirs;
-
     [[nodiscard]] auto acquireLock() {
         return std::lock_guard<std::mutex>(lock);
     }
+
+    std::vector<std::string> includeDirs;
 
 private:
     std::mutex lock;

@@ -37,6 +37,11 @@ jobs:
         with:
           cmake-version: '4.1.x'
 
+      - name: Setup mold
+        uses: rui314/setup-mold@v1
+        with:
+          make-default: true
+
       - name: Install more system deps
         run: sudo apt update; sudo apt install --yes clang ninja-build libboost-all-dev
         if: ${{matrix.os}} != 'windows-2022'
