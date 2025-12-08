@@ -8,8 +8,10 @@
 #include "slingshot/slingshot.hpp"
 #include <array>
 #include <csignal>
+#include <sockpp/acceptor.h>
 #include <sockpp/inet_address.h>
 #include <sockpp/socket.h>
+#include <sockpp/tcp_acceptor.h>
 #include <sockpp/udp_socket.h>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -18,7 +20,7 @@ using namespace slingshot;
 
 void RemoteDebugger::boot(int port) {
     sockpp::initialize();
-    socket.bind(sockpp::inet_address("localhost", REMOTE_DEBUGGER_PORT));
+    acceptor = sockpp::tcp_acceptor(port);
     booted = true;
     SPDLOG_INFO("Booted remote debugger on port {}", port);
 
@@ -29,25 +31,38 @@ void RemoteDebugger::boot(int port) {
 void RemoteDebugger::debuggerThread() {
     SPDLOG_DEBUG("debuggerThread() entrypoint");
 
-    std::array<char, 512> buf {};
-    sockpp::udp_socket::addr_t peer;
-    ssize_t n = 0;
+    while (true) {
+        // wait for a debugger client to be connected
+        SPDLOG_DEBUG("Now waiting for a client");
+        socket = acceptor.accept(&peer);
+        SPDLOG_INFO("Client connected: {}", peer.to_string());
 
-    while ((n = socket.recv_from(buf.data(), buf.size(), &peer)) > 0) {
-        // copy the socket data into a string (should be ASCII)
-        std::string str(buf.data(), n);
-
-        SPDLOG_DEBUG("str is: {} size: {}", str, str.size());
-
-        // parse command and return the response
-        auto response = processMsg(str);
-        if (socket.send_to(response + "\n", peer) == -1) {
-            SPDLOG_ERROR("Failed to write to client: {}", socket.last_error_str());
-            break;
+        if (!socket) {
+            SPDLOG_ERROR("Could not accept incoming connection: {}", acceptor.last_error_str());
+            continue;
         }
 
-        // fill the buffer with zeroes again (just in case, I guess)
-        buf.fill(0);
+        while (socket.is_open()) {
+            std::array<char, 512> buf {};
+            ssize_t n = socket.read(buf.data(), buf.size());
+            if (n <= 0) {
+                break;
+            }
+
+            // copy the socket data into a string (should be ASCII)
+            std::string str(buf.data(), n);
+            SPDLOG_DEBUG("Received {} bytes: {}", n, str);
+
+            // parse command and return the response
+            auto response = processMsg(str);
+            if (socket.write(response + "\nEND_TRANSMISSION\n") == -1) {
+                SPDLOG_ERROR("Failed to write to client: {}", socket.last_error_str());
+                break;
+            }
+
+            // fill the buffer with zeroes again (just in case, I guess)
+            buf.fill(0);
+        }
     }
 
     SPDLOG_INFO("Connection closed from {}", peer.to_string());

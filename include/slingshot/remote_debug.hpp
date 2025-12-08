@@ -7,6 +7,8 @@
 #pragma once
 #include <sockpp/inet_address.h>
 #include <sockpp/socket.h>
+#include <sockpp/tcp_acceptor.h>
+#include <sockpp/tcp_socket.h>
 #include <sockpp/udp_socket.h>
 #include <string>
 #include <thread>
@@ -30,7 +32,9 @@ public:
     }
 
 private:
-    sockpp::udp_socket socket;
+    sockpp::tcp_acceptor acceptor;
+    sockpp::tcp_socket socket;
+    sockpp::inet_address peer;
     std::thread thread;
 
     void debuggerThread();
