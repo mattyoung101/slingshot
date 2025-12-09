@@ -17,6 +17,8 @@ void exit();
 
 void textDocumentOpen(const lsp::notifications::TextDocument_DidOpen::Params &&params);
 
+void textDocumentClose(const lsp::notifications::TextDocument_DidClose::Params &&params);
+
 void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params &&params);
 
 lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(

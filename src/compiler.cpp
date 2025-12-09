@@ -148,10 +148,13 @@ void CompilationManager::submitCompilationJob(
         g_indexManager.associateDiagnostics(path, diagClient->getLspDiagnostics());
 
         // publish diagnostics to the client
-        lsp::notifications::TextDocument_PublishDiagnostics::Params lspDiagMsg;
-        lspDiagMsg.diagnostics = diagClient->getLspDiagnostics();
-        lspDiagMsg.uri = lsp::Uri::parse("file://" + path.string());
-        g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(
-            std::move(lspDiagMsg));
+        // we only do this if the text document is open, to avoid extraneous errors
+        if (openFiles.contains(path)) {
+            lsp::notifications::TextDocument_PublishDiagnostics::Params lspDiagMsg;
+            lspDiagMsg.diagnostics = diagClient->getLspDiagnostics();
+            lspDiagMsg.uri = lsp::Uri::parse("file://" + path.string());
+            g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(
+                std::move(lspDiagMsg));
+        }
     });
 }

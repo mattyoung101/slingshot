@@ -127,6 +127,12 @@ void textDocumentOpen(const lsp::notifications::TextDocument_DidOpen::Params &&p
 
     // register in the document database
     g_indexManager.insert(params.textDocument.uri.path(), params.textDocument.text);
+    g_compilerManager.openFiles.insert(params.textDocument.uri.path());
+}
+
+void textDocumentClose(const lsp::notifications::TextDocument_DidClose::Params &&params) {
+    SPDLOG_DEBUG("Close document: {}", params.textDocument.uri.path());
+    g_compilerManager.openFiles.erase(params.textDocument.uri.path());
 }
 
 void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params &&params) {
