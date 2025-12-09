@@ -11,7 +11,7 @@
 #include <ankerl/unordered_dense.h>
 #include <lsp/messages.h>
 #include <lsp/types.h>
-#include <mutex>
+#include <lsp/uri.h>
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/syntax/SyntaxTree.h>
@@ -147,16 +147,11 @@ void CompilationManager::submitCompilationJob(
         g_indexManager.associateParse(path, tree);
         g_indexManager.associateDiagnostics(path, diagClient->getLspDiagnostics());
 
-        // notify everyone waiting
-        std::lock_guard<std::mutex> lock(compilationDoneMtx);
-        didJustCompile = path;
-        compilationDone.notify_all();
+        // publish diagnostics to the client
+        lsp::notifications::TextDocument_PublishDiagnostics::Params lspDiagMsg;
+        lspDiagMsg.diagnostics = diagClient->getLspDiagnostics();
+        lspDiagMsg.uri = lsp::Uri::parse("file://" + path.string());
+        g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(
+            std::move(lspDiagMsg));
     });
-}
-
-void CompilationManager::awaitCompilation(const std::filesystem::path &path) {
-    SPDLOG_DEBUG("Awaiting compilation of {}", path.string());
-    std::unique_lock<std::mutex> lock(compilationDoneMtx);
-    compilationDone.wait(lock, [path, this] { return didJustCompile == path; });
-    SPDLOG_DEBUG("Compilation done for {}!", path.string());
 }

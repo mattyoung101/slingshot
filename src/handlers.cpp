@@ -69,10 +69,14 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
                 // we have the index file
                 SPDLOG_INFO("Config TOML parsed successfully");
                 for (const auto &dir : *result) {
-                    g_indexManager.walkDir(dir);
                     g_compilerManager.addIncludeDir(dir);
                 }
                 g_indexManager.includeDirs = *result;
+
+                // **now** that we've registered the include dirs, we can actually walk the directories
+                for (const auto &dir : *result) {
+                    g_indexManager.walkDir(dir);
+                }
             }
         } else {
             SPDLOG_ERROR("Could not locate .slingshot.toml file. Index may be non-functional!");
@@ -158,8 +162,8 @@ lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
         return {};
     }
     if ((*result)->tree == nullptr) {
-        // FIXME we must reply later, once it is parsed, otherwise we don't show shit
-        SPDLOG_WARN("Document {} has not yet been parsed", path);
+        // in this case, it'll be handled by the compiler manager
+        SPDLOG_DEBUG("Document {} has not yet been parsed, handling it later", path);
         return {};
     }
 
