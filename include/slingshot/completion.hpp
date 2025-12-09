@@ -22,6 +22,11 @@ namespace slingshot {
 
 using namespace slang;
 
+const std::vector<std::string> LHS_KEYWORDS = {
+    "logic",
+    "wire",
+};
+
 class CompletionManager {
 public:
 private:

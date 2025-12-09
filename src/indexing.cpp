@@ -25,26 +25,22 @@ void IndexManager::insert(const std::filesystem::path &path, const std::string &
     SPDLOG_DEBUG("IndexManager::insert {}", path.string());
 
     auto hash = ankerl::unordered_dense::detail::wyhash::hash(document.c_str(), document.size());
-    IndexEntry entry { .version = INDEX_VERSION,
-        .path = path,
-        .hash = hash,
-        .tree = nullptr,
-        .diagnostics = std::vector<lsp::Diagnostic>() };
 
-    if (retrieve(path, hash) == std::nullopt) {
-        // take the mutex before we push to the index
-        {
-            std::lock_guard<std::mutex> guard(g_indexManager.lock);
+    // take the mutex before we push to the index
+    std::lock_guard<std::mutex> guard(g_indexManager.lock);
 
-            SPDLOG_DEBUG("Not yet in index, so inserting it");
-            index[path] = std::make_shared<IndexEntry>(entry);
-        }
-
-        // and also schedule a compilation job for this
-        g_compilerManager.submitCompilationJob(document, path);
+    auto maybeEntry = retrieve(path);
+    if (maybeEntry == std::nullopt) {
+        SPDLOG_DEBUG("Path {} not yet in index, inserting brand new entrry", path.string());
+        IndexEntry entry(path, hash);
+        index[path] = std::make_shared<IndexEntry>(entry);
     } else {
-        SPDLOG_DEBUG("Already in index with this path and hash, not inserted");
+        SPDLOG_DEBUG("Path {} already in index, invalidating and updating", path.string());
+        index[path]->invalidate(hash);
     }
+
+    // regardless, schedule a compilation job for this
+    g_compilerManager.submitCompilationJob(document, path);
 }
 
 void IndexManager::insert(const std::filesystem::path &path) {
@@ -65,6 +61,7 @@ void IndexManager::associateParse(
     auto result = retrieve(path);
     if (result.has_value()) {
         (*result)->tree = tree;
+        (*result)->valid = true;
     } else {
         SPDLOG_WARN("Path {} somehow not in the index!", path.string());
     }

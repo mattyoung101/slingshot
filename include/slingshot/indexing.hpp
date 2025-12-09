@@ -16,6 +16,7 @@
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/syntax/SyntaxTree.h>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace slingshot {
@@ -25,18 +26,34 @@ constexpr std::string INDEX_VERSION = "1.0.0";
 
 class IndexEntry {
 public:
-    std::string version;
+    std::string version = INDEX_VERSION;
     std::string path;
     uint64_t hash;
 
     /// Parse tree
     /// WARNING May be nullptr if not yet parsed
-    std::shared_ptr<slang::syntax::SyntaxTree> tree;
+    std::shared_ptr<slang::syntax::SyntaxTree> tree {};
 
     /// Processed LSP diagnostics, only really valid if tree != nullptr
-    std::vector<lsp::Diagnostic> diagnostics;
+    std::vector<lsp::Diagnostic> diagnostics {};
+
+    /// True if the parse tree is valid, false if the parse tree is invalidated and we're waiting a new parse
+    bool valid = false;
 
     using Ptr = std::shared_ptr<IndexEntry>;
+
+    IndexEntry(std::string path, uint64_t hash)
+        : path(std::move(path))
+        , hash(hash) {
+    }
+
+    void invalidate(uint64_t newHash) {
+        hash = newHash;
+        // clear the diagnostics
+        diagnostics.clear();
+        // BUT importantly, keep the tree
+        valid = false;
+    }
 };
 
 class IndexManager {
