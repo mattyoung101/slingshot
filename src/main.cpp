@@ -17,18 +17,20 @@
 #include <csignal>
 #include <exception>
 #include <filesystem>
+#include <memory>
 #include <spdlog/sinks/ansicolor_sink.h>
 #include <unistd.h>
 
 namespace {
 
-void addCallbacks(lsp::MessageHandler &msgHandler) {
-    msgHandler.add<lsp::requests::Initialize>(slingshot::handlers::initialise);
-    msgHandler.add<lsp::requests::Shutdown>(slingshot::handlers::shutdown);
-    msgHandler.add<lsp::notifications::Exit>(slingshot::handlers::exit);
-    msgHandler.add<lsp::notifications::TextDocument_DidOpen>(slingshot::handlers::textDocumentOpen);
-    msgHandler.add<lsp::notifications::TextDocument_DidChange>(slingshot::handlers::textDocumentChange);
-    msgHandler.add<lsp::requests::TextDocument_Diagnostic>(slingshot::handlers::textDocumentDiagnostic);
+void addCallbacks(std::shared_ptr<lsp::MessageHandler> &msgHandler) {
+    msgHandler->add<lsp::requests::Initialize>(slingshot::handlers::initialise);
+    msgHandler->add<lsp::requests::Shutdown>(slingshot::handlers::shutdown);
+    msgHandler->add<lsp::notifications::Exit>(slingshot::handlers::exit);
+    msgHandler->add<lsp::notifications::TextDocument_DidOpen>(slingshot::handlers::textDocumentOpen);
+    msgHandler->add<lsp::notifications::TextDocument_DidChange>(slingshot::handlers::textDocumentChange);
+    msgHandler->add<lsp::requests::TextDocument_Diagnostic>(slingshot::handlers::textDocumentDiagnostic);
+    msgHandler->add<lsp::requests::TextDocument_Completion>(slingshot::handlers::textDocumentCompletion);
 }
 
 void sigIntHandler(int signal) {
@@ -46,6 +48,7 @@ bool g_running = false;
 IndexManager g_indexManager = {};
 CompilationManager g_compilerManager = {};
 RemoteDebugger g_debugger = {};
+std::shared_ptr<lsp::MessageHandler> g_msgHandler = {};
 } // namespace slingshot
 
 int main() {
@@ -98,14 +101,14 @@ int main() {
     try {
         SPDLOG_INFO("Booting language server");
         auto connection = lsp::Connection(lsp::io::standardIO());
-        auto msgHandler = lsp::MessageHandler(connection);
-        addCallbacks(msgHandler);
+        g_msgHandler = std::make_shared<lsp::MessageHandler>(connection);
+        addCallbacks(g_msgHandler);
 
         g_running = true;
 
         SPDLOG_INFO("Now running");
         while (g_running) {
-            msgHandler.processIncomingMessages();
+            g_msgHandler->processIncomingMessages();
         }
 
     } catch (const std::exception &e) {

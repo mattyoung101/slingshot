@@ -84,15 +84,15 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
     return lsp::requests::Initialize::Result{
 				.capabilities = {
 					.positionEncoding = lsp::PositionEncodingKind::UTF8,
-					.textDocumentSync = lsp::TextDocumentSyncOptions{
+					.textDocumentSync = lsp::TextDocumentSyncOptions {
 						.openClose = true,
 						// this should probably be incremental in future if we actually see any performance
 						// problems but W/E for now
 						.change    = lsp::TextDocumentSyncKind::Full,
-						.save      = true
+						.save      = true,
 					},
 					.completionProvider = lsp::CompletionOptions {
-                        .triggerCharacters = std::vector<std::string>{".", "`", "[", "{"}
+                        .triggerCharacters = std::vector<std::string>{".", "`", "[", "{"},
 					},
 					.diagnosticProvider = lsp::DiagnosticOptions {
 						.interFileDependencies = false, // TODO this should eventually be true
@@ -158,6 +158,7 @@ lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
         return {};
     }
     if ((*result)->tree == nullptr) {
+        // FIXME we must reply later, once it is parsed, otherwise we don't show shit
         SPDLOG_WARN("Document {} has not yet been parsed", path);
         return {};
     }
@@ -167,6 +168,12 @@ lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
     SPDLOG_DEBUG("Returning {} diagnostics", output.items.size());
 
     return output;
+}
+
+lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
+    const lsp::requests::TextDocument_Completion::Params &&params) {
+    SPDLOG_ERROR("Completion request");
+    return {};
 }
 
 } // namespace slingshot::handlers

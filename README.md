@@ -20,17 +20,7 @@ aims to:
 **WORK IN PROGRESS**
 
 - Diagnostics
-- Completion
-  - Context-sensitive completion based on cursor's position in the parse tree
-  - Slingshot is aware of both line and block comments, and does not suggest completions when you are inside
-    a comment
-  - Completion for "variables" (logic, wire, etc) and ports in the current module
-  - Completion for language keywords, e.g. `always_ff`, `always_comb`, `posedge`
-  - Snippets for various blocks, e.g. `always_ff`, `always_comb`, `case`, `if`
-  - Completion for macros
-- Cross-file completion
-  - Slingshot can complete modules, enums and macros declared in other files
-  - Every include path specified in the config file is searched and indexed automatically
+  - Based on the powerful Slang SystemVerilog frontend
 - Simple configuration
   - Slingshot is configured through a simple `.slingshot.toml` file declared in the project's root
   directory
@@ -42,7 +32,8 @@ Future features are planned on the [issue tracker](https://github.com/mattyoung1
 Slingshot is being rewritten and is not currently useful in any projects.
 
 ### Timeline
-Slingshot is being developed in my free time, and I'm hoping to work on it somewhat during my PhD.
+Slingshot is being developed in my free time, and I'm hoping to work on it somewhat during my PhD. One day, it
+might become a joint project of my PhD lab, hopefully.
 
 ## Building and running
 ### Building and environment
@@ -52,6 +43,7 @@ You will need:
 - Ninja
 - ccache (optional)
 - Just (optional)
+- mold (optional)
 
 The simplest way to build, with Just, is to run `just build` and/or `just build_debug`.
 
@@ -121,6 +113,8 @@ fix bug tickets. Pull requests are welcome as well, but may take some time to re
 See [docs/design_goals.md](docs/design_goals.md)
 
 ## Implementation details
+**TODO**
+
 See [docs/impl_details.md](docs/impl_details.md)
 
 ## Licence

@@ -9,6 +9,7 @@
 #include "slingshot/indexing.hpp"
 #include "slingshot/compiler.hpp"
 #include "slingshot/remote_debug.hpp"
+#include <lsp/messagehandler.h>
 #include <memory>
 #include <slang/syntax/SyntaxTree.h>
 
@@ -18,6 +19,7 @@ extern bool g_running;
 extern IndexManager g_indexManager;
 extern CompilationManager g_compilerManager;
 extern RemoteDebugger g_debugger;
+extern std::shared_ptr<lsp::MessageHandler> g_msgHandler;
 
 constexpr std::string CONFIG_VERSION = "1.0.0";
 

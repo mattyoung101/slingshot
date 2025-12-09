@@ -11,9 +11,11 @@
 #include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/diagnostics/Diagnostics.h"
 #include "slang/text/SourceManager.h"
+#include <condition_variable>
 #include <filesystem>
 #include <lsp/types.h>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
@@ -58,11 +60,18 @@ public:
         }
     }
 
+    void awaitCompilation(const std::filesystem::path &path);
+
 private:
     BS::thread_pool<> pool;
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
     ankerl::unordered_dense::map<std::filesystem::path, SourceBuffer> slangBufs;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
+
+    std::condition_variable compilationDone;
+    std::mutex compilationDoneMtx;
+    /// path of the object we just compiled
+    std::filesystem::path didJustCompile;
 };
 
 } // namespace slingshot
