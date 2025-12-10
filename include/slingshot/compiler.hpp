@@ -58,12 +58,12 @@ public:
         }
     }
 
+    /// List of files the editor has open
     ankerl::unordered_dense::set<std::filesystem::path> openFiles {};
 
 private:
     BS::thread_pool<> pool;
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
-    ankerl::unordered_dense::map<std::filesystem::path, SourceBuffer> slangBufs;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
 };
 

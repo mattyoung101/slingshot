@@ -183,6 +183,23 @@ lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
 lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     const lsp::requests::TextDocument_Completion::Params &&params) {
     SPDLOG_ERROR("Completion request");
+
+    auto path = params.textDocument.uri.path();
+
+    auto lock = g_indexManager.acquireLock();
+    auto result = g_indexManager.retrieve(path);
+    if (!result.has_value()) {
+        SPDLOG_WARN("Document {} is not in index", path);
+        return {};
+    }
+    if ((*result)->tree == nullptr) {
+        // in this case, it'll be handled by the compiler manager
+        SPDLOG_WARN("Document {} has not yet been parsed, can't do completion", path);
+        return {};
+    }
+
+    lsp::TextDocument_CompletionResult completions;
+
     return {};
 }
 

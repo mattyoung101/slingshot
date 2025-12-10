@@ -78,10 +78,12 @@ std::string RemoteDebugger::processMsg(std::string msg) {
         return g_indexManager.debugDump();
     }
     if (msg == "sigtrap") {
+        SPDLOG_WARN("Debugger sent 'sigtrap', raising SIGTRAP now");
         raise(SIGTRAP);
         return "OK";
     }
     if (msg == "die") {
+        SPDLOG_WARN("Debugger sent 'die', killing server now");
         exit(1);
         return "OK";
     }

@@ -22,9 +22,81 @@ namespace slingshot {
 
 using namespace slang;
 
-const std::vector<std::string> LHS_KEYWORDS = {
-    "logic",
-    "wire",
+/// Types of completions we can recommend to the user
+enum class CompletionType {
+    /// Do not recommend anything
+    None,
+
+    /// A module
+    Module,
+
+    /// A port from the module the cursor is in
+    PortSameModule,
+
+    /// A port from the module we are instantiating
+    PortInstantiatedModule,
+
+    /// A "variable" from the module that is being instantiated
+    VariableSameModule,
+
+    /// A `defined` macro
+    Macro,
+
+    /// Either posedge or nedge
+    Edge,
+
+    /// The keywords: logic, wire, reg
+    Logic,
+
+    /// An always_ff, always_comb or always_latch snippet
+    Always,
+
+    /// An SV system task, e.g. $display, $error, etc
+    SystemTask,
+};
+
+const std::vector<std::string> SYSTEM_TASKS = {
+    "display",
+    "monitor",
+    "write",
+    "strobe",
+    "error",
+    "fatal",
+    "info",
+    "warning",
+    "clog2",
+    "finish",
+    "stop",
+    "fopen",
+    "fscanf",
+    "fwrite",
+    "fgets",
+    "readmemb",
+    "readmemh",
+    "write",
+    "floor",
+    "ceil",
+    "countones",
+    "countbits",
+    "time",
+    "signed",
+    "unsigned",
+
+    // These pollute the completion list quite a bit, and I can't imagine they are seriously commonly
+    // used, so I'm not including them for now.
+    // "asin",
+    // "acos",
+    // "atan",
+    // "atan2",
+    // "sin",
+    // "cos",
+    // "tan",
+    // "ln",
+    // "log10",
+    // "exp",
+    // "sqrt",
+    // "hypot",
+    // "pow",
 };
 
 class CompletionManager {
