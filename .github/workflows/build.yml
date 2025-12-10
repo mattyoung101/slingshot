@@ -15,8 +15,8 @@ jobs:
     env:
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
       CMAKE_C_COMPILER_LAUNCHER: ccache
-      CC: /usr/lib/ccache/clang-20
-      CXX: /usr/lib/ccache/clang++-20
+      CC: /usr/lib/ccache/clang-21
+      CXX: /usr/lib/ccache/clang++-21
     steps:
       - uses: actions/checkout@v5
 
