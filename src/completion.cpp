@@ -29,9 +29,7 @@ using namespace slingshot;
         code;                                                                                                \
     }
 
-#define RECOMMEND(what)                                                                                      \
-    SPDLOG_DEBUG("Recommending: {}", #what);                                                                 \
-    recommendations.push_back(what);
+#define RECOMMEND(what) recommend(what, #what);
 
 std::vector<lsp::CompletionItem> CompletionGenerator::generateLogic() {
     return {
@@ -63,13 +61,19 @@ std::vector<lsp::CompletionItem> CompletionGenerator::generateEdge() {
     };
 }
 
+void CompletionSyntaxVisitor::recommend(const CompletionType &type, const std::string &name) {
+    recommendations.push_back(type);
+    SPDLOG_DEBUG("Recommending: {}", name);
+}
+
 void CompletionSyntaxVisitor::handle(const EventControlWithExpressionSyntax &syntax) {
     SPDLOG_DEBUG("Visit event control expr {}", syntax.toString());
 
     BEGIN({
-            // if ()
+        if (!syntax.toString().contains("foo")) {
             RECOMMEND(CompletionType::Edge);
-            })
+        }
+    })
 }
 
 void CompletionSyntaxVisitor::handle(const ExpressionSyntax &syntax) {

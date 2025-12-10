@@ -39,7 +39,7 @@ might become a joint project of my PhD lab, hopefully.
 ### Building and environment
 You will need:
 - CMake 3.20+
-- A C++20 compiler (Clang recommended)
+- A C++23 compiler (Clang 20+ recommended)
 - Ninja
 - ccache (optional)
 - Just (optional)

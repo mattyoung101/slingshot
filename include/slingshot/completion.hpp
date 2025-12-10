@@ -115,6 +115,8 @@ public:
 private:
     /// Cursor position
     SourceLocation cursor;
+
+    void recommend(const CompletionType &type, const std::string &name);
 };
 
 class CompletionManager {
