@@ -5,15 +5,15 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
-#include "slang/diagnostics/DiagnosticClient.h"
-#include "slang/diagnostics/DiagnosticEngine.h"
-#include "slang/diagnostics/Diagnostics.h"
-#include "slang/text/SourceManager.h"
+#include "slingshot/indexing.hpp"
 #include <filesystem>
 #include <lsp/types.h>
 #include <memory>
 #include <optional>
+#include <slang/syntax/SyntaxVisitor.h>
+#include <slang/syntax/AllSyntax.h>
 #include <slang/text/SourceLocation.h>
+#include <slang/text/SourceManager.h>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <vector>
@@ -21,6 +21,7 @@
 namespace slingshot {
 
 using namespace slang;
+using namespace slang::syntax;
 
 /// Types of completions we can recommend to the user
 enum class CompletionType {
@@ -99,9 +100,38 @@ const std::vector<std::string> SYSTEM_TASKS = {
     // "pow",
 };
 
+/// A syntax visitor that walks the syntax tree, taking into account the cursor position
+class CompletionSyntaxVisitor : public SyntaxVisitor<CompletionSyntaxVisitor> {
+public:
+    CompletionSyntaxVisitor(const SourceLocation &cursor)
+        : cursor(cursor) {
+    }
+
+    void handle(const EventControlWithExpressionSyntax &syntax);
+
+private:
+    /// Cursor position
+    SourceLocation cursor;
+    /// The recommended things to complete
+    std::vector<CompletionType> recommendations;
+};
+
 class CompletionManager {
 public:
+    /// Generates completions for the given document at the given path
+    std::vector<lsp::CompletionItem> getCompletions(
+        const std::filesystem::path &path, const lsp::Position &pos, const IndexEntry::Ptr &indexEntry);
+
 private:
+};
+
+class CompletionGenerator {
+public:
+    /// Generates completion items for CompletionType::Logic
+    static std::vector<lsp::CompletionItem> generateLogic();
+
+    /// Generates completion items for posedge and negedge
+    static std::vector<lsp::CompletionItem> generateEdge();
 };
 
 } // namespace slingshot

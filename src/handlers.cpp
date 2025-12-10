@@ -158,8 +158,8 @@ void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params
 
 lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
     const lsp::requests::TextDocument_Diagnostic::Params &&params) {
-    SPDLOG_DEBUG("Diagnostic info request");
     auto path = params.textDocument.uri.path();
+    SPDLOG_DEBUG("Diagnostic info request in {}", path);
 
     auto lock = g_indexManager.acquireLock();
     auto result = g_indexManager.retrieve(path);
@@ -182,9 +182,8 @@ lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
 
 lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     const lsp::requests::TextDocument_Completion::Params &&params) {
-    SPDLOG_ERROR("Completion request");
-
     auto path = params.textDocument.uri.path();
+    SPDLOG_DEBUG("Completion request in {}", path);
 
     auto lock = g_indexManager.acquireLock();
     auto result = g_indexManager.retrieve(path);
@@ -194,13 +193,15 @@ lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     }
     if ((*result)->tree == nullptr) {
         // in this case, it'll be handled by the compiler manager
-        SPDLOG_WARN("Document {} has not yet been parsed, can't do completion", path);
+        SPDLOG_WARN("Document {} has no parse tree at all, can't do completion", path);
         return {};
     }
 
-    lsp::TextDocument_CompletionResult completions;
+    if (!(*result)->valid) {
+        SPDLOG_WARN("Parse tree may be stale when doing completions on {}", path);
+    }
 
-    return {};
+    return g_completionManager.getCompletions(path, params.position, *result);
 }
 
 } // namespace slingshot::handlers

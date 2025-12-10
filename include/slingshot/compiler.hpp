@@ -61,6 +61,13 @@ public:
     /// List of files the editor has open
     ankerl::unordered_dense::set<std::filesystem::path> openFiles {};
 
+    /// Association between a FS path and a Slang BufferID once it's been added to the internal SourceManager
+    ankerl::unordered_dense::map<std::filesystem::path, BufferID> bufferIds;
+
+    /// Gets the source manager. This is really only a hack to plumb this shit into the completion system.
+    std::shared_ptr<SourceManager> getSourceManager() {
+        return sourceMgr;
+    }
 private:
     BS::thread_pool<> pool;
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;

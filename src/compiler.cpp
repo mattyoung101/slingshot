@@ -127,6 +127,7 @@ void CompilationManager::submitCompilationJob(
 
     // NOTE this may leak memory
     auto buf = sourceMgr->assignText(document);
+    bufferIds[path] = buf.id;
 
     pool.detach_task([buf, path, this] {
         // do compilation

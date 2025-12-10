@@ -50,6 +50,7 @@ IndexManager g_indexManager = {};
 CompilationManager g_compilerManager = {};
 RemoteDebugger g_debugger = {};
 std::shared_ptr<lsp::MessageHandler> g_msgHandler = {};
+CompletionManager g_completionManager = {};
 } // namespace slingshot
 
 int main() {

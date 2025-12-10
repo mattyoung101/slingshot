@@ -28,8 +28,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include "slingshot/compiler.hpp"
+#include "slingshot/slingshot.hpp"
 #include <lsp/types.h>
 #include <lsp/uri.h>
+#include <memory>
 #include <optional>
 #include <slang/text/SourceLocation.h>
 #include <slang/text/SourceManager.h>
@@ -134,6 +137,58 @@ inline std::optional<lsp::Location> getLocation(SourceLocation loc, std::span<co
         return toLocation(totalRange, sourceMgr);
     }
     return std::nullopt;
+}
+
+inline SourceLocation toSlangLocation(const lsp::Position &pos, const std::filesystem::path &path,
+    const std::shared_ptr<SourceManager> &sourceMgr) {
+    if (!g_compilerManager.bufferIds.contains(path)) {
+        SPDLOG_ERROR("Path {} not registered in the buffer ID map!", path.string());
+        return {};
+    }
+
+    // get the buffer
+    auto bufId = g_compilerManager.bufferIds[path];
+    auto text = sourceMgr->getSourceText(bufId);
+
+    // and now convert line + row into an offset in bytes
+
+    // Defensive checks — LSP clients can send junk sometimes.
+    size_t line = pos.line;
+    size_t col = pos.character;
+
+    // Compute offset by iterating until the target line.
+    size_t offset = 0;
+    size_t curLine = 0;
+
+    while (offset < text.length() && curLine < line) {
+        auto c = text[offset++];
+        if (c == '\n') {
+            curLine++;
+        }
+    }
+
+    // If we never reached the line, it's out of range.
+    if (curLine != line) {
+        SPDLOG_WARN("Position line {} beyond file length {}", line, curLine);
+        return {};
+    }
+
+    // Now we’re at the start of the target line. Apply column.
+    size_t lineStart = offset;
+    size_t remaining = text.length() - lineStart;
+
+    // Clamp column to the line length so we don’t crash.
+    size_t colApplied = 0;
+    while (colApplied < col && colApplied < remaining) {
+        if (text[lineStart + colApplied] == '\n') {
+            break;
+        }
+        colApplied++;
+    }
+
+    offset = lineStart + colApplied;
+
+    return { bufId, offset };
 }
 
 }; // namespace slingshot
