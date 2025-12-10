@@ -13,6 +13,7 @@
 #include <lsp/messagehandler.h>
 #include <memory>
 #include <slang/syntax/SyntaxTree.h>
+#include <vector>
 
 namespace slingshot {
 
@@ -28,5 +29,11 @@ constexpr std::string CONFIG_VERSION = "1.0.0";
 constexpr int REMOTE_DEBUGGER_PORT = 6942;
 
 using SyntaxTreePtr = std::shared_ptr<slang::syntax::SyntaxTree>;
+
+/// Adds all the elements of B to the vector A
+template <class T>
+inline void addAll(std::vector<T> &a, const std::vector<T> &b) {
+    a.insert(a.end(), b.begin(), b.end());
+}
 
 } // namespace slingshot

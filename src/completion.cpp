@@ -15,6 +15,7 @@
 #include <lsp/uri.h>
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/Diagnostics.h>
+#include <slang/syntax/AllSyntax.h>
 #include <slang/syntax/SyntaxTree.h>
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
@@ -28,7 +29,9 @@ using namespace slingshot;
         code;                                                                                                \
     }
 
-#define RECOMMEND(what) recommendations.push_back(what);
+#define RECOMMEND(what)                                                                                      \
+    SPDLOG_DEBUG("Recommending: {}", #what);                                                                 \
+    recommendations.push_back(what);
 
 std::vector<lsp::CompletionItem> CompletionGenerator::generateLogic() {
     return {
@@ -61,21 +64,49 @@ std::vector<lsp::CompletionItem> CompletionGenerator::generateEdge() {
 }
 
 void CompletionSyntaxVisitor::handle(const EventControlWithExpressionSyntax &syntax) {
-    SPDLOG_INFO("Visit event control expr!");
-    if (syntax.sourceRange().contains(cursor)) {
-        SPDLOG_INFO("IT CONTAINS THE CURSOR :fire:");
-    }
+    SPDLOG_DEBUG("Visit event control expr {}", syntax.toString());
 
-    // TODO only do this if there is no posedge or negedge on the line already
-    BEGIN({ RECOMMEND(CompletionType::Edge); })
+    BEGIN({
+            // if ()
+            RECOMMEND(CompletionType::Edge);
+            })
+}
+
+void CompletionSyntaxVisitor::handle(const ExpressionSyntax &syntax) {
+    SPDLOG_DEBUG("Visit expression {}", syntax.toString());
+    BEGIN({ RECOMMEND(CompletionType::Logic) });
 }
 
 std::vector<lsp::CompletionItem> CompletionManager::getCompletions(
     const std::filesystem::path &path, const lsp::Position &pos, const IndexEntry::Ptr &indexEntry) {
     auto tree = indexEntry->tree;
 
+    // visit the syntax tree, based on cursor position
     CompletionSyntaxVisitor visitor(toSlangLocation(pos, path, g_compilerManager.getSourceManager()));
     visitor.visit(tree->root());
 
-    return {};
+    // now we have the recommendation types, generate the actual items
+    return CompletionGenerator::transformAll(visitor.recommendations);
+}
+
+std::vector<lsp::CompletionItem> CompletionGenerator::transformAll(
+    const std::vector<CompletionType> &completions) {
+    std::vector<lsp::CompletionItem> out;
+
+    for (const auto &comp : completions) {
+        switch (comp) {
+            case CompletionType::Edge:
+                addAll(out, generateEdge());
+                break;
+
+            case CompletionType::Logic:
+                addAll(out, generateLogic());
+                break;
+
+            default:
+                SPDLOG_ERROR("Unhandled completion type: {}", static_cast<int>(comp));
+        }
+    }
+
+    return out;
 }

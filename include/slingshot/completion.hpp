@@ -8,10 +8,8 @@
 #include "slingshot/indexing.hpp"
 #include <filesystem>
 #include <lsp/types.h>
-#include <memory>
-#include <optional>
-#include <slang/syntax/SyntaxVisitor.h>
 #include <slang/syntax/AllSyntax.h>
+#include <slang/syntax/SyntaxVisitor.h>
 #include <slang/text/SourceLocation.h>
 #include <slang/text/SourceManager.h>
 #include <spdlog/spdlog.h>
@@ -109,17 +107,20 @@ public:
 
     void handle(const EventControlWithExpressionSyntax &syntax);
 
+    void handle(const ExpressionSyntax &syntax);
+
+    /// The recommended things to complete
+    std::vector<CompletionType> recommendations;
+
 private:
     /// Cursor position
     SourceLocation cursor;
-    /// The recommended things to complete
-    std::vector<CompletionType> recommendations;
 };
 
 class CompletionManager {
 public:
     /// Generates completions for the given document at the given path
-    std::vector<lsp::CompletionItem> getCompletions(
+    static std::vector<lsp::CompletionItem> getCompletions(
         const std::filesystem::path &path, const lsp::Position &pos, const IndexEntry::Ptr &indexEntry);
 
 private:
@@ -127,6 +128,9 @@ private:
 
 class CompletionGenerator {
 public:
+    /// Processes each type of completion specified, and generates the correct LSP completion item(s) for it
+    static std::vector<lsp::CompletionItem> transformAll(const std::vector<CompletionType> &completions);
+
     /// Generates completion items for CompletionType::Logic
     static std::vector<lsp::CompletionItem> generateLogic();
 
