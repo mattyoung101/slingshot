@@ -196,10 +196,13 @@ lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
         return {};
     }
 
-    if (!(*result)->valid) {
-        SPDLOG_WARN("Parse tree may be stale when doing completions on {}", path);
-        // FIXME we need to wait for the tree to not be stale in this case; maybe with a condition variable
-    }
+    // ensure the index entry is valid
+    (*result)->ensureValidByWaiting();
+
+    // if (!(*result)->valid) {
+    //     SPDLOG_WARN("Parse tree may be stale when doing completions on {}", path);
+    //     // FIXME we need to wait for the tree to not be stale in this case; maybe with a condition variable
+    // }
 
     return g_completionManager.getCompletions(path, params.position, *result);
 }

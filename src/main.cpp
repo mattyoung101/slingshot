@@ -90,9 +90,9 @@ int main() {
 
     signal(SIGINT, sigIntHandler);
 
-    spdlog::default_logger()->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%s:%# %!] %v");
+    spdlog::default_logger()->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$ thread %t] [%s:%# %!] %v");
     for (auto &sink : spdlog::default_logger()->sinks()) {
-        sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%s:%# %!] %v");
+        sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$ thread %t] [%s:%# %!] %v");
     }
 
     SPDLOG_INFO("Slingshot LSP - (c) 2023-2025 M. L. Young. Licenced under the MPL 2.0.");

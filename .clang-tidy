@@ -21,3 +21,5 @@ Checks: >
   -performance-enum-size,
   -cppcoreguidelines-avoid-c-arrays,
   -readability-redundant-member-init,
+  -misc-non-private-member-variables-in-classes,
+  -cppcoreguidelines-non-private-member-variables-in-classes,

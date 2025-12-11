@@ -144,6 +144,7 @@ void CompilationManager::submitCompilationJob(
             diagEngine.issue(diag);
         }
 
+        SPDLOG_DEBUG("Now associating parse tree");
         g_indexManager.associateParse(path, tree);
         g_indexManager.associateDiagnostics(path, diagClient->getLspDiagnostics());
 

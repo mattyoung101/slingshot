@@ -6,7 +6,6 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
 #include "ankerl/unordered_dense.h"
-#include "nlohmann/json.hpp"
 #include <condition_variable>
 #include <cstdint>
 #include <filesystem>
@@ -16,6 +15,7 @@
 #include <optional>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/syntax/SyntaxTree.h>
+#include <spdlog/spdlog.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -51,6 +51,8 @@ public:
     /// Invalidates the index entry when the contents of the file has been updated. newHash is the new WyHash
     /// of the file.
     void invalidate(uint64_t newHash) {
+        std::lock_guard<std::mutex> lock(mutex);
+        SPDLOG_DEBUG("Marking index entry {} as invalid with new hash 0x{:X}", path, newHash);
         hash = newHash;
         // clear the diagnostics
         diagnostics.clear();
@@ -58,16 +60,33 @@ public:
         valid = false;
     }
 
-//     /// Wakes up all threads waiting on this entry to become valid, and marks it valid
-//     void makeValid() {
-//         std::lock_guard<std::mutex> lock(mutex);
-//         valid = true;
-//         cond.notify_all();
-//     }
-//
-// private:
-//     std::mutex mutex{};
-//     std::condition_variable cond{};
+    /// Wakes up all threads waiting on this entry to become valid, and marks it valid
+    void makeValid() {
+        std::lock_guard<std::mutex> lock(mutex);
+        SPDLOG_DEBUG("Marking index entry {} as valid", path);
+        valid = true;
+        cond.notify_all();
+    }
+
+    /// Waits until this index entry is valid
+    void waitUntilValid() {
+        std::unique_lock<std::mutex> lock(mutex);
+        SPDLOG_DEBUG("Waiting until index entry {} is valid", path);
+        cond.wait(lock, [this] { return valid; });
+    }
+
+    /// If this index entry is not valid, waits until it is.
+    void ensureValidByWaiting() {
+        std::unique_lock<std::mutex> lock(mutex);
+        if (!valid) {
+            SPDLOG_DEBUG("Index entry '{}' is not valid, waiting until it is", path);
+            cond.wait(lock, [this] { return valid; });
+        }
+    }
+
+private:
+    std::mutex mutex {};
+    std::condition_variable cond {};
 };
 
 class IndexManager {

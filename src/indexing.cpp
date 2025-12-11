@@ -18,7 +18,6 @@
 #include <sstream>
 #include <string>
 
-using json = nlohmann::json;
 using namespace slingshot;
 
 void IndexManager::insert(const std::filesystem::path &path, const std::string &document) {
@@ -32,8 +31,7 @@ void IndexManager::insert(const std::filesystem::path &path, const std::string &
     auto maybeEntry = retrieve(path);
     if (maybeEntry == std::nullopt) {
         SPDLOG_DEBUG("Path {} not yet in index, inserting brand new entrry", path.string());
-        IndexEntry entry(path, hash);
-        index[path] = std::make_shared<IndexEntry>(entry);
+        index[path] = std::make_shared<IndexEntry>(path, hash);
     } else {
         SPDLOG_DEBUG("Path {} already in index, invalidating and updating", path.string());
         index[path]->invalidate(hash);
@@ -58,11 +56,13 @@ void IndexManager::associateParse(
     // hold a lock guard, since we're calling this from CompilerManager which is multi-threaded
     std::lock_guard<std::mutex> guard(g_indexManager.lock);
 
+    SPDLOG_DEBUG("Now associating parse");
+
     auto result = retrieve(path);
     if (result.has_value()) {
         (*result)->tree = tree;
-        // (*result)->makeValid();
-        (*result)->valid = true;
+        SPDLOG_DEBUG("Result has value, attempting to mark as valid");
+        (*result)->makeValid();
     } else {
         SPDLOG_WARN("Path {} somehow not in the index!", path.string());
     }
