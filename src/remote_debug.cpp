@@ -33,7 +33,7 @@ void RemoteDebugger::debuggerThread() {
 
     while (true) {
         // wait for a debugger client to be connected
-        SPDLOG_DEBUG("Now waiting for a client");
+        SPDLOG_INFO("Now waiting for a client");
         socket = acceptor.accept(&peer);
         SPDLOG_INFO("Client connected: {}", peer.to_string());
 
@@ -51,7 +51,7 @@ void RemoteDebugger::debuggerThread() {
 
             // copy the socket data into a string (should be ASCII)
             std::string str(buf.data(), n);
-            SPDLOG_DEBUG("Received {} bytes: {}", n, str);
+            SPDLOG_TRACE("Received {} bytes: {}", n, str);
 
             // parse command and return the response
             auto response = processMsg(str);

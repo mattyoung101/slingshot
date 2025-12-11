@@ -136,7 +136,7 @@ void textDocumentClose(const lsp::notifications::TextDocument_DidClose::Params &
 }
 
 void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params &&params) {
-    SPDLOG_DEBUG("Change document: {}", params.textDocument.uri.path());
+    SPDLOG_TRACE("Change document: {}", params.textDocument.uri.path());
 
     for (const lsp::TextDocumentContentChangeEvent &change : params.contentChanges) {
         std::visit(
@@ -159,7 +159,7 @@ void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params
 lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
     const lsp::requests::TextDocument_Diagnostic::Params &&params) {
     auto path = params.textDocument.uri.path();
-    SPDLOG_DEBUG("Diagnostic info request in {}", path);
+    SPDLOG_TRACE("Diagnostic info request in {}", path);
 
     auto result = g_indexManager.retrieve(path);
     if (!result.has_value()) {
@@ -182,7 +182,7 @@ lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
 lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     const lsp::requests::TextDocument_Completion::Params &&params) {
     auto path = params.textDocument.uri.path();
-    SPDLOG_DEBUG("Completion request in {}", path);
+    SPDLOG_TRACE("Completion request in {}", path);
 
     auto result = g_indexManager.retrieve(path);
     if (!result.has_value()) {

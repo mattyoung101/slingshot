@@ -53,7 +53,7 @@ public:
     /// of the file.
     void invalidate(uint64_t newHash) {
         std::lock_guard<std::mutex> lock(mutex);
-        SPDLOG_DEBUG("Marking index entry {} as invalid with new hash 0x{:X}", path, newHash);
+        SPDLOG_TRACE("Marking index entry {} as invalid with new hash 0x{:X}", path, newHash);
         hash = newHash;
         // clear the diagnostics
         diagnostics.clear();
@@ -64,7 +64,7 @@ public:
     /// Wakes up all threads waiting on this entry to become valid, and marks it valid
     void makeValid() {
         std::lock_guard<std::mutex> lock(mutex);
-        SPDLOG_DEBUG("Marking index entry {} as valid", path);
+        SPDLOG_TRACE("Marking index entry {} as valid", path);
         valid = true;
         cond.notify_all();
     }
@@ -80,8 +80,10 @@ public:
     void ensureValidByWaiting() {
         std::unique_lock<std::mutex> lock(mutex);
         if (!valid) {
-            SPDLOG_DEBUG("Index entry '{}' is not valid, waiting until it is", path);
+            SPDLOG_TRACE("Index entry '{}' is not valid, waiting until it is", path);
             cond.wait(lock, [this] { return valid; });
+        } else {
+            SPDLOG_TRACE("Index entry '{}' already valid", path);
         }
     }
 
@@ -123,13 +125,13 @@ public:
 
     /// Returns a write (unique) lock on the whole index
     [[nodiscard]] auto acquireWriteLock() {
-        SPDLOG_DEBUG("Attempt to acquire write lock");
+        SPDLOG_TRACE("Attempt to acquire write lock");
         return std::unique_lock<std::shared_mutex>(lock);
     }
 
     /// Returns a read (shared) lock on the whole index
     [[nodiscard]] auto acquireReadLock() {
-        SPDLOG_DEBUG("Attempt to acquire write lock");
+        SPDLOG_TRACE("Attempt to acquire write lock");
         return std::shared_lock<std::shared_mutex>(lock);
     }
 

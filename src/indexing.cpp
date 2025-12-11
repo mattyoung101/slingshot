@@ -21,7 +21,7 @@
 using namespace slingshot;
 
 void IndexManager::insert(const std::filesystem::path &path, const std::string &document) {
-    SPDLOG_DEBUG("IndexManager::insert {}", path.string());
+    SPDLOG_TRACE("Insert {}", path.string());
 
     auto hash = ankerl::unordered_dense::detail::wyhash::hash(document.c_str(), document.size());
 
@@ -33,7 +33,7 @@ void IndexManager::insert(const std::filesystem::path &path, const std::string &
         SPDLOG_DEBUG("Path {} not yet in index, inserting brand new entrry", path.string());
         index[path] = std::make_shared<IndexEntry>(path, hash);
     } else {
-        SPDLOG_DEBUG("Path {} already in index, invalidating and updating", path.string());
+        SPDLOG_TRACE("Path {} already in index, invalidating and updating", path.string());
         index[path]->invalidate(hash);
     }
 
@@ -53,14 +53,14 @@ void IndexManager::insert(const std::filesystem::path &path) {
 
 void IndexManager::associateParse(
     const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
-    SPDLOG_DEBUG("Now associating parse");
+    SPDLOG_TRACE("Now associating parse");
     auto result = retrieve(path);
 
     // hold a lock guard, since we're calling this from CompilerManager which is multi-threaded
     auto lock = acquireWriteLock();
     if (result.has_value()) {
         (*result)->tree = tree;
-        SPDLOG_DEBUG("Result has value, attempting to mark as valid");
+        SPDLOG_TRACE("Result has value, attempting to mark as valid");
         (*result)->makeValid();
     } else {
         SPDLOG_WARN("Path {} somehow not in the index!", path.string());

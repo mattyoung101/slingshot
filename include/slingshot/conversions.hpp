@@ -91,7 +91,7 @@ inline lsp::Location toLocation(
 
     auto uri = lsp::Uri::parse(
         std::string("file://") + sourceManager->getFullPath(declRange.start().buffer()).string());
-    SPDLOG_DEBUG("URI is: {}", uri.toString());
+    SPDLOG_TRACE("URI is: {}", uri.toString());
 
     return lsp::Location { .uri = uri, .range = toRange(declRange, sourceManager) };
 }
@@ -99,7 +99,7 @@ inline lsp::Location toLocation(
 inline lsp::Location toLocation(
     const SourceLocation &loc, const std::shared_ptr<SourceManager> &sourceManager) {
     auto uri = lsp::Uri::parse(std::string("file://") + sourceManager->getFullPath(loc.buffer()).string());
-    SPDLOG_DEBUG("URI is: {}", uri.toString());
+    SPDLOG_TRACE("URI is: {}", uri.toString());
 
     return lsp::Location { .uri = uri,
         .range

@@ -44,7 +44,7 @@ using namespace slingshot;
 using namespace slang::syntax;
 
 void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
-    SPDLOG_DEBUG("LSPDiagnosticClient::report Received a diagnostic");
+    SPDLOG_TRACE("Received a diagnostic");
 
     lsp::Diagnostic lspDiag;
 
@@ -123,9 +123,9 @@ void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
 
 void CompilationManager::submitCompilationJob(
     const std::string &document, const std::filesystem::path &path) {
-    SPDLOG_DEBUG("Submitting document {} for compilation", path.string());
+    SPDLOG_TRACE("Submitting document {} for compilation", path.string());
 
-    // NOTE this may leak memory
+    // FIXME this may leak memory
     auto buf = sourceMgr->assignText(document);
     bufferIds[path] = buf.id;
 
@@ -133,7 +133,7 @@ void CompilationManager::submitCompilationJob(
         // do compilation
         // TODO track the time it takes
         auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr);
-        SPDLOG_DEBUG("Compiled document {}, got {} diagnostics", path.string(), tree->diagnostics().size());
+        SPDLOG_TRACE("Compiled document {}, got {} diagnostics", path.string(), tree->diagnostics().size());
 
         DiagnosticEngine diagEngine { *sourceMgr };
         LSPDiagnosticClient::Ptr diagClient = std::make_shared<LSPDiagnosticClient>();
@@ -144,7 +144,7 @@ void CompilationManager::submitCompilationJob(
             diagEngine.issue(diag);
         }
 
-        SPDLOG_DEBUG("Now associating parse tree");
+        SPDLOG_TRACE("Now associating parse tree");
         g_indexManager.associateParse(path, tree);
         g_indexManager.associateDiagnostics(path, diagClient->getLspDiagnostics());
 
