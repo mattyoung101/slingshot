@@ -7,6 +7,7 @@
 #pragma once
 #include "ankerl/unordered_dense.h"
 #include "nlohmann/json.hpp"
+#include <condition_variable>
 #include <cstdint>
 #include <filesystem>
 #include <lsp/types.h>
@@ -47,6 +48,8 @@ public:
         , hash(hash) {
     }
 
+    /// Invalidates the index entry when the contents of the file has been updated. newHash is the new WyHash
+    /// of the file.
     void invalidate(uint64_t newHash) {
         hash = newHash;
         // clear the diagnostics
@@ -54,6 +57,17 @@ public:
         // BUT importantly, keep the tree
         valid = false;
     }
+
+//     /// Wakes up all threads waiting on this entry to become valid, and marks it valid
+//     void makeValid() {
+//         std::lock_guard<std::mutex> lock(mutex);
+//         valid = true;
+//         cond.notify_all();
+//     }
+//
+// private:
+//     std::mutex mutex{};
+//     std::condition_variable cond{};
 };
 
 class IndexManager {
@@ -72,8 +86,10 @@ public:
     void associateDiagnostics(
         const std::filesystem::path &path, const std::vector<lsp::Diagnostic> &diagnostics);
 
+    // NOTE DOES NOT LOCK, MUST CALL acquireLock()
     [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(const std::filesystem::path &path) const;
 
+    // NOTE DOES NOT LOCK, MUST CALL acquireLock()
     [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(
         const std::filesystem::path &path, uint64_t hash) const;
 
@@ -85,6 +101,7 @@ public:
 
     std::string debugDump();
 
+    /// Returns a lock that will lock the whole index
     [[nodiscard]] auto acquireLock() {
         return std::lock_guard<std::mutex>(lock);
     }

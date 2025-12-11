@@ -192,13 +192,13 @@ lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
         return {};
     }
     if ((*result)->tree == nullptr) {
-        // in this case, it'll be handled by the compiler manager
         SPDLOG_WARN("Document {} has no parse tree at all, can't do completion", path);
         return {};
     }
 
     if (!(*result)->valid) {
         SPDLOG_WARN("Parse tree may be stale when doing completions on {}", path);
+        // FIXME we need to wait for the tree to not be stale in this case; maybe with a condition variable
     }
 
     return g_completionManager.getCompletions(path, params.position, *result);

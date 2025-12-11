@@ -138,6 +138,9 @@ public:
 
     /// Generates completion items for posedge and negedge
     static std::vector<lsp::CompletionItem> generateEdge();
+
+    /// Generates always_ff, always_comb, always_latch blocks
+    static std::vector<lsp::CompletionItem> generateAlways();
 };
 
 } // namespace slingshot

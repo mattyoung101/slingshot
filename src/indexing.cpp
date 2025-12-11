@@ -27,7 +27,7 @@ void IndexManager::insert(const std::filesystem::path &path, const std::string &
     auto hash = ankerl::unordered_dense::detail::wyhash::hash(document.c_str(), document.size());
 
     // take the mutex before we push to the index
-    std::lock_guard<std::mutex> guard(g_indexManager.lock);
+    auto guard = acquireLock();
 
     auto maybeEntry = retrieve(path);
     if (maybeEntry == std::nullopt) {
@@ -61,6 +61,7 @@ void IndexManager::associateParse(
     auto result = retrieve(path);
     if (result.has_value()) {
         (*result)->tree = tree;
+        // (*result)->makeValid();
         (*result)->valid = true;
     } else {
         SPDLOG_WARN("Path {} somehow not in the index!", path.string());
@@ -80,7 +81,6 @@ void IndexManager::associateDiagnostics(
     }
 }
 
-// NOTE DOES NOT LOCK
 std::optional<IndexEntry::Ptr> IndexManager::retrieve(
     const std::filesystem::path &path, uint64_t hash) const {
     if (!index.contains(path)) {
@@ -95,7 +95,6 @@ std::optional<IndexEntry::Ptr> IndexManager::retrieve(
     return entry;
 }
 
-// NOTE DOES NOT LOCK
 std::optional<IndexEntry::Ptr> IndexManager::retrieve(const std::filesystem::path &path) const {
     if (!index.contains(path)) {
         return std::nullopt;
