@@ -57,12 +57,14 @@ int main() {
     using namespace slang;
     using namespace slingshot;
 
-    spdlog::set_level(spdlog::level::trace);
-    spdlog::flush_on(spdlog::level::trace);
+    auto level = spdlog::level::debug;
+
+    spdlog::set_level(level);
+    spdlog::flush_on(level);
 
     // keep stderr free for the LSP
     auto stderr_sink = std::make_shared<spdlog::sinks::ansicolor_stderr_sink_mt>();
-    stderr_sink->set_level(spdlog::level::trace);
+    stderr_sink->set_level(level);
     spdlog::default_logger()->sinks().clear();
     spdlog::default_logger()->sinks().push_back(stderr_sink);
 
@@ -85,7 +87,7 @@ int main() {
     std::filesystem::path logPath
         = homeDir + "/.local/share/slingshot/slingshot-" + std::to_string(pid) + ".log";
     auto rotating = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logPath, 4096 * 1024, 5, false);
-    rotating->set_level(spdlog::level::trace);
+    rotating->set_level(level);
     spdlog::default_logger()->sinks().push_back(rotating);
 
     signal(SIGINT, sigIntHandler);

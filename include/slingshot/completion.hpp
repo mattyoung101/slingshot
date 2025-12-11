@@ -52,6 +52,9 @@ enum class CompletionType {
 
     /// An SV system task, e.g. $display, $error, etc
     SystemTask,
+
+    /// Input or output keywords
+    InputOutput,
 };
 
 const std::vector<std::string> SYSTEM_TASKS = {
@@ -109,6 +112,8 @@ public:
 
     void handle(const ExpressionSyntax &syntax);
 
+    void handle(const AnsiPortListSyntax &syntax);
+
     /// The recommended things to complete
     std::vector<CompletionType> recommendations;
 
@@ -141,6 +146,10 @@ public:
 
     /// Generates always_ff, always_comb, always_latch blocks
     static std::vector<lsp::CompletionItem> generateAlways();
+
+    static std::vector<lsp::CompletionItem> generateSystemTasks();
+
+    static std::vector<lsp::CompletionItem> generateInputOutput();
 };
 
 } // namespace slingshot

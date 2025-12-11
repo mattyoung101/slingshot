@@ -29,8 +29,8 @@ constexpr std::string INDEX_VERSION = "1.0.0";
 class IndexEntry {
 public:
     std::string version = INDEX_VERSION;
-    std::string path;
-    uint64_t hash;
+    std::string path {};
+    uint64_t hash {};
 
     /// Parse tree
     /// WARNING May be nullptr if not yet parsed
@@ -112,8 +112,7 @@ public:
     [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(const std::filesystem::path &path);
 
     /// Locate diagnostics. WARNING: Takes a read lock.
-    [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(
-        const std::filesystem::path &path, uint64_t hash);
+    [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(const std::filesystem::path &path, uint64_t hash);
 
     /// Recursively walks and indexes files in the given directory
     void walkDir(const std::filesystem::path &path);

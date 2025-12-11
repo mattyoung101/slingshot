@@ -75,14 +75,25 @@ std::vector<lsp::CompletionItem> CompletionGenerator::generateEdge() {
     };
 }
 
+std::vector<lsp::CompletionItem> CompletionGenerator::generateSystemTasks() {
+    std::vector<lsp::CompletionItem> out;
+    out.reserve(SYSTEM_TASKS.size());
+    for (const auto &task : SYSTEM_TASKS) {
+        out.push_back(lsp::CompletionItem { .label = "$" + task, .kind = lsp::CompletionItemKind::Function });
+    }
+    return out;
+}
+
 std::vector<lsp::CompletionItem> CompletionGenerator::generateAlways() {
-    return { lsp::CompletionItem {
-                 .label = "always_comb",
-                 .kind = lsp::CompletionItemKind::Snippet,
-                 .filterText = "always_comb",
-                 .insertText = "always_comb begin\n\t$0\nend",
-                 .insertTextFormat = lsp::InsertTextFormat::Snippet,
-             },
+    // clang-format off
+    return {
+        lsp::CompletionItem {
+            .label = "always_comb",
+            .kind = lsp::CompletionItemKind::Snippet,
+            .filterText = "always_comb",
+            .insertText = "always_comb begin\n\t$0\nend",
+            .insertTextFormat = lsp::InsertTextFormat::Snippet,
+        },
         lsp::CompletionItem {
             .label = "always_latch",
             .kind = lsp::CompletionItemKind::Snippet,
@@ -96,7 +107,26 @@ std::vector<lsp::CompletionItem> CompletionGenerator::generateAlways() {
             .filterText = "always_ff",
             .insertText = "always_ff @($0) begin\n\t\nend",
             .insertTextFormat = lsp::InsertTextFormat::Snippet,
-        } };
+        }
+    };
+    // clang-format on
+}
+
+std::vector<lsp::CompletionItem> CompletionGenerator::generateInputOutput() {
+    return {
+        lsp::CompletionItem {
+            .label = "input",
+            .kind = lsp::CompletionItemKind::Keyword,
+        },
+        lsp::CompletionItem {
+            .label = "output",
+            .kind = lsp::CompletionItemKind::Keyword,
+        },
+        lsp::CompletionItem {
+            .label = "inout",
+            .kind = lsp::CompletionItemKind::Keyword,
+        },
+    };
 }
 
 void CompletionSyntaxVisitor::recommend(const CompletionType &type, const std::string &name) {
@@ -123,16 +153,24 @@ void CompletionSyntaxVisitor::handle(const ExpressionSyntax &syntax) {
     BEGIN({
         RECOMMEND(CompletionType::Logic);
         RECOMMEND(CompletionType::Always);
+        RECOMMEND(CompletionType::SystemTask);
     });
+}
+
+void CompletionSyntaxVisitor::handle(const AnsiPortListSyntax &syntax) {
+    SPDLOG_DEBUG("Visit ANSI port syntax {} range {}", syntax.toString(),
+        toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
+
+    BEGIN({
+        RECOMMEND(CompletionType::Logic);
+        RECOMMEND(CompletionType::SystemTask);
+        RECOMMEND(CompletionType::InputOutput);
+    })
 }
 
 std::vector<lsp::CompletionItem> CompletionManager::getCompletions(
     const std::filesystem::path &path, const lsp::Position &pos, const IndexEntry::Ptr &indexEntry) {
     auto tree = indexEntry->tree;
-
-    // FIXME I think when the parse tree is stale, our offsets are wrong. We need to wait for the document to
-    // compile before doing completion. Either, we force send completion items to the client one way, or we
-    // need a way to wait for the document to be done compiling before we recommend.
 
     // visit the syntax tree, based on cursor position
     auto cursor = toSlangLocation(pos, path, g_compilerManager.getSourceManager());
@@ -160,6 +198,14 @@ std::vector<lsp::CompletionItem> CompletionGenerator::transformAll(
 
             case CompletionType::Always:
                 addAll(out, generateAlways());
+                break;
+
+            case CompletionType::SystemTask:
+                addAll(out, generateSystemTasks());
+                break;
+
+            case CompletionType::InputOutput:
+                addAll(out, generateInputOutput());
                 break;
 
             default:
