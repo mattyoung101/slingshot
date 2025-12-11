@@ -25,10 +25,10 @@ void IndexManager::insert(const std::filesystem::path &path, const std::string &
 
     auto hash = ankerl::unordered_dense::detail::wyhash::hash(document.c_str(), document.size());
 
-    // take the mutex before we push to the index
-    auto guard = acquireLock();
-
     auto maybeEntry = retrieve(path);
+
+    // take the mutex before we push to the index
+    auto guard = acquireWriteLock();
     if (maybeEntry == std::nullopt) {
         SPDLOG_DEBUG("Path {} not yet in index, inserting brand new entrry", path.string());
         index[path] = std::make_shared<IndexEntry>(path, hash);
@@ -53,12 +53,11 @@ void IndexManager::insert(const std::filesystem::path &path) {
 
 void IndexManager::associateParse(
     const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
-    // hold a lock guard, since we're calling this from CompilerManager which is multi-threaded
-    std::lock_guard<std::mutex> guard(g_indexManager.lock);
-
     SPDLOG_DEBUG("Now associating parse");
-
     auto result = retrieve(path);
+
+    // hold a lock guard, since we're calling this from CompilerManager which is multi-threaded
+    auto lock = acquireWriteLock();
     if (result.has_value()) {
         (*result)->tree = tree;
         SPDLOG_DEBUG("Result has value, attempting to mark as valid");
@@ -70,10 +69,10 @@ void IndexManager::associateParse(
 
 void IndexManager::associateDiagnostics(
     const std::filesystem::path &path, const std::vector<lsp::Diagnostic> &diagnostics) {
-    // hold a lock guard, since we're calling this from CompilerManager which is multi-threaded
-    std::lock_guard<std::mutex> guard(g_indexManager.lock);
-
     auto result = retrieve(path);
+
+    // hold a lock guard, since we're calling this from CompilerManager which is multi-threaded
+    auto lock = acquireWriteLock();
     if (result.has_value()) {
         (*result)->diagnostics = diagnostics;
     } else {
@@ -81,8 +80,8 @@ void IndexManager::associateDiagnostics(
     }
 }
 
-std::optional<IndexEntry::Ptr> IndexManager::retrieve(
-    const std::filesystem::path &path, uint64_t hash) const {
+std::optional<IndexEntry::Ptr> IndexManager::retrieve(const std::filesystem::path &path, uint64_t hash) {
+    auto guard = acquireReadLock();
     if (!index.contains(path)) {
         return std::nullopt;
     }
@@ -95,7 +94,8 @@ std::optional<IndexEntry::Ptr> IndexManager::retrieve(
     return entry;
 }
 
-std::optional<IndexEntry::Ptr> IndexManager::retrieve(const std::filesystem::path &path) const {
+std::optional<IndexEntry::Ptr> IndexManager::retrieve(const std::filesystem::path &path) {
+    auto guard = acquireReadLock();
     if (!index.contains(path)) {
         return std::nullopt;
     }

@@ -69,7 +69,7 @@ public:
         return sourceMgr;
     }
 private:
-    BS::thread_pool<> pool;
+    BS::thread_pool<> pool{2}; // FIXME hardcoded to 2 for now, for ease of debugging
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
 };

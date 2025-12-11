@@ -17,8 +17,6 @@ end else begin: recurse
     wire [W_IN / 2-1:0] rhs = in[0        +: W_IN / 2];
     wire left_empty = ~|lhs;
 
-    logic;lajsd
-
     always_ff @(posedge clk) begin
         out <= 1;
     end

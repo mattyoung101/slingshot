@@ -161,7 +161,6 @@ lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
     auto path = params.textDocument.uri.path();
     SPDLOG_DEBUG("Diagnostic info request in {}", path);
 
-    auto lock = g_indexManager.acquireLock();
     auto result = g_indexManager.retrieve(path);
     if (!result.has_value()) {
         SPDLOG_WARN("Document {} is not in index", path);
@@ -185,7 +184,6 @@ lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     auto path = params.textDocument.uri.path();
     SPDLOG_DEBUG("Completion request in {}", path);
 
-    auto lock = g_indexManager.acquireLock();
     auto result = g_indexManager.retrieve(path);
     if (!result.has_value()) {
         SPDLOG_WARN("Document {} is not in index", path);
@@ -204,7 +202,7 @@ lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     //     // FIXME we need to wait for the tree to not be stale in this case; maybe with a condition variable
     // }
 
-    return g_completionManager.getCompletions(path, params.position, *result);
+    return CompletionManager::getCompletions(path, params.position, *result);
 }
 
 } // namespace slingshot::handlers

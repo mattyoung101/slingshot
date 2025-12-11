@@ -13,6 +13,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <shared_mutex>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/syntax/SyntaxTree.h>
 #include <spdlog/spdlog.h>
@@ -105,12 +106,12 @@ public:
     void associateDiagnostics(
         const std::filesystem::path &path, const std::vector<lsp::Diagnostic> &diagnostics);
 
-    // NOTE DOES NOT LOCK, MUST CALL acquireLock()
-    [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(const std::filesystem::path &path) const;
+    /// Locate diagnostics. WARNING: Takes a read lock.
+    [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(const std::filesystem::path &path);
 
-    // NOTE DOES NOT LOCK, MUST CALL acquireLock()
+    /// Locate diagnostics. WARNING: Takes a read lock.
     [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(
-        const std::filesystem::path &path, uint64_t hash) const;
+        const std::filesystem::path &path, uint64_t hash);
 
     /// Recursively walks and indexes files in the given directory
     void walkDir(const std::filesystem::path &path);
@@ -120,15 +121,22 @@ public:
 
     std::string debugDump();
 
-    /// Returns a lock that will lock the whole index
-    [[nodiscard]] auto acquireLock() {
-        return std::lock_guard<std::mutex>(lock);
+    /// Returns a write (unique) lock on the whole index
+    [[nodiscard]] auto acquireWriteLock() {
+        SPDLOG_DEBUG("Attempt to acquire write lock");
+        return std::unique_lock<std::shared_mutex>(lock);
+    }
+
+    /// Returns a read (shared) lock on the whole index
+    [[nodiscard]] auto acquireReadLock() {
+        SPDLOG_DEBUG("Attempt to acquire write lock");
+        return std::shared_lock<std::shared_mutex>(lock);
     }
 
     std::vector<std::string> includeDirs;
 
 private:
-    std::mutex lock;
+    std::shared_mutex lock;
     ankerl::unordered_dense::map<std::filesystem::path, IndexEntry::Ptr> index;
 };
 
