@@ -80,6 +80,18 @@ void IndexManager::associateDiagnostics(
     }
 }
 
+void IndexManager::associateLangDoc(const std::filesystem::path &path, const lang::Document &doc) {
+    auto result = retrieve(path);
+
+    // hold a lock guard, since we're calling this from CompilerManager which is multi-threaded
+    auto lock = acquireWriteLock();
+    if (result.has_value()) {
+        (*result)->doc = doc;
+    } else {
+        SPDLOG_WARN("Path {} somehow not in the index!", path.string());
+    }
+}
+
 std::optional<IndexEntry::Ptr> IndexManager::retrieve(const std::filesystem::path &path, uint64_t hash) {
     auto guard = acquireReadLock();
     if (!index.contains(path)) {
@@ -126,5 +138,10 @@ std::string IndexManager::debugDump() {
         stream << fmt::format(
             "{}    0x{:X}    {} diags\n", key.string(), value->hash, value->diagnostics.size());
     }
+    return stream.str();
+}
+
+std::string IndexManager::dumpLangTrees() {
+    std::stringstream stream;
     return stream.str();
 }

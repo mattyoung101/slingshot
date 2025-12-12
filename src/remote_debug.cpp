@@ -77,6 +77,9 @@ std::string RemoteDebugger::processMsg(std::string msg) {
     if (msg == "dump index") {
         return g_indexManager.debugDump();
     }
+    if (msg == "dump lang") {
+        return g_indexManager.dumpLangTrees();
+    }
     if (msg == "sigtrap") {
         SPDLOG_WARN("Debugger sent 'sigtrap', raising SIGTRAP now");
         raise(SIGTRAP);

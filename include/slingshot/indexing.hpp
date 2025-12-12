@@ -6,6 +6,7 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
 #include "ankerl/unordered_dense.h"
+#include "slingshot/language.hpp"
 #include <condition_variable>
 #include <cstdint>
 #include <filesystem>
@@ -42,7 +43,8 @@ public:
     /// True if the parse tree is valid, false if the parse tree is invalidated and we're waiting a new parse
     bool valid = false;
 
-    using Ptr = std::shared_ptr<IndexEntry>;
+    /// Current document. Only valid if parse is 'valid' is true.
+    std::optional<lang::Document> doc {};
 
     IndexEntry(std::string path, uint64_t hash)
         : path(std::move(path))
@@ -57,7 +59,7 @@ public:
         hash = newHash;
         // clear the diagnostics
         diagnostics.clear();
-        // BUT importantly, keep the tree
+        // BUT importantly, keep the tree; both the parse tree and the lang::Document
         valid = false;
     }
 
@@ -87,6 +89,8 @@ public:
         }
     }
 
+    using Ptr = std::shared_ptr<IndexEntry>;
+
 private:
     std::mutex mutex {};
     std::condition_variable cond {};
@@ -108,6 +112,9 @@ public:
     void associateDiagnostics(
         const std::filesystem::path &path, const std::vector<lsp::Diagnostic> &diagnostics);
 
+    /// Associates a slingshot::lang::Document with the file
+    void associateLangDoc(const std::filesystem::path &path, const lang::Document &doc);
+
     /// Locate diagnostics. WARNING: Takes a read lock.
     [[nodiscard]] std::optional<IndexEntry::Ptr> retrieve(const std::filesystem::path &path);
 
@@ -121,6 +128,8 @@ public:
     void flush(const std::filesystem::path &baseDir);
 
     std::string debugDump();
+
+    std::string dumpLangTrees();
 
     /// Returns a write (unique) lock on the whole index
     [[nodiscard]] auto acquireWriteLock() {

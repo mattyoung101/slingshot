@@ -7,6 +7,7 @@
 #include "slingshot/compiler.hpp"
 #include "slingshot/conversions.hpp"
 #include "slingshot/indexing.hpp"
+#include "slingshot/lang_lifter.hpp"
 #include "slingshot/slingshot.hpp"
 #include <ankerl/unordered_dense.h>
 #include <lsp/messages.h>
@@ -135,7 +136,11 @@ void CompilationManager::submitCompilationJob(
         auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr);
         SPDLOG_TRACE("Compiled document {}, got {} diagnostics", path.string(), tree->diagnostics().size());
 
+        // compute diagnostics
         DiagnosticEngine diagEngine { *sourceMgr };
+        // get more diagnostics
+        diagEngine.setIgnoreAllNotes(false);
+        diagEngine.setIgnoreAllWarnings(false);
         LSPDiagnosticClient::Ptr diagClient = std::make_shared<LSPDiagnosticClient>();
         diagClient->setSourceManager(sourceMgr);
         diagEngine.addClient(diagClient);
@@ -144,9 +149,16 @@ void CompilationManager::submitCompilationJob(
             diagEngine.issue(diag);
         }
 
+        // lift to our own internal higher level representation
+        SPDLOG_DEBUG("Lifting language");
+        LangLifterVisitor langLifter;
+        langLifter.visit(tree->root());
+        langLifter.doc.maybeFlushModule();
+
         SPDLOG_TRACE("Now associating parse tree");
         g_indexManager.associateParse(path, tree);
         g_indexManager.associateDiagnostics(path, diagClient->getLspDiagnostics());
+        g_indexManager.associateLangDoc(path, langLifter.doc);
 
         // publish diagnostics to the client
         // we only do this if the text document is open, to avoid extraneous errors

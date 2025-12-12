@@ -24,6 +24,8 @@ add_executable(slingshot
     src/compiler.cpp
     src/remote_debug.cpp
     src/completion.cpp
+    src/completion_generator.cpp
+    src/lang_lifter.cpp
 )
 target_include_directories(slingshot PRIVATE include)
 
