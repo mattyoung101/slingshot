@@ -52,7 +52,7 @@ jobs:
           cd build;
 
       - name: Package
-        run: cpack -G DEB; cpack -G RPM; cpack -G TXZ;
+        run: cd build; cpack -G DEB; cpack -G RPM; cpack -G TXZ;
 
       - name: Archive artefacts
         uses: actions/upload-artifact@v4
