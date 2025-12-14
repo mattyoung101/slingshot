@@ -126,13 +126,13 @@ void textDocumentOpen(const lsp::notifications::TextDocument_DidOpen::Params &&p
     SPDLOG_DEBUG("Open document: {}", params.textDocument.uri.path());
 
     // register in the document database
-    g_indexManager.insert(params.textDocument.uri.path(), params.textDocument.text);
-    g_compilerManager.openFiles.insert(params.textDocument.uri.path());
+    g_indexManager.insert(std::filesystem::absolute(params.textDocument.uri.path()), params.textDocument.text);
+    g_compilerManager.openFiles.insert(std::filesystem::absolute(params.textDocument.uri.path()));
 }
 
 void textDocumentClose(const lsp::notifications::TextDocument_DidClose::Params &&params) {
     SPDLOG_DEBUG("Close document: {}", params.textDocument.uri.path());
-    g_compilerManager.openFiles.erase(params.textDocument.uri.path());
+    g_compilerManager.openFiles.erase(std::filesystem::absolute(params.textDocument.uri.path()));
 }
 
 void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params &&params) {
@@ -149,7 +149,7 @@ void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params
                 }
                 if constexpr (std::is_same_v<T, lsp::TextDocumentContentChangeEvent_Text>) {
                     const lsp::TextDocumentContentChangeEvent_Text &event = arg;
-                    g_indexManager.insert(params.textDocument.uri.path(), event.text);
+                    g_indexManager.insert(std::filesystem::absolute(params.textDocument.uri.path()), event.text);
                 }
             },
             change);
@@ -158,7 +158,7 @@ void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params
 
 lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
     const lsp::requests::TextDocument_Diagnostic::Params &&params) {
-    auto path = params.textDocument.uri.path();
+    auto path = std::filesystem::absolute(params.textDocument.uri.path()).string();
     SPDLOG_TRACE("Diagnostic info request in {}", path);
 
     auto result = g_indexManager.retrieve(path);
@@ -181,7 +181,7 @@ lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
 
 lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     const lsp::requests::TextDocument_Completion::Params &&params) {
-    auto path = params.textDocument.uri.path();
+    auto path = std::filesystem::absolute(params.textDocument.uri.path()).string();
     SPDLOG_TRACE("Completion request in {}", path);
 
     auto result = g_indexManager.retrieve(path);

@@ -24,24 +24,26 @@
 using namespace slingshot;
 
 void IndexManager::insert(const std::filesystem::path &path, const std::string &document) {
-    SPDLOG_TRACE("Insert {}", path.string());
+    // ensure absolute
+    auto realPath = std::filesystem::absolute(path);
+    SPDLOG_TRACE("Insert {}", realPath.string());
 
     auto hash = ankerl::unordered_dense::detail::wyhash::hash(document.c_str(), document.size());
 
-    auto maybeEntry = retrieve(path);
+    auto maybeEntry = retrieve(realPath);
 
     // take the mutex before we push to the index
     auto guard = acquireWriteLock();
     if (maybeEntry == std::nullopt) {
-        SPDLOG_DEBUG("Path {} not yet in index, inserting brand new entrry", path.string());
-        index[path] = std::make_shared<IndexEntry>(path, hash);
+        SPDLOG_DEBUG("realPath {} not yet in index, inserting brand new entry", realPath.string());
+        index[realPath] = std::make_shared<IndexEntry>(realPath, hash);
     } else {
-        SPDLOG_TRACE("Path {} already in index, invalidating and updating", path.string());
-        index[path]->invalidate(hash);
+        SPDLOG_TRACE("realPath {} already in index, invalidating and updating", realPath.string());
+        index[realPath]->invalidate(hash);
     }
 
     // regardless, schedule a compilation job for this
-    g_compilerManager.submitCompilationJob(document, path);
+    g_compilerManager.submitCompilationJob(document, realPath);
 }
 
 void IndexManager::insert(const std::filesystem::path &path) {
@@ -97,11 +99,12 @@ void IndexManager::associateLangDoc(const std::filesystem::path &path, const lan
 
 std::optional<IndexEntry::Ptr> IndexManager::retrieve(const std::filesystem::path &path, uint64_t hash) {
     auto guard = acquireReadLock();
-    if (!index.contains(path)) {
+    auto realPath = std::filesystem::absolute(path);
+    if (!index.contains(realPath)) {
         return std::nullopt;
     }
 
-    auto entry = index.at(path);
+    auto entry = index.at(realPath);
     if (entry->hash != hash) {
         return std::nullopt;
     }
@@ -111,10 +114,11 @@ std::optional<IndexEntry::Ptr> IndexManager::retrieve(const std::filesystem::pat
 
 std::optional<IndexEntry::Ptr> IndexManager::retrieve(const std::filesystem::path &path) {
     auto guard = acquireReadLock();
-    if (!index.contains(path)) {
+    auto realPath = std::filesystem::absolute(path);
+    if (!index.contains(realPath)) {
         return std::nullopt;
     }
-    return index.at(path);
+    return index.at(realPath);
 }
 
 void IndexManager::walkDir(const std::filesystem::path &path) {
@@ -124,13 +128,13 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
         // we lie a bit here, submit directly for indexing if they told us its a path but it's actually a
         // single file
         SPDLOG_INFO("Discovered (direct) document: {}", path.string());
-        insert(path);
+        insert(std::filesystem::absolute(path));
         return;
     }
 
     for (const auto &dirEntry : std::filesystem::recursive_directory_iterator(path)) {
         SPDLOG_INFO("Discovered document: {}", dirEntry.path().string());
-        insert(dirEntry);
+        insert(std::filesystem::absolute(dirEntry));
     }
 }
 
