@@ -59,11 +59,14 @@ inline bool containsInDirectHierarchy(const SyntaxNode &node, const SyntaxKind &
     return false;
 }
 
-template <std::ranges::range Range>
-inline bool containsInDirectHierarchy(const SyntaxNode &node, const Range &kinds) {
+inline bool containsInDirectHierarchy(const SyntaxNode &node, const std::vector<SyntaxKind> &kinds) {
     SyntaxNode *parent = node.parent;
     while (parent != nullptr) {
-        if (std::ranges::contains(kinds, parent->kind)) {
+        // FIXME this should use std::ranges::contains(), but we're still choosing to support Ubuntu 22.04 as
+        // a compile target for now, and that OS doesn't correctly support C++23 because it uses an old GNU
+        // libstdc++ I think.
+        // NOLINTNEXTLINE
+        if (std::find(kinds.begin(), kinds.end(), parent->kind) != kinds.end()) {
             return true;
         }
         // get the parent's parent
