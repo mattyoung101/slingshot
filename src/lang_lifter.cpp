@@ -6,7 +6,6 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/lang_lifter.hpp"
 #include "slingshot/language.hpp"
-#include <memory>
 #include <slang/parsing/TokenKind.h>
 #include <slang/syntax/AllSyntax.h>
 #include <spdlog/spdlog.h>
@@ -59,7 +58,6 @@ void LangLifterVisitor::handle(const DeclaratorSyntax &syntax) {
                 return;
             }
         }
-
         module.addVariable(name);
     });
     visitDefault(syntax);

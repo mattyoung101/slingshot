@@ -110,6 +110,8 @@ public:
         currentModule = Module(name);
     }
 
+    /// Ends the module that is being generated. A module must be active. Flushes the module to the module
+    /// list and resets the current module.
     void endModule() {
         if (currentModule == std::nullopt) {
             SPDLOG_ERROR("Trying to end a module, but no module is active!");
@@ -120,6 +122,7 @@ public:
         currentModule = std::nullopt;
     }
 
+    /// Flushes the module if one is active, otherwise does nothing
     void maybeFlushModule() {
         if (currentModule != std::nullopt) {
             endModule();
@@ -132,7 +135,7 @@ public:
         }
     }
 
-    std::optional<Module> getModuleByName(const std::string &name) {
+    std::optional<Module> getModuleByName(const std::string &name) const {
         for (const auto &module : modules) {
             if (module.name == name) {
                 return module;

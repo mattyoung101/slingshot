@@ -19,6 +19,7 @@
 #include <slang/syntax/SyntaxTree.h>
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
+#include <string>
 #include <vector>
 
 using namespace slingshot;
@@ -42,9 +43,9 @@ constexpr bool containsRelaxed(const SourceLocation &loc, const SourceRange &ran
 
 }; // namespace
 
-void CompletionSyntaxVisitor::recommend(const CompletionType &type, const std::string &name) {
-    recommendations.push_back(type);
-    SPDLOG_DEBUG("Recommending: {}", name);
+void CompletionSyntaxVisitor::recommend(const std::vector<lsp::CompletionItem> &completions, const std::string &what) {
+    addAll(recommendations, completions);
+    SPDLOG_DEBUG("Recommended: {}", what);
 }
 
 void CompletionSyntaxVisitor::handle(const EventControlWithExpressionSyntax &syntax) {
@@ -55,19 +56,20 @@ void CompletionSyntaxVisitor::handle(const EventControlWithExpressionSyntax &syn
         // HACK we should make an AST walker for this, toString() is probably very slow
         auto parentText = syntax.parent->toString();
         if (!parentText.contains("posedge") && !parentText.contains("negedge")) {
-            RECOMMEND(CompletionType::Edge);
+            RECOMMEND(CompletionGenerator::generateEdge());
         }
     })
 }
 
+// FIXME this needs to be much more selective; otherwise it ends up applying to all selections
 void CompletionSyntaxVisitor::handle(const ExpressionSyntax &syntax) {
     SPDLOG_DEBUG("Visit expression {} range {}", syntax.toString(),
         toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
     BEGIN({
-        RECOMMEND(CompletionType::Logic);
-        RECOMMEND(CompletionType::Always);
-        RECOMMEND(CompletionType::SystemTask);
-        RECOMMEND(CompletionType::VariableSameModule);
+        RECOMMEND(CompletionGenerator::generateLogic());
+        RECOMMEND(CompletionGenerator::generateAlways());
+        RECOMMEND(CompletionGenerator::generateSystemTasks());
+        RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
     });
 }
 
@@ -76,9 +78,9 @@ void CompletionSyntaxVisitor::handle(const AnsiPortListSyntax &syntax) {
         toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
 
     BEGIN({
-        RECOMMEND(CompletionType::Logic);
-        RECOMMEND(CompletionType::SystemTask);
-        RECOMMEND(CompletionType::InputOutput);
+        RECOMMEND(CompletionGenerator::generateLogic());
+        RECOMMEND(CompletionGenerator::generateInputOutput());
+        RECOMMEND(CompletionGenerator::generateSystemTasks());
     })
 }
 
@@ -100,9 +102,8 @@ std::vector<lsp::CompletionItem> CompletionManager::getCompletions(
     // visit the syntax tree, based on cursor position
     auto cursor = toSlangLocation(pos, path, g_compilerManager.getSourceManager());
     SPDLOG_DEBUG("Completion cursor pos: {}", toString(cursor, g_compilerManager.getSourceManager()));
-    CompletionSyntaxVisitor visitor(cursor);
+    CompletionSyntaxVisitor visitor(cursor, *indexEntry->doc);
     visitor.visit(tree->root());
 
-    // now we have the recommendation types, generate the actual items
-    return CompletionGenerator::transformAll(visitor.recommendations, visitor.activeModule);
+    return visitor.recommendations;
 }

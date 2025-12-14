@@ -7,18 +7,21 @@
 #include "slingshot/completion.hpp"
 #include "slingshot/conversions.hpp"
 #include "slingshot/indexing.hpp"
+#include "slingshot/language.hpp"
 #include "slingshot/slingshot.hpp"
 #include <ankerl/unordered_dense.h>
 #include <filesystem>
 #include <lsp/messages.h>
 #include <lsp/types.h>
 #include <lsp/uri.h>
+#include <optional>
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/syntax/AllSyntax.h>
 #include <slang/syntax/SyntaxTree.h>
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
+#include <string>
 #include <vector>
 
 using namespace slingshot;
@@ -111,45 +114,23 @@ std::vector<lsp::CompletionItem> CompletionGenerator::generateInputOutput() {
     };
 }
 
-std::vector<lsp::CompletionItem> CompletionGenerator::generateVariableSameModule() {
+std::vector<lsp::CompletionItem> CompletionGenerator::generateVariableSameModule(
+    const std::optional<std::string> &activeModule, const lang::Document &doc) {
     std::vector<lsp::CompletionItem> out;
-    return out;
-}
+    if (activeModule != std::nullopt) {
+        auto module = doc.getModuleByName(*activeModule);
+        if (module != std::nullopt) {
+            for (const auto &port : module->ports) {
+                out.push_back(lsp::CompletionItem {
+                    .label = port.name,
+                    .kind = lsp::CompletionItemKind::Field,
+                });
+            }
+        }
 
-std::vector<lsp::CompletionItem> CompletionGenerator::transformAll(
-    const std::vector<CompletionType> &completions, const std::optional<std::string> &activeModule) {
-    std::vector<lsp::CompletionItem> out;
-
-    for (const auto &comp : completions) {
-        switch (comp) {
-            case CompletionType::Edge:
-                addAll(out, generateEdge());
-                break;
-
-            case CompletionType::Logic:
-                addAll(out, generateLogic());
-                break;
-
-            case CompletionType::Always:
-                addAll(out, generateAlways());
-                break;
-
-            case CompletionType::SystemTask:
-                addAll(out, generateSystemTasks());
-                break;
-
-            case CompletionType::InputOutput:
-                addAll(out, generateInputOutput());
-                break;
-
-            case CompletionType::VariableSameModule:
-                addAll(out, generateVariableSameModule());
-                break;
-
-            default:
-                SPDLOG_ERROR("Unhandled completion type: {}", static_cast<int>(comp));
+        for (const auto &var : module->variables) {
+            out.push_back(lsp::CompletionItem { .label = var, .kind = lsp::CompletionItemKind::Variable });
         }
     }
-
     return out;
 }
