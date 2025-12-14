@@ -30,9 +30,10 @@ namespace {
     if (containsRelaxed(cursor, syntax.sourceRange())) {                                                     \
         recommendations.clear();                                                                             \
         code;                                                                                                \
-    }
+    }                                                                                                        \
+    visitDefault(syntax);
 
-#define RECOMMEND(what) recommend(what, #what);
+#define RECOMMEND(what) recommend(what, #what)
 
 /// Same as SourceRange::contains(), expect that it includes <= on the end position, i.e. it's inclusive
 constexpr bool containsRelaxed(const SourceLocation &loc, const SourceRange &range) {
@@ -66,6 +67,7 @@ void CompletionSyntaxVisitor::handle(const ExpressionSyntax &syntax) {
         RECOMMEND(CompletionType::Logic);
         RECOMMEND(CompletionType::Always);
         RECOMMEND(CompletionType::SystemTask);
+        RECOMMEND(CompletionType::VariableSameModule);
     });
 }
 
@@ -80,6 +82,17 @@ void CompletionSyntaxVisitor::handle(const AnsiPortListSyntax &syntax) {
     })
 }
 
+void CompletionSyntaxVisitor::handle(const ModuleDeclarationSyntax &syntax) {
+    SPDLOG_DEBUG("Visit module decalaration");
+
+    if (containsRelaxed(cursor, syntax.sourceRange())) {
+        auto name = syntax.header->name.valueText();
+        SPDLOG_DEBUG("Active module: {}", name);
+        activeModule = name;
+    }
+    visitDefault(syntax);
+}
+
 std::vector<lsp::CompletionItem> CompletionManager::getCompletions(
     const std::filesystem::path &path, const lsp::Position &pos, const IndexEntry::Ptr &indexEntry) {
     auto tree = indexEntry->tree;
@@ -91,5 +104,5 @@ std::vector<lsp::CompletionItem> CompletionManager::getCompletions(
     visitor.visit(tree->root());
 
     // now we have the recommendation types, generate the actual items
-    return CompletionGenerator::transformAll(visitor.recommendations);
+    return CompletionGenerator::transformAll(visitor.recommendations, visitor.activeModule);
 }

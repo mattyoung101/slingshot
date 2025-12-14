@@ -19,9 +19,9 @@ using namespace slang::syntax;
 
 class LangLifterVisitor : public SyntaxVisitor<LangLifterVisitor> {
 public:
-    void handle(const ModuleDeclarationSyntax &syntax);
-
-    void handle(const ImplicitAnsiPortSyntax &syntax);
+    void handle(const ModuleHeaderSyntax &syntax);
+    void handle(const NetPortHeaderSyntax &syntax);
+    void handle(const DeclaratorSyntax &syntax);
 
     lang::Document doc;
 };

@@ -114,8 +114,13 @@ public:
 
     void handle(const AnsiPortListSyntax &syntax);
 
+    void handle(const ModuleDeclarationSyntax &syntax);
+
     /// The recommended things to complete
     std::vector<CompletionType> recommendations;
+
+    /// The name of the current module the cursor is in, if it is in one
+    std::optional<std::string> activeModule;
 
 private:
     /// Cursor position
@@ -136,7 +141,8 @@ private:
 class CompletionGenerator {
 public:
     /// Processes each type of completion specified, and generates the correct LSP completion item(s) for it
-    static std::vector<lsp::CompletionItem> transformAll(const std::vector<CompletionType> &completions);
+    static std::vector<lsp::CompletionItem> transformAll(
+        const std::vector<CompletionType> &completions, const std::optional<std::string> &activeModule);
 
     /// Generates completion items for CompletionType::Logic
     static std::vector<lsp::CompletionItem> generateLogic();
@@ -150,6 +156,8 @@ public:
     static std::vector<lsp::CompletionItem> generateSystemTasks();
 
     static std::vector<lsp::CompletionItem> generateInputOutput();
+
+    static std::vector<lsp::CompletionItem> generateVariableSameModule();
 };
 
 } // namespace slingshot

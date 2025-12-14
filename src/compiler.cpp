@@ -155,6 +155,8 @@ void CompilationManager::submitCompilationJob(
         langLifter.visit(tree->root());
         langLifter.doc.maybeFlushModule();
 
+        // SPDLOG_DEBUG("Tree: {}", tree->root().toString());
+
         SPDLOG_TRACE("Now associating parse tree");
         g_indexManager.associateParse(path, tree);
         g_indexManager.associateDiagnostics(path, diagClient->getLspDiagnostics());

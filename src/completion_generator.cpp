@@ -111,8 +111,13 @@ std::vector<lsp::CompletionItem> CompletionGenerator::generateInputOutput() {
     };
 }
 
+std::vector<lsp::CompletionItem> CompletionGenerator::generateVariableSameModule() {
+    std::vector<lsp::CompletionItem> out;
+    return out;
+}
+
 std::vector<lsp::CompletionItem> CompletionGenerator::transformAll(
-    const std::vector<CompletionType> &completions) {
+    const std::vector<CompletionType> &completions, const std::optional<std::string> &activeModule) {
     std::vector<lsp::CompletionItem> out;
 
     for (const auto &comp : completions) {
@@ -135,6 +140,10 @@ std::vector<lsp::CompletionItem> CompletionGenerator::transformAll(
 
             case CompletionType::InputOutput:
                 addAll(out, generateInputOutput());
+                break;
+
+            case CompletionType::VariableSameModule:
+                addAll(out, generateVariableSameModule());
                 break;
 
             default:

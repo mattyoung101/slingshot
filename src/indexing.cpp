@@ -6,12 +6,15 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/indexing.hpp"
 #include "slingshot/compiler.hpp"
+#include "slingshot/lang_lifter.hpp"
+#include "slingshot/language.hpp" // NECESSARY for JSON conversion
 #include "slingshot/slingshot.hpp"
 #include <ankerl/unordered_dense.h>
 #include <filesystem>
 #include <fstream>
 #include <lsp/types.h>
 #include <memory>
+#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <slang/syntax/SyntaxTree.h>
 #include <spdlog/spdlog.h>
@@ -132,6 +135,7 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
 }
 
 std::string IndexManager::debugDump() {
+    auto lock = acquireReadLock();
     std::stringstream stream;
     for (const auto &entry : index) {
         const auto &[key, value] = entry;
@@ -142,6 +146,15 @@ std::string IndexManager::debugDump() {
 }
 
 std::string IndexManager::dumpLangTrees() {
+    auto lock = acquireReadLock();
     std::stringstream stream;
+    for (const auto &entry : index) {
+        const auto &[key, value] = entry;
+        if (value->doc != std::nullopt) {
+            auto doc = *value->doc;
+            nlohmann::json docJson = doc;
+            stream << fmt::format("Document: {}\n{}\n\n", key.string(), docJson.dump(4));
+        }
+    }
     return stream.str();
 }

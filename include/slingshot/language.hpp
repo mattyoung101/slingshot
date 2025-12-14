@@ -7,12 +7,13 @@
 #pragma once
 #include <functional>
 #include <nlohmann/detail/macro_scope.hpp>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
-#include <nlohmann/json.hpp>
 
 /// A more abstract representation of the SV language, used for completion
 
@@ -26,14 +27,25 @@ enum class PortDirection {
     InOut,
 };
 
+#define ENUM_ENTRY(name) { PortDirection::name, # name }
+
+NLOHMANN_JSON_SERIALIZE_ENUM(PortDirection,
+    {
+        ENUM_ENTRY(Unknown),
+        ENUM_ENTRY(DontCare),
+        ENUM_ENTRY(Input),
+        ENUM_ENTRY(Output),
+        ENUM_ENTRY(InOut),
+    });
+
 /// Represents a port in a module
 class Port {
 public:
     std::string name {};
     PortDirection direction = PortDirection::Unknown;
-
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Port, name, direction);
 };
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Port, name, direction);
 
 /// Represents a module in a document
 class Module {
@@ -49,7 +61,12 @@ public:
 
     void addParameter(const std::string &paramName) {
         SPDLOG_DEBUG("Add parameter {} to module {}", paramName, name);
-        parameters.push_back(paramName);
+        parameters.insert(paramName);
+    }
+
+    void addVariable(const std::string &varName) {
+        SPDLOG_DEBUG("Add variable {} to module {}", varName, name);
+        variables.insert(varName);
     }
 
     /// Returns the list of port directions that match the given direction. If direction is
@@ -74,11 +91,13 @@ public:
     }
 
     std::vector<Port> ports {};
-    std::vector<std::string> parameters {};
+    // these are left as std::unordered_sets for the benefit of nlohmann::json
+    std::unordered_set<std::string> variables {};
+    std::unordered_set<std::string> parameters {};
     std::string name {};
-
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Module, ports, parameters, name);
 };
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Module, ports, parameters, name, variables);
 
 /// Represents a document
 class Document {
@@ -113,11 +132,21 @@ public:
         }
     }
 
-    std::vector<Module> modules {};
+    std::optional<Module> getModuleByName(const std::string &name) {
+        for (const auto &module : modules) {
+            if (module.name == name) {
+                return module;
+            }
+        }
+        SPDLOG_WARN("Couldn't find module for name: {}", name);
+        return std::nullopt;
+    }
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Document, modules, currentModule);
+    std::vector<Module> modules {};
 private:
     std::optional<Module> currentModule = std::nullopt;
 };
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Document, modules);
 
 } // namespace slingshot::lang
