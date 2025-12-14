@@ -85,7 +85,7 @@ int main() {
     int pid = getpid();
 
     std::filesystem::path logPath
-        = homeDir + "/.local/share/slingshot/slingshot-" + std::to_string(pid) + ".log";
+        = homeDir + "/.local/share/slingshot/slingshot.log"; // + std::to_string(pid) + ".log";
     auto rotating = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logPath, 4096 * 1024, 5, false);
     rotating->set_level(level);
     spdlog::default_logger()->sinks().push_back(rotating);

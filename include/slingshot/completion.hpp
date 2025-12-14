@@ -77,11 +77,13 @@ public:
 
     void handle(const EventControlWithExpressionSyntax &syntax);
 
-    void handle(const ExpressionSyntax &syntax);
+    void handle(const ExpressionStatementSyntax &syntax);
 
     void handle(const AnsiPortListSyntax &syntax);
 
     void handle(const ModuleDeclarationSyntax &syntax);
+
+    void handle(const DataDeclarationSyntax &syntax);
 
     /// The recommended things to complete
     std::vector<lsp::CompletionItem> recommendations;
@@ -119,6 +121,8 @@ public:
 
     /// Generates always_ff, always_comb, always_latch blocks
     static std::vector<lsp::CompletionItem> generateAlways();
+
+    static std::vector<lsp::CompletionItem> generateIf();
 
     static std::vector<lsp::CompletionItem> generateSystemTasks();
 

@@ -8,12 +8,17 @@ project(slingshot
 set(CPACK_PACKAGE_CONTACT "Matt Young <matt@mlyoung.cool>")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Enable LTO")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
+
 set(CMAKE_C_STANDARD 11) # C11
 set(CMAKE_CXX_STANDARD 23) # C++23
 cmake_policy(SET CMP0144 NEW)
 
-include(GNUInstallDirs)
 include(CPack)
 include(cmake/CPM.cmake)
 

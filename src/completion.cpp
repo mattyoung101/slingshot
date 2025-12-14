@@ -8,14 +8,18 @@
 #include "slingshot/conversions.hpp"
 #include "slingshot/indexing.hpp"
 #include "slingshot/slingshot.hpp"
+#include <algorithm>
 #include <ankerl/unordered_dense.h>
 #include <filesystem>
 #include <lsp/messages.h>
 #include <lsp/types.h>
 #include <lsp/uri.h>
+#include <ranges>
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/syntax/AllSyntax.h>
+#include <slang/syntax/SyntaxKind.h>
+#include <slang/syntax/SyntaxNode.h>
 #include <slang/syntax/SyntaxTree.h>
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
@@ -41,9 +45,40 @@ constexpr bool containsRelaxed(const SourceLocation &loc, const SourceRange &ran
     return loc >= range.start() && loc <= range.end();
 }
 
+/// Returns true if and only if the node "node" contains a SyntaxNode of the kind specified in its direct
+/// parental hierarchy
+inline bool containsInDirectHierarchy(const SyntaxNode &node, const SyntaxKind &kind) {
+    SyntaxNode *parent = node.parent;
+    while (parent != nullptr) {
+        if (parent->kind == kind) {
+            return true;
+        }
+        // get the parent's parent
+        parent = parent->parent;
+    }
+    return false;
+}
+
+template <std::ranges::range Range>
+inline bool containsInDirectHierarchy(const SyntaxNode &node, const Range &kinds) {
+    SyntaxNode *parent = node.parent;
+    while (parent != nullptr) {
+        if (std::ranges::contains(kinds, parent->kind)) {
+            return true;
+        }
+        // get the parent's parent
+        parent = parent->parent;
+    }
+    return false;
+}
+
+const std::vector<SyntaxKind> ALWAYS_BLOCK = { SyntaxKind::AlwaysCombBlock, SyntaxKind::AlwaysFFBlock,
+    SyntaxKind::AlwaysLatchBlock, SyntaxKind::AlwaysBlock };
+
 }; // namespace
 
-void CompletionSyntaxVisitor::recommend(const std::vector<lsp::CompletionItem> &completions, const std::string &what) {
+void CompletionSyntaxVisitor::recommend(
+    const std::vector<lsp::CompletionItem> &completions, const std::string &what) {
     addAll(recommendations, completions);
     SPDLOG_DEBUG("Recommended: {}", what);
 }
@@ -61,21 +96,26 @@ void CompletionSyntaxVisitor::handle(const EventControlWithExpressionSyntax &syn
     })
 }
 
-// FIXME this needs to be much more selective; otherwise it ends up applying to all selections
-void CompletionSyntaxVisitor::handle(const ExpressionSyntax &syntax) {
-    SPDLOG_DEBUG("Visit expression {} range {}", syntax.toString(),
+void CompletionSyntaxVisitor::handle(const ExpressionStatementSyntax &syntax) {
+    SPDLOG_DEBUG("Visit expression {}", syntax.toString(),
         toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
+    SPDLOG_DEBUG("Type of the expression parent is: {}", toString(syntax.parent->kind));
     BEGIN({
+        // TODO determine if we are on LHS or RHS and change what we recommend
+
         RECOMMEND(CompletionGenerator::generateLogic());
-        RECOMMEND(CompletionGenerator::generateAlways());
         RECOMMEND(CompletionGenerator::generateSystemTasks());
+        RECOMMEND(CompletionGenerator::generateIf());
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+
+        if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
+            RECOMMEND(CompletionGenerator::generateAlways());
+        }
     });
 }
 
 void CompletionSyntaxVisitor::handle(const AnsiPortListSyntax &syntax) {
-    SPDLOG_DEBUG("Visit ANSI port syntax {} range {}", syntax.toString(),
-        toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
+    SPDLOG_DEBUG("Visit ANSI port syntax {}", syntax.toString());
 
     BEGIN({
         RECOMMEND(CompletionGenerator::generateLogic());
@@ -83,6 +123,21 @@ void CompletionSyntaxVisitor::handle(const AnsiPortListSyntax &syntax) {
         RECOMMEND(CompletionGenerator::generateSystemTasks());
     })
 }
+
+// NOTE: the parser detects typing in a module as a DataDeclaration a lot of the time
+void CompletionSyntaxVisitor::handle(const DataDeclarationSyntax &syntax) {
+    SPDLOG_DEBUG("Visit data declaration syntax: {}", syntax.toString());
+
+    BEGIN({
+        RECOMMEND(CompletionGenerator::generateLogic());
+        RECOMMEND(CompletionGenerator::generateIf());
+        RECOMMEND(CompletionGenerator::generateAlways());
+        RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+        // don't recommend system tasks because we're more or less on the LHS of something
+    })
+}
+
+// TODO continuous assign
 
 void CompletionSyntaxVisitor::handle(const ModuleDeclarationSyntax &syntax) {
     SPDLOG_DEBUG("Visit module decalaration");

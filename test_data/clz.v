@@ -5,7 +5,8 @@ module count_lead_zero #(
     parameter W_OUT = $clog2(W_IN) // Let this default
 ) (
     input wire  [W_IN-1:0] in,
-    output wire [W_OUT-1:0] out
+    output wire [W_OUT-1:0] out,
+    input wire clk
 );
 
 generate

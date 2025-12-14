@@ -92,6 +92,20 @@ std::vector<lsp::CompletionItem> CompletionGenerator::generateAlways() {
             .filterText = "always_ff",
             .insertText = "always_ff @($0) begin\n\t\nend",
             .insertTextFormat = lsp::InsertTextFormat::Snippet,
+        },
+    };
+    // clang-format on
+}
+
+std::vector<lsp::CompletionItem> CompletionGenerator::generateIf() {
+    // clang-format off
+    return {
+        lsp::CompletionItem {
+            .label = "if",
+            .kind = lsp::CompletionItemKind::Snippet,
+            .filterText = "if",
+            .insertText = "if ($0) begin\n\t\nend",
+            .insertTextFormat = lsp::InsertTextFormat::Snippet,
         }
     };
     // clang-format on
