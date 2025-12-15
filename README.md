@@ -21,10 +21,15 @@ aims to:
 
 - Diagnostics
   - Based on the powerful Slang SystemVerilog frontend
+- Advanced completion system
+    - Context-sensitive completion, based off the Slang parse tree, a "best-effort" approach to only recommend
+      valid completions
+    - Slang's parser is highly error resistant, making it excellent for this use case
 - Simple configuration
   - Slingshot is configured through a simple `.slingshot.toml` file declared in the project's root
   directory
   - This format is documented in [docs/config.md](docs/config.md)
+- Compatible with Ubuntu 22.04+ and similar Linux distributions
 
 Future features are planned on the [issue tracker](https://github.com/mattyoung101/slingshot/issues).
 
@@ -38,12 +43,13 @@ might become a joint project of my PhD lab, hopefully.
 ## Building and running
 ### Building and environment
 You will need:
-- CMake 3.20+
+- CMake 3.21+
 - A C++23 compiler (Clang 20+ recommended)
 - Ninja
 - ccache (optional)
 - Just (optional)
 - mold (optional)
+- Something compatible with Ubuntu 22.04+ (I develop on Arch, btw)
 
 The simplest way to build, with Just, is to run `just build` and/or `just build_debug`.
 
