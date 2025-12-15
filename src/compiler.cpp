@@ -4,17 +4,25 @@
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#include <exception>
+#define BS_THREAD_POOL_NATIVE_EXTENSIONS
 #include "slingshot/compiler.hpp"
 #include "slingshot/conversions.hpp"
 #include "slingshot/indexing.hpp"
 #include "slingshot/lang_lifter.hpp"
 #include "slingshot/slingshot.hpp"
+#include <BS_thread_pool.hpp>
 #include <ankerl/unordered_dense.h>
+#include <csignal>
 #include <lsp/messages.h>
 #include <lsp/types.h>
 #include <lsp/uri.h>
+#include <slang/analysis/AnalysisManager.h>
+#include <slang/ast/Compilation.h>
+#include <slang/ast/symbols/CompilationUnitSymbols.h>
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/Diagnostics.h>
+#include <slang/driver/Driver.h>
 #include <slang/syntax/SyntaxTree.h>
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
@@ -43,6 +51,8 @@
 
 using namespace slingshot;
 using namespace slang::syntax;
+using namespace slang::ast;
+using namespace slang::analysis;
 
 void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
     SPDLOG_TRACE("Received a diagnostic");
@@ -131,45 +141,101 @@ void CompilationManager::submitCompilationJob(
     bufferIds[path] = buf.id;
 
     pool.detach_task([buf, path, this] {
-        // do compilation
-        // TODO track the time it takes
-        auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr);
-        SPDLOG_TRACE("Compiled document {}, got {} diagnostics", path.string(), tree->diagnostics().size());
+        try {
+            BS::this_thread::set_os_thread_name("Compiler");
 
-        // compute diagnostics
-        DiagnosticEngine diagEngine { *sourceMgr };
-        // get more diagnostics
-        diagEngine.setIgnoreAllNotes(false);
-        diagEngine.setIgnoreAllWarnings(false);
-        LSPDiagnosticClient::Ptr diagClient = std::make_shared<LSPDiagnosticClient>();
-        diagClient->setSourceManager(sourceMgr);
-        diagEngine.addClient(diagClient);
+            // do initial CST parse
+            auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr);
+            SPDLOG_TRACE(
+                "Parsed document {}, got {} initial diagnostics", path.string(), tree->diagnostics().size());
+            // this is essential so that later, we will have the parse tree associated with this current
+            // document
+            g_indexManager.associateParse(path, tree);
 
-        for (const auto &diag : tree->diagnostics()) {
-            diagEngine.issue(diag);
-        }
+            // compute diagnostics
+            DiagnosticEngine diagEngine { *sourceMgr };
+            // get more diagnostics
+            diagEngine.setIgnoreAllNotes(false);
+            diagEngine.setIgnoreAllWarnings(false);
+            LSPDiagnosticClient::Ptr diagClient = std::make_shared<LSPDiagnosticClient>();
+            diagClient->setSourceManager(sourceMgr);
+            diagEngine.addClient(diagClient);
 
-        // lift to our own internal higher level representation
-        SPDLOG_DEBUG("Lifting language");
-        LangLifterVisitor langLifter;
-        langLifter.visit(tree->root());
-        langLifter.doc.maybeFlushModule();
+            for (const auto &diag : tree->diagnostics()) {
+                diagEngine.issue(diag);
+            }
 
-        // SPDLOG_DEBUG("Tree: {}", tree->root().toString());
+            // try and get the default driver options, which seem to be a necessity to get diagnostics, which
+            // is our only goal here atm
+            driver::Driver slangDriver;
+            slangDriver.addStandardArgs();
+            // Parse command line and process files
+            slang::CommandLine::ParseOptions parseOpts;
+            parseOpts.expandEnvVars = true;
+            parseOpts.ignoreProgramName = true;
+            parseOpts.supportComments = true;
+            parseOpts.ignoreDuplicates = true;
+            slangDriver.options.errorLimit = 999;
+            slangDriver.processOptions();
+            slangDriver.parseAllSources();
+            auto options = slangDriver.createOptionBag();
 
-        SPDLOG_TRACE("Now associating parse tree");
-        g_indexManager.associateParse(path, tree);
-        g_indexManager.associateDiagnostics(path, diagClient->getLspDiagnostics());
-        g_indexManager.associateLangDoc(path, langLifter.doc);
+            // create a compilation, so we can get further diagnostics; this will yield for us the AST,
+            // whereas before we had the CST
+            auto trees = g_indexManager.getAllSyntaxTrees();
+            SPDLOG_DEBUG("Creating AST compilation with {} syntax trees", trees.size());
 
-        // publish diagnostics to the client
-        // we only do this if the text document is open, to avoid extraneous errors
-        if (openFiles.contains(path)) {
-            lsp::notifications::TextDocument_PublishDiagnostics::Params lspDiagMsg;
-            lspDiagMsg.diagnostics = diagClient->getLspDiagnostics();
-            lspDiagMsg.uri = lsp::Uri::parse("file://" + path.string());
-            g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(
-                std::move(lspDiagMsg));
+            SPDLOG_DEBUG("Build compilation");
+            Compilation compilation;
+            for (const auto &tree : trees) {
+                SPDLOG_DEBUG("Add syntax tree");
+                compilation.addSyntaxTree(tree);
+            }
+
+            // finalise it, apparently we have to call getRoot() to do this
+            SPDLOG_DEBUG("Freeze compilation and elaborate");
+            compilation.getRoot();
+            SPDLOG_DEBUG("Got root, ensuring used");
+            SPDLOG_DEBUG("Iter diagnostics");
+            for (const auto &diag : compilation.getAllDiagnostics()) {
+                SPDLOG_DEBUG("Issued a diagnostic in the AST");
+                diagEngine.issue(diag);
+            }
+
+            // also perform analysis
+            // FIXME this currently hangs the thread, doesn't even raise an exception; wtf
+
+            // AnalysisManager analysisMgr;
+            // analysisMgr.analyze(compilation);
+            // for (const auto &diag : analysisMgr.getDiagnostics(&*sourceMgr)) {
+            //     SPDLOG_DEBUG("Issued a diagnostic in analysis");
+            //     diagEngine.issue(diag);
+            // }
+
+            // lift to our own internal higher level representation for completion
+            SPDLOG_DEBUG("Lifting language");
+            LangLifterVisitor langLifter;
+            langLifter.visit(tree->root());
+            langLifter.doc.maybeFlushModule();
+
+            // SPDLOG_DEBUG("Tree: {}", tree->root().toString());
+
+            SPDLOG_TRACE("Associate diagnostics and slingshot::lang document");
+            g_indexManager.associateDiagnostics(path, diagClient->getLspDiagnostics());
+            g_indexManager.associateLangDoc(path, langLifter.doc);
+
+            // publish diagnostics to the client
+            // we only do this if the text document is open, to avoid extraneous errors
+            if (openFiles.contains(path)) {
+                SPDLOG_DEBUG("Issue all diagnostics to client");
+                lsp::notifications::TextDocument_PublishDiagnostics::Params lspDiagMsg;
+                lspDiagMsg.diagnostics = diagClient->getLspDiagnostics();
+                lspDiagMsg.uri = lsp::Uri::parse("file://" + path.string());
+                g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(
+                    std::move(lspDiagMsg));
+            }
+        } catch (const std::exception &e) {
+            SPDLOG_ERROR("Caught exception in thread pool: {}", e.what());
         }
     });
 }

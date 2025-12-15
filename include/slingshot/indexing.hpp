@@ -127,6 +127,9 @@ public:
     /// Serialises the index to disk. baseDir is the project root directory.
     void flush(const std::filesystem::path &baseDir);
 
+    /// Retrieves all syntax trees from all parsed documents
+    std::vector<std::shared_ptr<slang::syntax::SyntaxTree>> getAllSyntaxTrees();
+
     std::string debugDump();
 
     std::string dumpLangTrees();

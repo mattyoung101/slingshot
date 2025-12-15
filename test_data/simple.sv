@@ -3,4 +3,8 @@ module mod (
     output logic foo2
 );
     assign foo1 = foo2;
+
+    always_ff @(posedge blah) begin
+        foo1 = foo2;
+    end
 endmodule

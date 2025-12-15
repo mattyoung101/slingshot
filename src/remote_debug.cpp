@@ -8,6 +8,7 @@
 #include "slingshot/slingshot.hpp"
 #include <array>
 #include <csignal>
+#include <pthread.h>
 #include <sockpp/acceptor.h>
 #include <sockpp/inet_address.h>
 #include <sockpp/socket.h>
@@ -25,6 +26,7 @@ void RemoteDebugger::boot(int port) {
     SPDLOG_INFO("Booted remote debugger on port {}", port);
 
     thread = std::thread(&RemoteDebugger::debuggerThread, this);
+    pthread_setname_np(thread.native_handle(), "RmtDbg");
     thread.detach();
 }
 

@@ -14,7 +14,6 @@
 #include <lsp/messages.h>
 #include <lsp/types.h>
 #include <lsp/uri.h>
-#include <ranges>
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/syntax/AllSyntax.h>
@@ -62,7 +61,7 @@ inline bool containsInDirectHierarchy(const SyntaxNode &node, const SyntaxKind &
 inline bool containsInDirectHierarchy(const SyntaxNode &node, const std::vector<SyntaxKind> &kinds) {
     SyntaxNode *parent = node.parent;
     while (parent != nullptr) {
-        // FIXME this should use std::ranges::contains(), but we're still choosing to support Ubuntu 22.04 as
+        // NOTE this should use std::ranges::contains(), but we're still choosing to support Ubuntu 22.04 as
         // a compile target for now, and that OS doesn't correctly support C++23 because it uses an old GNU
         // libstdc++ I think.
         // NOLINTNEXTLINE

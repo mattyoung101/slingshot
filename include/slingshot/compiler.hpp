@@ -5,6 +5,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
+#define BS_THREAD_POOL_NATIVE_EXTENSIONS
 #include "BS_thread_pool.hpp"
 #include "ankerl/unordered_dense.h"
 #include "slang/diagnostics/DiagnosticClient.h"
@@ -69,7 +70,7 @@ public:
         return sourceMgr;
     }
 private:
-    BS::thread_pool<> pool{2}; // FIXME hardcoded to 2 for now, for ease of debugging
+    BS::thread_pool<> pool{1}; // FIXME hardcoded to 2 for now, for ease of debugging
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
 };
