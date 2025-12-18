@@ -13,7 +13,6 @@
 #include "slingshot/slingshot.hpp"
 #include <BS_thread_pool.hpp>
 #include <ankerl/unordered_dense.h>
-#include <csignal>
 #include <lsp/messages.h>
 #include <lsp/types.h>
 #include <lsp/uri.h>
@@ -56,6 +55,14 @@ using namespace slang::analysis;
 
 void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
     SPDLOG_TRACE("Received a diagnostic");
+
+    // find if we've issued this diagnostic before
+    for (const auto &diag : allSlangDiags) {
+        if (diag.location == diagnostic.location) {
+            return;
+        }
+    }
+    allSlangDiags.push_back(diagnostic);
 
     lsp::Diagnostic lspDiag;
 
@@ -110,23 +117,6 @@ void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
         }
     }
     // end of text diag related code
-
-    // auto uri = mainLoc->uri;
-    // m_diagnostics[uri].push_back(lsp::Diagnostic {
-    //     .range = mainLoc->range,
-    //     .severity = convertSeverity(diag.severity),
-    //     .message = std::string { diag.formattedMessage },
-    //     .relatedInformation = related.empty() ? std::nullopt : std::optional { related },
-    // });
-    //
-    // // Add diag code link if any
-    // std::string_view optionName = engine->getOptionName(diag.originalDiagnostic.code);
-    // if (!optionName.empty()) {
-    //     m_diagnostics[uri].back().code = { std::string(optionName) };
-    //     m_diagnostics[uri].back().codeDescription = lsp::CodeDescription { .href
-    //         = URI::fromWeb("sv-lang.com/warning-ref.html#" + std::string(optionName)) };
-    // }
-
     lspDiag.range = mainLoc->range;
 
     lspDiags.push_back(lspDiag);
@@ -134,14 +124,14 @@ void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
 
 void CompilationManager::submitCompilationJob(
     const std::string &document, const std::filesystem::path &path) {
-    SPDLOG_TRACE("Submitting document {} for compilation", path.string());
-
     // FIXME this may leak memory
     auto buf = sourceMgr->assignText(document);
     bufferIds[path] = buf.id;
 
     pool.detach_task([buf, path, this] {
         try {
+            SPDLOG_WARN("Submitting document {} for compilation", path.string());
+
             BS::this_thread::set_os_thread_name("Compiler");
 
             // do initial CST parse
@@ -176,8 +166,6 @@ void CompilationManager::submitCompilationJob(
             parseOpts.supportComments = true;
             parseOpts.ignoreDuplicates = true;
             slangDriver.options.errorLimit = 999;
-            slangDriver.processOptions();
-            slangDriver.parseAllSources();
             auto options = slangDriver.createOptionBag();
 
             // create a compilation, so we can get further diagnostics; this will yield for us the AST,
@@ -185,40 +173,43 @@ void CompilationManager::submitCompilationJob(
             auto trees = g_indexManager.getAllSyntaxTrees();
             SPDLOG_DEBUG("Creating AST compilation with {} syntax trees", trees.size());
 
-            SPDLOG_DEBUG("Build compilation");
             Compilation compilation;
             for (const auto &tree : trees) {
-                SPDLOG_DEBUG("Add syntax tree");
                 compilation.addSyntaxTree(tree);
             }
 
             // finalise it, apparently we have to call getRoot() to do this
-            SPDLOG_DEBUG("Freeze compilation and elaborate");
+            SPDLOG_DEBUG("Finalise AST compilation");
             compilation.getRoot();
-            SPDLOG_DEBUG("Got root, ensuring used");
-            SPDLOG_DEBUG("Iter diagnostics");
             for (const auto &diag : compilation.getAllDiagnostics()) {
-                SPDLOG_DEBUG("Issued a diagnostic in the AST");
-                diagEngine.issue(diag);
+                SPDLOG_DEBUG("Got an AST diagnostic");
+                // ensure the diagnostic relates to the file we're compiling
+                if (diag.location.buffer() == buf.id) {
+                    SPDLOG_DEBUG("Issued a diagnostic in the AST");
+                    // FIXME need to de-duplicate these diagnostics
+                    diagEngine.issue(diag);
+                }
             }
 
             // also perform analysis
-            // FIXME this currently hangs the thread, doesn't even raise an exception; wtf
-
-            // AnalysisManager analysisMgr;
-            // analysisMgr.analyze(compilation);
-            // for (const auto &diag : analysisMgr.getDiagnostics(&*sourceMgr)) {
-            //     SPDLOG_DEBUG("Issued a diagnostic in analysis");
-            //     diagEngine.issue(diag);
-            // }
+            SPDLOG_DEBUG("Perform analysis");
+            compilation.freeze();
+            AnalysisManager analysisMgr;
+            analysisMgr.analyze(compilation);
+            for (const auto &diag : analysisMgr.getDiagnostics(&*sourceMgr)) {
+                SPDLOG_DEBUG("Got an analysis diagnostic");
+                // ensure the diagnostic relates to the file we're compiling
+                if (diag.location.buffer() == buf.id) {
+                    SPDLOG_DEBUG("Issued a diagnostic in analysis");
+                    diagEngine.issue(diag);
+                }
+            }
 
             // lift to our own internal higher level representation for completion
             SPDLOG_DEBUG("Lifting language");
             LangLifterVisitor langLifter;
             langLifter.visit(tree->root());
             langLifter.doc.maybeFlushModule();
-
-            // SPDLOG_DEBUG("Tree: {}", tree->root().toString());
 
             SPDLOG_TRACE("Associate diagnostics and slingshot::lang document");
             g_indexManager.associateDiagnostics(path, diagClient->getLspDiagnostics());
@@ -229,6 +220,7 @@ void CompilationManager::submitCompilationJob(
             if (openFiles.contains(path)) {
                 SPDLOG_DEBUG("Issue all diagnostics to client");
                 lsp::notifications::TextDocument_PublishDiagnostics::Params lspDiagMsg;
+                // TODO ensure that the diagnostic buffer actually refers to the one in "path"
                 lspDiagMsg.diagnostics = diagClient->getLspDiagnostics();
                 lspDiagMsg.uri = lsp::Uri::parse("file://" + path.string());
                 g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(

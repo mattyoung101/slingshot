@@ -42,6 +42,7 @@ public:
 
 private:
     std::vector<lsp::Diagnostic> lspDiags;
+    std::vector<ReportedDiagnostic> allSlangDiags;
     std::shared_ptr<SourceManager> sourceMgr;
 };
 
