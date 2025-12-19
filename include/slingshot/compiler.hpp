@@ -19,6 +19,7 @@
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace slingshot {
@@ -28,6 +29,11 @@ using namespace slang;
 /// A slang::DiagnosticClient that turns Slang diagnostics into LSP diagnostics
 class LSPDiagnosticClient : public DiagnosticClient {
 public:
+    /// @param targetPath The path that we want to report diagnostics for
+    LSPDiagnosticClient(std::filesystem::path targetPath)
+        : targetPath(std::move(targetPath)) {
+    }
+
     auto getLspDiagnostics() {
         return lspDiags;
     }
@@ -42,8 +48,8 @@ public:
 
 private:
     std::vector<lsp::Diagnostic> lspDiags;
-    std::vector<ReportedDiagnostic> allSlangDiags;
     std::shared_ptr<SourceManager> sourceMgr;
+    std::filesystem::path targetPath;
 };
 
 class CompilationManager {
@@ -66,12 +72,16 @@ public:
     /// Association between a FS path and a Slang BufferID once it's been added to the internal SourceManager
     ankerl::unordered_dense::map<std::filesystem::path, BufferID> bufferIds;
 
+    /// Inverse of bufferIds
+    ankerl::unordered_dense::map<BufferID, std::filesystem::path> bufferIdsInverse;
+
     /// Gets the source manager. This is really only a hack to plumb this shit into the completion system.
     std::shared_ptr<SourceManager> getSourceManager() {
         return sourceMgr;
     }
+
 private:
-    BS::thread_pool<> pool{1}; // FIXME hardcoded to 2 for now, for ease of debugging
+    BS::thread_pool<> pool { 1 }; // FIXME hardcoded to 2 for now, for ease of debugging
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
 };

@@ -56,16 +56,23 @@ using namespace slang::analysis;
 void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
     SPDLOG_TRACE("Received a diagnostic");
 
-    // find if we've issued this diagnostic before
-    for (const auto &diag : allSlangDiags) {
-        if (diag.location == diagnostic.location) {
-            return;
-        }
+    if (!g_compilerManager.bufferIdsInverse.contains(diagnostic.location.buffer())) {
+        SPDLOG_ERROR("Diagnostic in buffer ID {} could not be found in bufferIdsInverse",
+            diagnostic.location.buffer().getId());
+        return;
     }
-    allSlangDiags.push_back(diagnostic);
+
+    auto path = g_compilerManager.bufferIdsInverse.at(diagnostic.location.buffer());
+    if (path != targetPath) {
+        SPDLOG_TRACE("Diagnostic in buffer {} path {} did not match target path {}",
+            diagnostic.location.buffer().getId(), path.string(), targetPath.string());
+        return;
+    }
+
+    // TODO I think we *DO* actually need to dedup diagnostics here as well, as well as deduping them
+    // elsewhere
 
     lsp::Diagnostic lspDiag;
-
     switch (diagnostic.severity) {
         case slang::DiagnosticSeverity::Note:
             lspDiag.severity = lsp::DiagnosticSeverity::Information;
@@ -127,6 +134,7 @@ void CompilationManager::submitCompilationJob(
     // FIXME this may leak memory
     auto buf = sourceMgr->assignText(document);
     bufferIds[path] = buf.id;
+    bufferIdsInverse[buf.id] = path;
 
     pool.detach_task([buf, path, this] {
         try {
@@ -147,10 +155,13 @@ void CompilationManager::submitCompilationJob(
             // get more diagnostics
             diagEngine.setIgnoreAllNotes(false);
             diagEngine.setIgnoreAllWarnings(false);
-            LSPDiagnosticClient::Ptr diagClient = std::make_shared<LSPDiagnosticClient>();
+
+            // this is our custom listener for diagnostics that we'll filter and report to the LSP
+            LSPDiagnosticClient::Ptr diagClient = std::make_shared<LSPDiagnosticClient>(path);
             diagClient->setSourceManager(sourceMgr);
             diagEngine.addClient(diagClient);
 
+            // first, issue syntax diagnostics we got in parsing
             for (const auto &diag : tree->diagnostics()) {
                 diagEngine.issue(diag);
             }
@@ -186,7 +197,6 @@ void CompilationManager::submitCompilationJob(
                 // ensure the diagnostic relates to the file we're compiling
                 if (diag.location.buffer() == buf.id) {
                     SPDLOG_DEBUG("Issued a diagnostic in the AST");
-                    // FIXME need to de-duplicate these diagnostics
                     diagEngine.issue(diag);
                 }
             }
