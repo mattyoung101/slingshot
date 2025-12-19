@@ -80,10 +80,23 @@ public:
         return sourceMgr;
     }
 
+    /// Returns a write (unique) lock on the compiler manager
+    [[nodiscard]] auto acquireWriteLock() {
+        SPDLOG_TRACE("Attempt to acquire write lock");
+        return std::unique_lock<std::shared_mutex>(lock);
+    }
+
+    /// Returns a read (shared) lock on the compiler manager
+    [[nodiscard]] auto acquireReadLock() {
+        SPDLOG_TRACE("Attempt to acquire write lock");
+        return std::shared_lock<std::shared_mutex>(lock);
+    }
+
 private:
-    BS::thread_pool<> pool { 1 }; // FIXME hardcoded to 2 for now, for ease of debugging
+    BS::thread_pool<> pool;
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
+    std::shared_mutex lock;
 };
 
 } // namespace slingshot

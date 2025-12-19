@@ -56,17 +56,22 @@ using namespace slang::analysis;
 void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
     SPDLOG_TRACE("Received a diagnostic");
 
-    if (!g_compilerManager.bufferIdsInverse.contains(diagnostic.location.buffer())) {
-        SPDLOG_ERROR("Diagnostic in buffer ID {} could not be found in bufferIdsInverse",
-            diagnostic.location.buffer().getId());
-        return;
-    }
+    {
+        auto lock = g_compilerManager.acquireReadLock();
 
-    auto path = g_compilerManager.bufferIdsInverse.at(diagnostic.location.buffer());
-    if (path != targetPath) {
-        SPDLOG_TRACE("Diagnostic in buffer {} path {} did not match target path {}",
-            diagnostic.location.buffer().getId(), path.string(), targetPath.string());
-        return;
+        // FIXME I think this actually introduces a race lol
+        if (!g_compilerManager.bufferIdsInverse.contains(diagnostic.location.buffer())) {
+            SPDLOG_ERROR("Diagnostic in buffer ID {} could not be found in bufferIdsInverse",
+                diagnostic.location.buffer().getId());
+            return;
+        }
+
+        auto path = g_compilerManager.bufferIdsInverse.at(diagnostic.location.buffer());
+        if (path != targetPath) {
+            SPDLOG_TRACE("Diagnostic in buffer {} path {} did not match target path {}",
+                diagnostic.location.buffer().getId(), path.string(), targetPath.string());
+            return;
+        }
     }
 
     // TODO I think we *DO* actually need to dedup diagnostics here as well, as well as deduping them
@@ -131,10 +136,18 @@ void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
 
 void CompilationManager::submitCompilationJob(
     const std::string &document, const std::filesystem::path &path) {
-    // FIXME this may leak memory
-    auto buf = sourceMgr->assignText(document);
-    bufferIds[path] = buf.id;
-    bufferIdsInverse[buf.id] = path;
+
+    SourceBuffer buf;
+
+    {
+        auto lock = acquireWriteLock();
+
+        // FIXME this may leak memory
+        buf = sourceMgr->assignText(document);
+
+        bufferIds[path] = buf.id;
+        bufferIdsInverse[buf.id] = path;
+    }
 
     pool.detach_task([buf, path, this] {
         try {
