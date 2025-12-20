@@ -158,25 +158,8 @@ void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params
 
 lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
     const lsp::requests::TextDocument_Diagnostic::Params &&params) {
-    auto path = std::filesystem::absolute(params.textDocument.uri.path()).string();
-    SPDLOG_TRACE("Diagnostic info request in {}", path);
-
-    auto result = g_indexManager.retrieve(path);
-    if (!result.has_value()) {
-        SPDLOG_WARN("Document {} is not in index", path);
-        return {};
-    }
-    if ((*result)->tree == nullptr) {
-        // in this case, it'll be handled by the compiler manager
-        SPDLOG_DEBUG("Document {} has not yet been parsed, handling it later", path);
-        return {};
-    }
-
-    lsp::RelatedFullDocumentDiagnosticReport output;
-    output.items = (*result)->diagnostics;
-    SPDLOG_DEBUG("Returning {} diagnostics", output.items.size());
-
-    return output;
+    // we push diagnostics to the client when WE are ready, return nothing
+    return {};
 }
 
 lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
@@ -196,11 +179,6 @@ lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
 
     // ensure the index entry is valid
     (*result)->ensureValidByWaiting();
-
-    // if (!(*result)->valid) {
-    //     SPDLOG_WARN("Parse tree may be stale when doing completions on {}", path);
-    //     // FIXME we need to wait for the tree to not be stale in this case; maybe with a condition variable
-    // }
 
     return CompletionManager::getCompletions(path, params.position, *result);
 }

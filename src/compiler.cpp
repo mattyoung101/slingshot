@@ -151,7 +151,7 @@ void CompilationManager::submitCompilationJob(
 
     pool.detach_task([buf, path, this] {
         try {
-            SPDLOG_WARN("Submitting document {} for compilation", path.string());
+            SPDLOG_DEBUG("Submitting document {} for compilation", path.string());
 
             BS::this_thread::set_os_thread_name("Compiler");
 
@@ -183,12 +183,6 @@ void CompilationManager::submitCompilationJob(
             // is our only goal here atm
             driver::Driver slangDriver;
             slangDriver.addStandardArgs();
-            // Parse command line and process files
-            slang::CommandLine::ParseOptions parseOpts;
-            parseOpts.expandEnvVars = true;
-            parseOpts.ignoreProgramName = true;
-            parseOpts.supportComments = true;
-            parseOpts.ignoreDuplicates = true;
             slangDriver.options.errorLimit = 999;
             auto options = slangDriver.createOptionBag();
 
@@ -235,17 +229,18 @@ void CompilationManager::submitCompilationJob(
             langLifter.doc.maybeFlushModule();
 
             SPDLOG_TRACE("Associate diagnostics and slingshot::lang document");
-            g_indexManager.associateDiagnostics(path, diagClient->getLspDiagnostics());
             g_indexManager.associateLangDoc(path, langLifter.doc);
 
             // publish diagnostics to the client
             // we only do this if the text document is open, to avoid extraneous errors
             if (openFiles.contains(path)) {
-                SPDLOG_DEBUG("Issue all diagnostics to client");
+                SPDLOG_DEBUG("Issue {} diagnostics to client for buffer {}",
+                    diagClient->getLspDiagnostics().size(), path.string());
+
                 lsp::notifications::TextDocument_PublishDiagnostics::Params lspDiagMsg;
-                // TODO ensure that the diagnostic buffer actually refers to the one in "path"
                 lspDiagMsg.diagnostics = diagClient->getLspDiagnostics();
                 lspDiagMsg.uri = lsp::Uri::parse("file://" + path.string());
+
                 g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(
                     std::move(lspDiagMsg));
             }

@@ -72,19 +72,6 @@ void IndexManager::associateParse(
     }
 }
 
-void IndexManager::associateDiagnostics(
-    const std::filesystem::path &path, const std::vector<lsp::Diagnostic> &diagnostics) {
-    auto result = retrieve(path);
-
-    // hold a lock guard, since we're calling this from CompilerManager which is multi-threaded
-    auto lock = acquireWriteLock();
-    if (result.has_value()) {
-        (*result)->diagnostics = diagnostics;
-    } else {
-        SPDLOG_WARN("Path {} somehow not in the index!", path.string());
-    }
-}
-
 void IndexManager::associateLangDoc(const std::filesystem::path &path, const lang::Document &doc) {
     auto result = retrieve(path);
 
@@ -161,8 +148,7 @@ std::string IndexManager::debugDump() {
     std::stringstream stream;
     for (const auto &entry : index) {
         const auto &[key, value] = entry;
-        stream << fmt::format(
-            "{}    0x{:X}    {} diags\n", key.string(), value->hash, value->diagnostics.size());
+        stream << fmt::format("{}    0x{:X}\n", key.string(), value->hash);
     }
     return stream.str();
 }

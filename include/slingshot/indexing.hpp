@@ -37,9 +37,6 @@ public:
     /// WARNING May be nullptr if not yet parsed
     std::shared_ptr<slang::syntax::SyntaxTree> tree {};
 
-    /// Processed LSP diagnostics, only really valid if tree != nullptr
-    std::vector<lsp::Diagnostic> diagnostics {};
-
     /// True if the parse tree is valid, false if the parse tree is invalidated and we're waiting a new parse
     bool valid = false;
 
@@ -57,8 +54,6 @@ public:
         std::lock_guard<std::mutex> lock(mutex);
         SPDLOG_TRACE("Marking index entry {} as invalid with new hash 0x{:X}", path, newHash);
         hash = newHash;
-        // clear the diagnostics
-        diagnostics.clear();
         // BUT importantly, keep the tree; both the parse tree and the lang::Document
         valid = false;
     }
@@ -107,10 +102,6 @@ public:
     /// Associates parse data with a path in the syntax tree
     void associateParse(
         const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree);
-
-    /// Associates processed diagnotsic data from the LSPDiagnosticClient in compiler.hpp
-    void associateDiagnostics(
-        const std::filesystem::path &path, const std::vector<lsp::Diagnostic> &diagnostics);
 
     /// Associates a slingshot::lang::Document with the file
     void associateLangDoc(const std::filesystem::path &path, const lang::Document &doc);
