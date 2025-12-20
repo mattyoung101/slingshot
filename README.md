@@ -11,20 +11,19 @@ using the powerful [Slang](https://github.com/MikePopoloski/slang) frontend. The
 accurate and robust completion even in complex projects. The trade-off is this does mean that features such as
 "go-to-reference" take somewhat of a backseat.
 
-Slingshot is (now) written in C++20. Previously, it was written in Kotlin and used ANTLR. This new rewrite
+Slingshot is (now) written in C++23. Previously, it was written in Kotlin and used ANTLR. This new rewrite
 aims to:
 - Improve speed and utility by using a proper SystemVerilog parser (Slang)
 - Reduce memory usage
 
 ## Features
-**WORK IN PROGRESS**
-
 - Diagnostics
   - Based on the powerful Slang SystemVerilog frontend
 - Advanced completion system
     - Context-sensitive completion, based off the Slang parse tree, a "best-effort" approach to only recommend
       valid completions
     - Slang's parser is highly error resistant, making it excellent for this use case
+- Multi-threaded, project-wide index and compilation system
 - Simple configuration
   - Slingshot is configured through a simple `.slingshot.toml` file declared in the project's root
   directory
@@ -34,7 +33,8 @@ aims to:
 Future features are planned on the [issue tracker](https://github.com/mattyoung101/slingshot/issues).
 
 ### Current state
-Slingshot is being rewritten and is not currently useful in any projects.
+Slingshot is being rewritten, but _may_ be useful in some simple projects at the moment. Please keep me
+posted!
 
 ### Timeline
 Slingshot is being developed in my free time, and I'm hoping to work on it somewhat during my PhD. One day, it
@@ -119,8 +119,6 @@ fix bug tickets. Pull requests are welcome as well, but may take some time to re
 See [docs/design_goals.md](docs/design_goals.md)
 
 ## Implementation details
-**TODO**
-
 See [docs/impl_details.md](docs/impl_details.md)
 
 ## Licence
