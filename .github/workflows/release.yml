@@ -70,6 +70,7 @@ jobs:
 
       - name: Upload assets
         run: |
+          cd build;
           for artefact in slingshot-*; do
             gh release upload ${{ github.event.inputs.tag }} $artefact;
           done;
