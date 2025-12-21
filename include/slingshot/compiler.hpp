@@ -88,7 +88,7 @@ public:
 
     /// Returns a read (shared) lock on the compiler manager
     [[nodiscard]] auto acquireReadLock() {
-        SPDLOG_TRACE("Attempt to acquire write lock");
+        SPDLOG_TRACE("Attempt to acquire read lock");
         return std::shared_lock<std::shared_mutex>(lock);
     }
 

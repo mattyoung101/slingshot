@@ -118,8 +118,8 @@ public:
     /// Serialises the index to disk. baseDir is the project root directory.
     void flush(const std::filesystem::path &baseDir);
 
-    /// Retrieves all syntax trees from all parsed documents
-    std::vector<std::shared_ptr<slang::syntax::SyntaxTree>> getAllSyntaxTrees();
+    /// Retrieves all unique syntax trees from all parsed documents
+    ankerl::unordered_dense::set<std::shared_ptr<slang::syntax::SyntaxTree>> getAllSyntaxTrees();
 
     std::string debugDump();
 
@@ -133,7 +133,7 @@ public:
 
     /// Returns a read (shared) lock on the whole index
     [[nodiscard]] auto acquireReadLock() {
-        SPDLOG_TRACE("Attempt to acquire write lock");
+        SPDLOG_TRACE("Attempt to acquire read lock");
         return std::shared_lock<std::shared_mutex>(lock);
     }
 

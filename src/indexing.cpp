@@ -125,18 +125,18 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
     }
 }
 
-std::vector<std::shared_ptr<slang::syntax::SyntaxTree>> IndexManager::getAllSyntaxTrees() {
+ankerl::unordered_dense::set<std::shared_ptr<slang::syntax::SyntaxTree>> IndexManager::getAllSyntaxTrees() {
     auto lock = acquireReadLock();
-    std::vector<std::shared_ptr<slang::syntax::SyntaxTree>> out;
+    ankerl::unordered_dense::set<std::shared_ptr<slang::syntax::SyntaxTree>> out;
     SPDLOG_DEBUG("Attempting to find all syntax trees");
 
     for (const auto &entry : index) {
         const auto &[path, indexEntry] = entry;
-        SPDLOG_DEBUG("Visiting path {} to see if it has a syntax tree", path.string());
 
         // if (indexEntry->valid && indexEntry->tree != nullptr) {
         if (indexEntry->tree != nullptr) {
-            out.push_back(indexEntry->tree);
+            SPDLOG_DEBUG("Add syntax tree: {}", path.string());
+            out.insert(indexEntry->tree);
         }
     }
 

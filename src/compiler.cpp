@@ -191,7 +191,7 @@ void CompilationManager::submitCompilationJob(
             auto trees = g_indexManager.getAllSyntaxTrees();
             SPDLOG_DEBUG("Creating AST compilation with {} syntax trees", trees.size());
 
-            Compilation compilation;
+            Compilation compilation(options);
             for (const auto &tree : trees) {
                 compilation.addSyntaxTree(tree);
             }
