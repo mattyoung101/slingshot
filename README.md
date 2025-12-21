@@ -121,6 +121,10 @@ See [docs/design_goals.md](docs/design_goals.md)
 ## Implementation details
 See [docs/impl_details.md](docs/impl_details.md)
 
+## No AI policy
+I do not use any LLMs when developing this project, and I will not accept contributions, issues or code that
+are written in whole or in part using LLMs. These tickets will be closed on sight.
+
 ## Licence
 Copyright (c) 2023-2025 M. L. Young. Available under the Mozilla Public License v2.0
 
