@@ -12,6 +12,8 @@
 #include <ankerl/unordered_dense.h>
 #include <filesystem>
 #include <fstream>
+#include <lsp/json/json.h>
+#include <lsp/messages.h>
 #include <lsp/types.h>
 #include <memory>
 #include <nlohmann/json_fwd.hpp>
@@ -119,10 +121,29 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
         return;
     }
 
+    isStillQueueingIndexJobs = true;
+
+    // first, we need to tell the server about our token
+    lsp::requests::Window_WorkDoneProgress_Create::Params create("SlingshotIndexProgress");
+    auto result = g_msgHandler->sendRequest<lsp::requests::Window_WorkDoneProgress_Create>(std::move(create));
+
+    // NOW, we can actually initiate the work done progress, in a really really stupid way
+    // reference:
+    // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initiatingWorkDoneProgress
+    lsp::notifications::Progress::Params beginMsg;
+    beginMsg.token = "SlingshotIndexProgress";
+    beginMsg.value = lsp::toJson(lsp::WorkDoneProgressBegin());
+    g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(beginMsg));
+
+    isInitialIndexInProgress = true;
+
     for (const auto &dirEntry : std::filesystem::recursive_directory_iterator(path)) {
         SPDLOG_INFO("Discovered document: {}", dirEntry.path().string());
         insert(std::filesystem::absolute(dirEntry));
     }
+
+    // we've finished queueing jobs now, so later at some point we can officially terminate the indexing
+    isStillQueueingIndexJobs = false;
 }
 
 ankerl::unordered_dense::set<std::shared_ptr<slang::syntax::SyntaxTree>> IndexManager::getAllSyntaxTrees() {

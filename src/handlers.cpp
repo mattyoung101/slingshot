@@ -126,7 +126,8 @@ void textDocumentOpen(const lsp::notifications::TextDocument_DidOpen::Params &&p
     SPDLOG_DEBUG("Open document: {}", params.textDocument.uri.path());
 
     // register in the document database
-    g_indexManager.insert(std::filesystem::absolute(params.textDocument.uri.path()), params.textDocument.text);
+    g_indexManager.insert(
+        std::filesystem::absolute(params.textDocument.uri.path()), params.textDocument.text);
     g_compilerManager.openFiles.insert(std::filesystem::absolute(params.textDocument.uri.path()));
 }
 
@@ -149,7 +150,8 @@ void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params
                 }
                 if constexpr (std::is_same_v<T, lsp::TextDocumentContentChangeEvent_Text>) {
                     const lsp::TextDocumentContentChangeEvent_Text &event = arg;
-                    g_indexManager.insert(std::filesystem::absolute(params.textDocument.uri.path()), event.text);
+                    g_indexManager.insert(
+                        std::filesystem::absolute(params.textDocument.uri.path()), event.text);
                 }
             },
             change);

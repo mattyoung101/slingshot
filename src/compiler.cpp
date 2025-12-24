@@ -155,6 +155,17 @@ void CompilationManager::submitCompilationJob(
 
             BS::this_thread::set_os_thread_name("Compiler");
 
+            // is the initial index in progress?
+            if (g_indexManager.isInitialIndexInProgress) {
+                // in that case, send a progress notification
+                lsp::WorkDoneProgressReport report;
+                report.message = "Indexing " + path.string();
+                lsp::notifications::Progress::Params progress;
+                progress.token = "SlingshotIndexProgress";
+                progress.value = lsp::toJson(std::move(report));
+                g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
+            }
+
             // do initial CST parse
             auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr);
             SPDLOG_TRACE(
@@ -243,6 +254,21 @@ void CompilationManager::submitCompilationJob(
 
                 g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(
                     std::move(lspDiagMsg));
+            }
+
+            // we want to check if indexing is done, but if we're the first task submitted, we'll be
+            // like "oh, there's no jobs here! we're done!". so, we introduce another atomic variable that
+            // keeps track of _if_ we're still queueing indexing jobs, which is controlled from indexing.cpp
+            if (g_indexManager.isInitialIndexInProgress && !g_indexManager.isStillQueueingIndexJobs
+                && pool.get_tasks_running() <= 1) {
+                // then we can submit a work done progress end, we've finished everything
+                SPDLOG_INFO("Indexing believed to be done!");
+                lsp::notifications::Progress::Params endMsg;
+                endMsg.token = "SlingshotIndexProgress";
+                endMsg.value = lsp::toJson(lsp::WorkDoneProgressEnd());
+                g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(endMsg));
+
+                g_indexManager.isInitialIndexInProgress = false;
             }
         } catch (const std::exception &e) {
             SPDLOG_ERROR("Caught exception in thread pool: {}", e.what());

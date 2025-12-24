@@ -9,6 +9,7 @@
 #include "slingshot/completion.hpp"
 #include "slingshot/indexing.hpp"
 #include "slingshot/remote_debug.hpp"
+#include <chrono>
 #include <lsp/messagehandler.h>
 #include <memory>
 #include <slang/syntax/SyntaxTree.h>

@@ -7,6 +7,7 @@
 #pragma once
 #include "ankerl/unordered_dense.h"
 #include "slingshot/language.hpp"
+#include <atomic>
 #include <condition_variable>
 #include <cstdint>
 #include <filesystem>
@@ -137,10 +138,19 @@ public:
         return std::shared_lock<std::shared_mutex>(lock);
     }
 
+    /// List of include dirs, pulled from the config TOML
     std::vector<std::string> includeDirs;
 
+    /// True if the initial indexing operation is in progress
+    std::atomic_bool isInitialIndexInProgress = false;
+
+    /// True if we are still are still queueing indexing jobs
+    std::atomic_bool isStillQueueingIndexJobs = false;
+
 private:
+    /// Private R/W lock that can be accessed by the acquire{Read/Write}Lock methods
     std::shared_mutex lock;
+    /// The underlying index data structure
     ankerl::unordered_dense::map<std::filesystem::path, IndexEntry::Ptr> index;
 };
 
