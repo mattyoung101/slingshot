@@ -156,25 +156,9 @@ void CompilationManager::submitCompilationJob(
             BS::this_thread::set_os_thread_name("Compiler");
 
             // is the initial index in progress?
-            if (g_indexManager.isInitialIndexInProgress) {
-                // in that case, send a progress notification
-                lsp::WorkDoneProgressReport report;
-                report.message = "Indexing " + path.string();
-                lsp::notifications::Progress::Params progress;
-                progress.token = "SlingshotIndexProgress";
-                progress.value = lsp::toJson(std::move(report));
-                g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
-            }
+            maybeUpdateIndexingProgress(path);
 
-            // do initial CST parse
-            auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr);
-            SPDLOG_TRACE(
-                "Parsed document {}, got {} initial diagnostics", path.string(), tree->diagnostics().size());
-            // this is essential so that later, we will have the parse tree associated with this current
-            // document
-            g_indexManager.associateParse(path, tree);
-
-            // compute diagnostics
+            // setup the diagnostics engine
             DiagnosticEngine diagEngine { *sourceMgr };
             // get more diagnostics
             diagEngine.setIgnoreAllNotes(false);
@@ -185,93 +169,149 @@ void CompilationManager::submitCompilationJob(
             diagClient->setSourceManager(sourceMgr);
             diagEngine.addClient(diagClient);
 
-            // first, issue syntax diagnostics we got in parsing
-            for (const auto &diag : tree->diagnostics()) {
-                diagEngine.issue(diag);
-            }
+            // do initial CST parse
+            auto tree = doCstParse(path, buf, diagEngine);
 
-            // try and get the default driver options, which seem to be a necessity to get diagnostics, which
-            // is our only goal here atm
-            driver::Driver slangDriver;
-            slangDriver.addStandardArgs();
-            slangDriver.options.errorLimit = 999;
-            auto options = slangDriver.createOptionBag();
-
-            // create a compilation, so we can get further diagnostics; this will yield for us the AST,
-            // whereas before we had the CST
-            auto trees = g_indexManager.getAllSyntaxTrees();
-            SPDLOG_DEBUG("Creating AST compilation with {} syntax trees", trees.size());
-
-            Compilation compilation(options);
-            for (const auto &tree : trees) {
-                compilation.addSyntaxTree(tree);
-            }
-
-            // finalise it, apparently we have to call getRoot() to do this
-            SPDLOG_DEBUG("Finalise AST compilation");
-            compilation.getRoot();
-            for (const auto &diag : compilation.getAllDiagnostics()) {
-                SPDLOG_DEBUG("Got an AST diagnostic");
-                // ensure the diagnostic relates to the file we're compiling
-                if (diag.location.buffer() == buf.id) {
-                    SPDLOG_DEBUG("Issued a diagnostic in the AST");
-                    diagEngine.issue(diag);
-                }
-            }
+            // do AST parse
+            auto compilation = doAstParse(buf, diagEngine);
 
             // also perform analysis
-            SPDLOG_DEBUG("Perform analysis");
-            compilation.freeze();
-            AnalysisManager analysisMgr;
-            analysisMgr.analyze(compilation);
-            for (const auto &diag : analysisMgr.getDiagnostics(&*sourceMgr)) {
-                SPDLOG_DEBUG("Got an analysis diagnostic");
-                // ensure the diagnostic relates to the file we're compiling
-                if (diag.location.buffer() == buf.id) {
-                    SPDLOG_DEBUG("Issued a diagnostic in analysis");
-                    diagEngine.issue(diag);
-                }
-            }
+            doAnalysis(buf, diagEngine, compilation);
 
             // lift to our own internal higher level representation for completion
-            SPDLOG_DEBUG("Lifting language");
-            LangLifterVisitor langLifter;
-            langLifter.visit(tree->root());
-            langLifter.doc.maybeFlushModule();
-
-            SPDLOG_TRACE("Associate diagnostics and slingshot::lang document");
-            g_indexManager.associateLangDoc(path, langLifter.doc);
+            doLifting(path, tree);
 
             // publish diagnostics to the client
-            // we only do this if the text document is open, to avoid extraneous errors
-            if (openFiles.contains(path)) {
-                SPDLOG_DEBUG("Issue {} diagnostics to client for buffer {}",
-                    diagClient->getLspDiagnostics().size(), path.string());
+            issueDiagnostics(path, diagClient);
 
-                lsp::notifications::TextDocument_PublishDiagnostics::Params lspDiagMsg;
-                lspDiagMsg.diagnostics = diagClient->getLspDiagnostics();
-                lspDiagMsg.uri = lsp::Uri::parse("file://" + path.string());
+            // finalise the indexing progress, if it's active
+            maybeFinaliseIndexingProgress();
 
-                g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(
-                    std::move(lspDiagMsg));
-            }
-
-            // we want to check if indexing is done, but if we're the first task submitted, we'll be
-            // like "oh, there's no jobs here! we're done!". so, we introduce another atomic variable that
-            // keeps track of _if_ we're still queueing indexing jobs, which is controlled from indexing.cpp
-            if (g_indexManager.isInitialIndexInProgress && !g_indexManager.isStillQueueingIndexJobs
-                && pool.get_tasks_running() <= 1) {
-                // then we can submit a work done progress end, we've finished everything
-                SPDLOG_INFO("Indexing believed to be done!");
-                lsp::notifications::Progress::Params endMsg;
-                endMsg.token = "SlingshotIndexProgress";
-                endMsg.value = lsp::toJson(lsp::WorkDoneProgressEnd());
-                g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(endMsg));
-
-                g_indexManager.isInitialIndexInProgress = false;
-            }
         } catch (const std::exception &e) {
             SPDLOG_ERROR("Caught exception in thread pool: {}", e.what());
         }
     });
+}
+
+void CompilationManager::maybeUpdateIndexingProgress(const std::filesystem::path &path) {
+    if (g_indexManager.isInitialIndexInProgress) {
+        // in that case, send a progress notification
+        lsp::WorkDoneProgressReport report;
+        report.message = "Indexing " + path.string();
+        lsp::notifications::Progress::Params progress;
+        progress.token = "SlingshotIndexProgress";
+        progress.value = lsp::toJson(std::move(report));
+        g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
+    }
+}
+
+std::shared_ptr<slang::syntax::SyntaxTree> CompilationManager::doCstParse(
+    const std::filesystem::path &path, const SourceBuffer &buf, DiagnosticEngine &diagEngine) {
+    auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr);
+    SPDLOG_TRACE("Parsed document {}, got {} initial diagnostics", path.string(), tree->diagnostics().size());
+    // this is essential so that later, we will have the parse tree associated with this current
+    // document
+    g_indexManager.associateParse(path, tree);
+
+    // first, issue syntax diagnostics we got in parsing
+    for (const auto &diag : tree->diagnostics()) {
+        diagEngine.issue(diag);
+    }
+
+    return tree;
+}
+
+std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(
+    const SourceBuffer &buf, DiagnosticEngine &diagEngine) {
+    // try and get the default driver options, which seem to be a necessity to get diagnostics, which
+    // is our only goal here atm
+    driver::Driver slangDriver;
+    slangDriver.addStandardArgs();
+    slangDriver.options.errorLimit = 999;
+    auto options = slangDriver.createOptionBag();
+
+    // create a compilation, so we can get further diagnostics; this will yield for us the AST,
+    // whereas before we had the CST
+    auto trees = g_indexManager.getAllSyntaxTrees();
+    SPDLOG_DEBUG("Creating AST compilation with {} syntax trees", trees.size());
+
+    auto compilation = std::make_shared<Compilation>(options);
+    for (const auto &tree : trees) {
+        compilation->addSyntaxTree(tree);
+    }
+
+    // finalise it, apparently we have to call getRoot() to do this
+    SPDLOG_DEBUG("Finalise AST compilation");
+    compilation->getRoot();
+    for (const auto &diag : compilation->getAllDiagnostics()) {
+        SPDLOG_DEBUG("Got an AST diagnostic");
+        // ensure the diagnostic relates to the file we're compiling
+        if (diag.location.buffer() == buf.id) {
+            SPDLOG_DEBUG("Issued a diagnostic in the AST");
+            diagEngine.issue(diag);
+        }
+    }
+
+    compilation->freeze();
+
+    return compilation;
+}
+
+void CompilationManager::doAnalysis(
+    const SourceBuffer &buf, DiagnosticEngine &diagEngine, std::shared_ptr<ast::Compilation> &compilation) {
+    SPDLOG_DEBUG("Perform analysis");
+    AnalysisManager analysisMgr;
+    analysisMgr.analyze(*compilation);
+    for (const auto &diag : analysisMgr.getDiagnostics(&*sourceMgr)) {
+        SPDLOG_DEBUG("Got an analysis diagnostic");
+        // ensure the diagnostic relates to the file we're compiling
+        if (diag.location.buffer() == buf.id) {
+            SPDLOG_DEBUG("Issued a diagnostic in analysis");
+            diagEngine.issue(diag);
+        }
+    }
+}
+
+void CompilationManager::doLifting(
+    const std::filesystem::path &path, std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
+    SPDLOG_DEBUG("Lifting language");
+    LangLifterVisitor langLifter;
+    langLifter.visit(tree->root());
+    langLifter.doc.maybeFlushModule();
+
+    SPDLOG_TRACE("Associate slingshot::lang document");
+    g_indexManager.associateLangDoc(path, langLifter.doc);
+}
+
+void CompilationManager::issueDiagnostics(
+    const std::filesystem::path &path, const LSPDiagnosticClient::Ptr &diagClient) {
+    // we only do this if the text document is open, to avoid extraneous errors
+    if (openFiles.contains(path)) {
+        SPDLOG_DEBUG("Issue {} diagnostics to client for buffer {}", diagClient->getLspDiagnostics().size(),
+            path.string());
+
+        lsp::notifications::TextDocument_PublishDiagnostics::Params lspDiagMsg;
+        lspDiagMsg.diagnostics = diagClient->getLspDiagnostics();
+        lspDiagMsg.uri = lsp::Uri::parse("file://" + path.string());
+
+        g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(
+            std::move(lspDiagMsg));
+    }
+}
+
+void CompilationManager::maybeFinaliseIndexingProgress() {
+    // we want to check if indexing is done, but if we're the first task submitted, we'll be
+    // like "oh, there's no jobs here! we're done!". so, we introduce another atomic variable that
+    // keeps track of _if_ we're still queueing indexing jobs, which is controlled from indexing.cpp
+    if (g_indexManager.isInitialIndexInProgress && !g_indexManager.isStillQueueingIndexJobs
+        && pool.get_tasks_running() <= 1) {
+        // then we can submit a work done progress end, we've finished everything
+        SPDLOG_INFO("Indexing believed to be done!");
+        lsp::notifications::Progress::Params endMsg;
+        endMsg.token = "SlingshotIndexProgress";
+        endMsg.value = lsp::toJson(lsp::WorkDoneProgressEnd());
+        g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(endMsg));
+
+        g_indexManager.isInitialIndexInProgress = false;
+    }
 }

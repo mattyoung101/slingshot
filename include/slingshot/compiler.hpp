@@ -5,6 +5,8 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
+#include <slang/ast/Compilation.h>
+#include <slang/syntax/SyntaxTree.h>
 #define BS_THREAD_POOL_NATIVE_EXTENSIONS
 #include "BS_thread_pool.hpp"
 #include "ankerl/unordered_dense.h"
@@ -97,6 +99,24 @@ private:
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
     std::shared_mutex lock;
+
+    void maybeUpdateIndexingProgress(const std::filesystem::path &path);
+
+    std::shared_ptr<slang::syntax::SyntaxTree> doCstParse(
+        const std::filesystem::path &path, const SourceBuffer &buf, DiagnosticEngine &diagEngine);
+
+    std::shared_ptr<ast::Compilation> doAstParse(
+        const SourceBuffer &buf, DiagnosticEngine &diagEngine);
+
+    void doAnalysis(const SourceBuffer &buf, DiagnosticEngine &diagEngine,
+        std::shared_ptr<ast::Compilation> &compilation);
+
+    void doLifting(const std::filesystem::path &path,
+        std::shared_ptr<slang::syntax::SyntaxTree> &tree);
+
+    void issueDiagnostics(const std::filesystem::path &path, const LSPDiagnosticClient::Ptr &diagClient);
+
+    void maybeFinaliseIndexingProgress();
 };
 
 } // namespace slingshot
