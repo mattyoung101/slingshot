@@ -8,6 +8,7 @@
 #include "slingshot/slingshot.hpp"
 #include <array>
 #include <csignal>
+#include <fstream>
 #include <pthread.h>
 #include <sockpp/acceptor.h>
 #include <sockpp/inet_address.h>
@@ -91,6 +92,14 @@ std::string RemoteDebugger::processMsg(std::string msg) {
         SPDLOG_WARN("Debugger sent 'die', killing server now");
         exit(1);
         return "OK";
+    }
+    if (msg == "dump sources") {
+        auto sources = g_indexManager.dumpSources();
+        std::ofstream stream("/tmp/SLINGSHOT_DEBUG_ALL_SOURCES.txt");
+        stream << sources;
+        stream.flush();
+        stream.close();
+        return sources;
     }
 
     return fmt::format("Command '{}' not found", msg);

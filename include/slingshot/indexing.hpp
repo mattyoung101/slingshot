@@ -126,6 +126,8 @@ public:
 
     std::string dumpLangTrees();
 
+    std::string dumpSources();
+
     /// Returns a write (unique) lock on the whole index
     [[nodiscard]] auto acquireWriteLock() {
         SPDLOG_TRACE("Attempt to acquire write lock");

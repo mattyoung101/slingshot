@@ -4,7 +4,11 @@
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#include <algorithm>
 #include <exception>
+#include <iterator>
+#include <random>
+#include <vector>
 #define BS_THREAD_POOL_NATIVE_EXTENSIONS
 #include "slingshot/compiler.hpp"
 #include "slingshot/conversions.hpp"
@@ -173,7 +177,7 @@ void CompilationManager::submitCompilationJob(
             auto tree = doCstParse(path, buf, diagEngine);
 
             // do AST parse
-            auto compilation = doAstParse(buf, diagEngine);
+            auto compilation = doAstParse(buf, diagEngine, tree);
 
             // also perform analysis
             doAnalysis(buf, diagEngine, compilation);
@@ -221,8 +225,8 @@ std::shared_ptr<slang::syntax::SyntaxTree> CompilationManager::doCstParse(
     return tree;
 }
 
-std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(
-    const SourceBuffer &buf, DiagnosticEngine &diagEngine) {
+std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const SourceBuffer &buf,
+    DiagnosticEngine &diagEngine, const std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
     // try and get the default driver options, which seem to be a necessity to get diagnostics, which
     // is our only goal here atm
     driver::Driver slangDriver;
@@ -235,7 +239,22 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(
     auto trees = g_indexManager.getAllSyntaxTrees();
     SPDLOG_DEBUG("Creating AST compilation with {} syntax trees", trees.size());
 
+    // we'll need a read lock on this, to ensure the index doesn't change under our feet
+    auto lock = g_indexManager.acquireReadLock();
+
+    // shuffle the trees so we select a random number of trees each time
+    // std::random_device rd;
+    // std::mt19937 g(rd());
+
     auto compilation = std::make_shared<Compilation>(options);
+
+    // std::vector<SyntaxTreePtr> out;
+    // std::sample(trees.begin(), trees.end(), std::back_inserter(out), 2048, g);
+    // compilation->addSyntaxTree(tree);
+    // for (const auto &s : out) {
+    //     compilation->addSyntaxTree(s);
+    // }
+
     for (const auto &tree : trees) {
         compilation->addSyntaxTree(tree);
     }
@@ -244,7 +263,7 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(
     SPDLOG_DEBUG("Finalise AST compilation");
     compilation->getRoot();
     for (const auto &diag : compilation->getAllDiagnostics()) {
-        SPDLOG_DEBUG("Got an AST diagnostic");
+        SPDLOG_TRACE("Got an AST diagnostic");
         // ensure the diagnostic relates to the file we're compiling
         if (diag.location.buffer() == buf.id) {
             SPDLOG_DEBUG("Issued a diagnostic in the AST");

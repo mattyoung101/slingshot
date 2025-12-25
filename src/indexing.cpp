@@ -138,6 +138,11 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
     isInitialIndexInProgress = true;
 
     for (const auto &dirEntry : std::filesystem::recursive_directory_iterator(path)) {
+        // make sure the extension is in (sv, v, svh, vh)
+        auto ext = dirEntry.path().extension().string();
+        if (ext != ".sv" && ext != ".v" && ext != ".svh" && ext != ".vh") {
+            continue;
+        }
         SPDLOG_INFO("Discovered document: {}", dirEntry.path().string());
         insert(std::filesystem::absolute(dirEntry));
     }
@@ -156,7 +161,7 @@ ankerl::unordered_dense::set<std::shared_ptr<slang::syntax::SyntaxTree>> IndexMa
 
         // if (indexEntry->valid && indexEntry->tree != nullptr) {
         if (indexEntry->tree != nullptr) {
-            SPDLOG_DEBUG("Add syntax tree: {}", path.string());
+            SPDLOG_TRACE("Add syntax tree: {}", path.string());
             out.insert(indexEntry->tree);
         }
     }
@@ -183,6 +188,19 @@ std::string IndexManager::dumpLangTrees() {
             auto doc = *value->doc;
             nlohmann::json docJson = doc;
             stream << fmt::format("Document: {}\n{}\n\n", key.string(), docJson.dump(4));
+        }
+    }
+    return stream.str();
+}
+
+std::string IndexManager::dumpSources() {
+    auto lock = acquireReadLock();
+    std::stringstream stream;
+    for (const auto &entry : index) {
+        const auto &[key, value] = entry;
+        if (value->tree != nullptr) {
+            stream << fmt::format(
+                "=== Document: {} ===\n{}\n\n", key.string(), value->tree->root().toString());
         }
     }
     return stream.str();

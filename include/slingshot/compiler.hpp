@@ -105,14 +105,13 @@ private:
     std::shared_ptr<slang::syntax::SyntaxTree> doCstParse(
         const std::filesystem::path &path, const SourceBuffer &buf, DiagnosticEngine &diagEngine);
 
-    std::shared_ptr<ast::Compilation> doAstParse(
-        const SourceBuffer &buf, DiagnosticEngine &diagEngine);
+    std::shared_ptr<ast::Compilation> doAstParse(const SourceBuffer &buf, DiagnosticEngine &diagEngine,
+        const std::shared_ptr<slang::syntax::SyntaxTree> &tree);
 
     void doAnalysis(const SourceBuffer &buf, DiagnosticEngine &diagEngine,
         std::shared_ptr<ast::Compilation> &compilation);
 
-    void doLifting(const std::filesystem::path &path,
-        std::shared_ptr<slang::syntax::SyntaxTree> &tree);
+    void doLifting(const std::filesystem::path &path, std::shared_ptr<slang::syntax::SyntaxTree> &tree);
 
     void issueDiagnostics(const std::filesystem::path &path, const LSPDiagnosticClient::Ptr &diagClient);
 
