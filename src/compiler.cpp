@@ -32,6 +32,7 @@
 #include <slang/syntax/SyntaxTree.h>
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
+#include <slang/ast/symbols/InstanceSymbols.h>
 
 // Parts of this are based on slang-server ServerDiagClient.cpp, which is available under the MIT licence:
 //
@@ -276,6 +277,9 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const SourceBuf
             diagEngine.issue(diag);
         }
     }
+
+    // auto *symbol = compilation->getRoot().getFirstMember()->as<InstanceSymbol*>();
+    // symbol->body
 
     compilation->freeze();
 

@@ -32,6 +32,7 @@ add_executable(slingshot
     src/completion_generator.cpp
     src/lang_lifter.cpp
     src/import_locator.cpp
+    src/ast.cpp
 )
 target_include_directories(slingshot PRIVATE include)
 
