@@ -205,3 +205,19 @@ std::string IndexManager::dumpSources() {
     }
     return stream.str();
 }
+
+std::optional<std::shared_ptr<SyntaxTree>> IndexManager::locateDocumentForModule(const std::string &name) {
+    auto lock = acquireReadLock();
+    for (const auto &entry : index) {
+        const auto &[key, value] = entry;
+        if (value->tree != nullptr && value->doc != std::nullopt) {
+            // we have a valid document, let's investigate
+            auto query = value->doc->getModuleByName(name);
+            if (query.has_value() && query != std::nullopt) {
+                SPDLOG_DEBUG("Found document for module '{}': {}", name, key.string());
+                return value->tree;
+            }
+        }
+    }
+    return std::nullopt;
+}

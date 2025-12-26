@@ -141,15 +141,28 @@ public:
                 return module;
             }
         }
-        SPDLOG_WARN("Couldn't find module for name: {}", name);
+        return std::nullopt;
+    }
+
+    void addPackage(const std::string &name) {
+        packages.insert(name);
+    }
+
+    std::optional<Module> getPackageByName(const std::string &name) const {
+        for (const auto &package : packages) {
+            if (package == name) {
+                return package;
+            }
+        }
         return std::nullopt;
     }
 
     std::vector<Module> modules {};
+    std::unordered_set<std::string> packages {};
 private:
     std::optional<Module> currentModule = std::nullopt;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Document, modules);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Document, modules, packages);
 
 } // namespace slingshot::lang

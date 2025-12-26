@@ -4,10 +4,13 @@
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#include "slingshot/import_locator.hpp"
 #include <algorithm>
 #include <exception>
 #include <iterator>
+#include <optional>
 #include <random>
+#include <thread>
 #include <vector>
 #define BS_THREAD_POOL_NATIVE_EXTENSIONS
 #include "slingshot/compiler.hpp"
@@ -63,7 +66,6 @@ void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
     {
         auto lock = g_compilerManager.acquireReadLock();
 
-        // FIXME I think this actually introduces a race lol
         if (!g_compilerManager.bufferIdsInverse.contains(diagnostic.location.buffer())) {
             SPDLOG_ERROR("Diagnostic in buffer ID {} could not be found in bufferIdsInverse",
                 diagnostic.location.buffer().getId());
@@ -77,9 +79,6 @@ void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
             return;
         }
     }
-
-    // TODO I think we *DO* actually need to dedup diagnostics here as well, as well as deduping them
-    // elsewhere
 
     lsp::Diagnostic lspDiag;
     switch (diagnostic.severity) {
@@ -153,7 +152,7 @@ void CompilationManager::submitCompilationJob(
         bufferIdsInverse[buf.id] = path;
     }
 
-    pool.detach_task([buf, path, this] {
+    pool.detach_task([buf, path, this, document] {
         try {
             SPDLOG_DEBUG("Submitting document {} for compilation", path.string());
 
@@ -178,6 +177,16 @@ void CompilationManager::submitCompilationJob(
 
             // do AST parse
             auto compilation = doAstParse(buf, diagEngine, tree);
+            if (compilation == nullptr) {
+                // the compilation job failed, likely because we couldn't find the symbols we were looking for
+                // in this document, and that's probably because they're already being compiled in another
+                // thread
+                // let's wait for a second to ensure that work gets done, then re-submit and try again.
+                SPDLOG_WARN("Failed to compile document: {}. Resubmitting job in 1s.", path.string());
+                std::this_thread::sleep_for(1s);
+                submitCompilationJob(document, path);
+                return;
+            }
 
             // also perform analysis
             doAnalysis(buf, diagEngine, compilation);
@@ -236,27 +245,24 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const SourceBuf
 
     // create a compilation, so we can get further diagnostics; this will yield for us the AST,
     // whereas before we had the CST
-    auto trees = g_indexManager.getAllSyntaxTrees();
-    SPDLOG_DEBUG("Creating AST compilation with {} syntax trees", trees.size());
 
     // we'll need a read lock on this, to ensure the index doesn't change under our feet
     auto lock = g_indexManager.acquireReadLock();
 
-    // shuffle the trees so we select a random number of trees each time
-    // std::random_device rd;
-    // std::mt19937 g(rd());
-
     auto compilation = std::make_shared<Compilation>(options);
+    // only initially add the document itself as a syntax tree, we'll discover the other documents later
+    compilation->addSyntaxTree(tree);
 
-    // std::vector<SyntaxTreePtr> out;
-    // std::sample(trees.begin(), trees.end(), std::back_inserter(out), 2048, g);
-    // compilation->addSyntaxTree(tree);
-    // for (const auto &s : out) {
-    //     compilation->addSyntaxTree(s);
-    // }
+    // figure out what symbols we do need
+    auto extraTrees = ImportLocator::locateRequiredDocuments(tree);
+    if (!extraTrees.has_value() || extraTrees == std::nullopt) {
+        // TODO log path as well, have to change function signature
+        SPDLOG_WARN("Could not find all required symbols for document! Trying again later.");
+        return nullptr;
+    }
 
-    for (const auto &tree : trees) {
-        compilation->addSyntaxTree(tree);
+    for (const auto &t : *extraTrees) {
+        compilation->addSyntaxTree(t);
     }
 
     // finalise it, apparently we have to call getRoot() to do this

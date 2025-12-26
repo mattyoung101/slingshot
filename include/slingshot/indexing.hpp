@@ -92,8 +92,11 @@ private:
     std::condition_variable cond {};
 };
 
+using namespace slang::syntax;
+
 class IndexManager {
 public:
+
     /// Inserts a document with the specified absolute path 'path' and contents 'document'. The document hash
     /// is computed using xxHash64, if the document is already in the index, it will not be inserted.
     void insert(const std::filesystem::path &path, const std::string &document);
@@ -127,6 +130,9 @@ public:
     std::string dumpLangTrees();
 
     std::string dumpSources();
+
+    /// Tries to locate a valid syntax tree (document) that declares the specified module
+    std::optional<std::shared_ptr<SyntaxTree>> locateDocumentForModule(const std::string &name);
 
     /// Returns a write (unique) lock on the whole index
     [[nodiscard]] auto acquireWriteLock() {
