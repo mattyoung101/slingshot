@@ -47,6 +47,35 @@ void LangLifterVisitor::handle(const NetPortHeaderSyntax &syntax) {
     visitDefault(syntax);
 }
 
+void LangLifterVisitor::handle(const ImplicitAnsiPortSyntax &syntax) {
+    SPDLOG_DEBUG("Visit implicit ANSI port: {}", syntax.toString());
+    doc.doIfModuleIsActive([&syntax](lang::Module &module) {
+        // first, find the port direction
+        lang::PortDirection direction = lang::PortDirection::Unknown;
+
+        auto *header = syntax.header->as_if<VariablePortHeaderSyntax>();
+        if (header == nullptr) {
+            SPDLOG_WARN("Could not get header as a VariablePortHeader for syntax: {}", syntax.toString());
+            return;
+        }
+
+        if (header->direction.kind == slang::parsing::TokenKind::InputKeyword) {
+            direction = lang::PortDirection::Input;
+        } else if (header->direction.kind == slang::parsing::TokenKind::OutputKeyword) {
+            direction = lang::PortDirection::Output;
+        } else if (header->direction.kind == slang::parsing::TokenKind::InOutKeyword) {
+            direction = lang::PortDirection::InOut;
+        } else {
+            SPDLOG_ERROR("Unknown port direction from Slang: {}", header->direction.toString());
+        }
+
+        auto portName = syntax.declarator->name.valueText();
+
+        module.addPort(std::string(portName), direction);
+    });
+    visitDefault(syntax);
+}
+
 void LangLifterVisitor::handle(const DeclaratorSyntax &syntax) {
     SPDLOG_DEBUG("Visit declarator: {}", syntax.toString());
     doc.doIfModuleIsActive([&syntax](lang::Module &module) {

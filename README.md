@@ -23,7 +23,7 @@ aims to:
     - Context-sensitive completion, based off the Slang parse tree, a "best-effort" approach to only recommend
       valid completions
     - Slang's parser is highly error resistant, making it excellent for this use case
-- Multi-threaded, project-wide index and compilation system
+- Multi-threaded, high-performance, project-wide index and compilation system
 - Simple configuration
   - Slingshot is configured through a simple `.slingshot.toml` file declared in the project's root
   directory
