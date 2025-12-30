@@ -7,6 +7,7 @@
 #include "slingshot/import_locator.hpp"
 #include <algorithm>
 #include <exception>
+#include <filesystem>
 #include <iterator>
 #include <optional>
 #include <random>
@@ -176,7 +177,7 @@ void CompilationManager::submitCompilationJob(
             auto tree = doCstParse(path, buf, diagEngine);
 
             // do AST parse
-            auto compilation = doAstParse(buf, diagEngine, tree);
+            auto compilation = doAstParse(path, buf, diagEngine, tree);
             if (compilation == nullptr) {
                 // the compilation job failed, likely because we couldn't find the symbols we were looking for
                 // in this document, and that's probably because they're already being compiled in another
@@ -234,8 +235,9 @@ std::shared_ptr<slang::syntax::SyntaxTree> CompilationManager::doCstParse(
     return tree;
 }
 
-std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const SourceBuffer &buf,
-    DiagnosticEngine &diagEngine, const std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
+std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::filesystem::path &path,
+    const SourceBuffer &buf, DiagnosticEngine &diagEngine,
+    const std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
     // try and get the default driver options, which seem to be a necessity to get diagnostics, which
     // is our only goal here atm
     driver::Driver slangDriver;
@@ -252,6 +254,9 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const SourceBuf
     auto compilation = std::make_shared<Compilation>(options);
     // only initially add the document itself as a syntax tree, we'll discover the other documents later
     compilation->addSyntaxTree(tree);
+
+    // FIXME this will instead need to query some hashmap we'll keep in the compiler manager that'll track
+    // documents and their deps
 
     // figure out what symbols we do need
     auto extraTrees = ImportLocator::locateRequiredDocuments(tree);

@@ -131,3 +131,17 @@ Copyright (c) 2023-2025 M. L. Young. Available under the Mozilla Public License 
 > This Source Code Form is subject to the terms of the Mozilla Public
 > License, v. 2.0. If a copy of the MPL was not distributed with this
 > file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+### Third party libraries
+Slingshot uses the following 3rd party libraries:
+
+- spdlog
+- fmt
+- Slang
+- ankerl::unordered_dense
+- nlohmann::json
+- lsp-framework
+- BS::thread_pool
+- TOML++
+- sockpp
+- Graaf

@@ -6,6 +6,7 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
 #include "ankerl/unordered_dense.h"
+#include "slingshot/document_graph.hpp"
 #include "slingshot/language.hpp"
 #include <atomic>
 #include <condition_variable>
@@ -134,6 +135,10 @@ public:
     /// Tries to locate a valid syntax tree (document) that declares the specified module
     std::optional<std::shared_ptr<SyntaxTree>> locateDocumentForModule(const std::string &name);
 
+    std::optional<std::shared_ptr<SyntaxTree>> locateDocumentForPackage(const std::string &name);
+
+    std::optional<std::shared_ptr<SyntaxTree>> locateDocumentForTypedef(const std::string &name);
+
     /// Returns a write (unique) lock on the whole index
     [[nodiscard]] auto acquireWriteLock() {
         SPDLOG_TRACE("Attempt to acquire write lock");
@@ -154,6 +159,9 @@ public:
 
     /// True if we are still are still queueing indexing jobs
     std::atomic_bool isStillQueueingIndexJobs = false;
+
+    /// Instance of document graph; WARNING must be locked by the person who acquires it
+    std::shared_ptr<DocumentGraph> documentGraph = std::make_shared<DocumentGraph>();
 
 private:
     /// Private R/W lock that can be accessed by the acquire{Read/Write}Lock methods

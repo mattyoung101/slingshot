@@ -37,10 +37,12 @@ void IndexManager::insert(const std::filesystem::path &path, const std::string &
     // take the mutex before we push to the index
     auto guard = acquireWriteLock();
     if (maybeEntry == std::nullopt) {
-        SPDLOG_DEBUG("realPath {} not yet in index, inserting brand new entry", realPath.string());
+        SPDLOG_DEBUG("Path {} not yet in index, inserting brand new entry", realPath.string());
         index[realPath] = std::make_shared<IndexEntry>(realPath, hash);
+        // make it available in the document graph as well
+        documentGraph->insertDocument(realPath);
     } else {
-        SPDLOG_TRACE("realPath {} already in index, invalidating and updating", realPath.string());
+        SPDLOG_TRACE("Path {} already in index, invalidating and updating", realPath.string());
         index[realPath]->invalidate(hash);
     }
 
@@ -215,6 +217,22 @@ std::optional<std::shared_ptr<SyntaxTree>> IndexManager::locateDocumentForModule
             auto query = value->doc->getModuleByName(name);
             if (query.has_value() && query != std::nullopt) {
                 SPDLOG_DEBUG("Found document for module '{}': {}", name, key.string());
+                return value->tree;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<std::shared_ptr<SyntaxTree>> IndexManager::locateDocumentForPackage(const std::string &name) {
+    auto lock = acquireReadLock();
+    for (const auto &entry : index) {
+        const auto &[key, value] = entry;
+        if (value->tree != nullptr && value->doc != std::nullopt) {
+            // we have a valid document, let's investigate
+            auto query = value->doc->getPackageByName(name);
+            if (query.has_value() && query != std::nullopt) {
+                SPDLOG_DEBUG("Found document for package '{}': {}", name, key.string());
                 return value->tree;
             }
         }

@@ -50,11 +50,20 @@ std::optional<std::vector<std::shared_ptr<SyntaxTree>>> ImportLocator::locateReq
             out.push_back(*maybeModule);
             continue;
         }
+
         // maybe it's a package?
+        auto maybePackage = g_indexManager.locateDocumentForPackage(symbol);
+        if (maybePackage.has_value() && maybePackage != std::nullopt) {
+            out.push_back(*maybePackage);
+            continue;
+        }
 
         // maybe it's a typedef?
 
         // otherwise, everything failed: we can't resolve this item
+        SPDLOG_ERROR("Unable to resolve document for symbol: {}", symbol);
+        // return failure
+        return std::nullopt;
     }
 
     // we found all the symbols, in this case

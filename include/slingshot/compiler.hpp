@@ -56,8 +56,14 @@ private:
 
 class CompilationManager {
 public:
+    // TODO update: the *indexing* should run in the thread pool, but the compilation job should just run on
+    // its own thread
+
     /// Submits a compilation job asynchronously
     void submitCompilationJob(const std::string &document, const std::filesystem::path &path);
+
+    /// Submits an indexing job asynchronously; which is slightly different from a compilation job
+    void indexDocument(const std::string &document, const std::filesystem::path &path);
 
     std::optional<Diagnostics> getDiagnostics(const std::filesystem::path &path);
 
@@ -105,8 +111,8 @@ private:
     std::shared_ptr<slang::syntax::SyntaxTree> doCstParse(
         const std::filesystem::path &path, const SourceBuffer &buf, DiagnosticEngine &diagEngine);
 
-    std::shared_ptr<ast::Compilation> doAstParse(const SourceBuffer &buf, DiagnosticEngine &diagEngine,
-        const std::shared_ptr<slang::syntax::SyntaxTree> &tree);
+    std::shared_ptr<ast::Compilation> doAstParse(const std::filesystem::path &path, const SourceBuffer &buf,
+        DiagnosticEngine &diagEngine, const std::shared_ptr<slang::syntax::SyntaxTree> &tree);
 
     void doAnalysis(const SourceBuffer &buf, DiagnosticEngine &diagEngine,
         std::shared_ptr<ast::Compilation> &compilation);

@@ -27,7 +27,7 @@ enum class PortDirection {
     InOut,
 };
 
-#define ENUM_ENTRY(name) { PortDirection::name, # name }
+#define ENUM_ENTRY(name) { PortDirection::name, #name }
 
 NLOHMANN_JSON_SERIALIZE_ENUM(PortDirection,
     {
@@ -129,6 +129,8 @@ public:
         }
     }
 
+    /// Executes the routine lambda if and only if a module is currently being worked on. The module is
+    /// passed to the lambda.
     void doIfModuleIsActive(const std::function<void(Module &)> &routine) {
         if (currentModule != std::nullopt) {
             routine(*currentModule);
@@ -159,10 +161,12 @@ public:
 
     std::vector<Module> modules {};
     std::unordered_set<std::string> packages {};
+    std::unordered_set<std::string> macros {};
+
 private:
     std::optional<Module> currentModule = std::nullopt;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Document, modules, packages);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Document, modules, packages, macros);
 
 } // namespace slingshot::lang

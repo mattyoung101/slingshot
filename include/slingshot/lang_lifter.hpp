@@ -23,6 +23,7 @@ public:
     void handle(const NetPortHeaderSyntax &syntax);
     void handle(const DeclaratorSyntax &syntax);
     void handle(const ImplicitAnsiPortSyntax &syntax);
+    void handle(const ParameterDeclarationSyntax &syntax);
 
     lang::Document doc;
 };

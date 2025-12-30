@@ -91,3 +91,18 @@ void LangLifterVisitor::handle(const DeclaratorSyntax &syntax) {
     });
     visitDefault(syntax);
 }
+
+void LangLifterVisitor::handle(const ParameterDeclarationSyntax &syntax) {
+    SPDLOG_DEBUG("Handle param declaration: {}", syntax.toString());
+    doc.doIfModuleIsActive([&syntax](lang::Module &module) {
+        if (syntax.declarators.size() != 1) {
+            SPDLOG_WARN("Parameter declarator {} does not contain exactly 1 declaration?!",
+                syntax.declarators.toString());
+            return;
+        }
+
+        auto name = syntax.declarators[0]->name.valueText();
+        module.addParameter(std::string(name));
+    });
+    visitDefault(syntax);
+}
