@@ -159,9 +159,6 @@ void CompilationManager::submitCompilationJob(
 
             BS::this_thread::set_os_thread_name("Compiler");
 
-            // is the initial index in progress?
-            maybeUpdateIndexingProgress(path);
-
             // setup the diagnostics engine
             DiagnosticEngine diagEngine { *sourceMgr };
             // get more diagnostics
@@ -197,6 +194,65 @@ void CompilationManager::submitCompilationJob(
 
             // publish diagnostics to the client
             issueDiagnostics(path, diagClient);
+
+            // also check here if the indexing is done, in case it failed earlier
+            maybeFinaliseIndexingProgress();
+        } catch (const std::exception &e) {
+            SPDLOG_ERROR("Caught exception in compilation job: {}", e.what());
+        }
+    });
+}
+
+void CompilationManager::indexDocument(const std::string &document, const std::filesystem::path &path) {
+    SourceBuffer buf;
+    indexingJobsInProgress++;
+
+    {
+        auto lock = acquireWriteLock();
+
+        // FIXME this may leak memory
+        buf = sourceMgr->assignText(document);
+
+        bufferIds[path] = buf.id;
+        bufferIdsInverse[buf.id] = path;
+    }
+
+    pool.detach_task([buf, path, this, document] {
+        try {
+            SPDLOG_DEBUG("Submitting document {} for indexing", path.string());
+
+            BS::this_thread::set_os_thread_name("Compiler");
+
+            // indexing is conceptually very similar to compilation, but we don't collect diagnostics, don't
+            // do analysis, and spend most of our effort building the document graph
+
+            // is the initial index in progress?
+            maybeUpdateIndexingProgress(path);
+
+            // do initial CST parse
+            auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr);
+            SPDLOG_TRACE(
+                "Parsed document {}, got {} initial diagnostics", path.string(), tree->diagnostics().size());
+            // this is essential so that later, we will have the parse tree associated with this current
+            // document
+            g_indexManager.associateParse(path, tree);
+
+            // figure out what symbols this document provides and requires
+            auto imports = ImportLocator::locateRequiredProvidedImports(tree);
+            {
+                auto lock = g_indexManager.acquireWriteLock();
+                for (const auto &provided : imports.providedSymbols) {
+                    g_indexManager.documentGraph->registerProvidedSymbol(path, provided);
+                }
+                for (const auto &required : imports.requiredSymbols) {
+                    g_indexManager.documentGraph->registerRequiredSymbol(path, required);
+                }
+            }
+
+            // lift to our own internal higher level representation for completion
+            doLifting(path, tree);
+
+            indexingJobsInProgress--;
 
             // finalise the indexing progress, if it's active
             maybeFinaliseIndexingProgress();
@@ -248,36 +304,35 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::file
     // create a compilation, so we can get further diagnostics; this will yield for us the AST,
     // whereas before we had the CST
 
-    // we'll need a read lock on this, to ensure the index doesn't change under our feet
-    auto lock = g_indexManager.acquireReadLock();
-
     auto compilation = std::make_shared<Compilation>(options);
     // only initially add the document itself as a syntax tree, we'll discover the other documents later
     compilation->addSyntaxTree(tree);
 
-    // FIXME this will instead need to query some hashmap we'll keep in the compiler manager that'll track
-    // documents and their deps
-
-    // figure out what symbols we do need
-    auto extraTrees = ImportLocator::locateRequiredDocuments(tree);
-    if (!extraTrees.has_value() || extraTrees == std::nullopt) {
-        // TODO log path as well, have to change function signature
-        SPDLOG_WARN("Could not find all required symbols for document! Trying again later.");
-        return nullptr;
-    }
-
-    for (const auto &t : *extraTrees) {
-        compilation->addSyntaxTree(t);
+    // FIXME we should take out a lock on this, probably, if we don't already have one at this time
+    if (!requiredDocuments.contains(path)) {
+        SPDLOG_WARN("Required documents for path {} are unknown!", path.string());
+    } else {
+        auto docs = requiredDocuments.at(path);
+        for (const auto &doc : docs) {
+            auto result = g_indexManager.retrieve(doc);
+            if (result.has_value() && result != std::nullopt && (*result)->tree != nullptr) {
+                compilation->addSyntaxTree((*result)->tree);
+            } else {
+                SPDLOG_WARN("Required document {} present in CompilerManager, but could not retrieve from "
+                            "IndexManager",
+                    doc.string());
+            }
+        }
     }
 
     // finalise it, apparently we have to call getRoot() to do this
-    SPDLOG_DEBUG("Finalise AST compilation");
+    SPDLOG_TRACE("Finalise AST compilation");
     compilation->getRoot();
     for (const auto &diag : compilation->getAllDiagnostics()) {
         SPDLOG_TRACE("Got an AST diagnostic");
         // ensure the diagnostic relates to the file we're compiling
         if (diag.location.buffer() == buf.id) {
-            SPDLOG_DEBUG("Issued a diagnostic in the AST");
+            SPDLOG_TRACE("Issued a diagnostic in the AST");
             diagEngine.issue(diag);
         }
     }
@@ -289,7 +344,7 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::file
 
 void CompilationManager::doAnalysis(
     const SourceBuffer &buf, DiagnosticEngine &diagEngine, std::shared_ptr<ast::Compilation> &compilation) {
-    SPDLOG_DEBUG("Perform analysis");
+    SPDLOG_TRACE("Perform analysis");
     AnalysisManager analysisMgr;
     analysisMgr.analyze(*compilation);
     for (const auto &diag : analysisMgr.getDiagnostics(&*sourceMgr)) {
@@ -304,7 +359,7 @@ void CompilationManager::doAnalysis(
 
 void CompilationManager::doLifting(
     const std::filesystem::path &path, std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
-    SPDLOG_DEBUG("Lifting language");
+    SPDLOG_TRACE("Lifting language");
     LangLifterVisitor langLifter;
     langLifter.visit(tree->root());
     langLifter.doc.maybeFlushModule();
@@ -334,7 +389,7 @@ void CompilationManager::maybeFinaliseIndexingProgress() {
     // like "oh, there's no jobs here! we're done!". so, we introduce another atomic variable that
     // keeps track of _if_ we're still queueing indexing jobs, which is controlled from indexing.cpp
     if (g_indexManager.isInitialIndexInProgress && !g_indexManager.isStillQueueingIndexJobs
-        && pool.get_tasks_running() <= 1) {
+        && indexingJobsInProgress <= 0) {
         // then we can submit a work done progress end, we've finished everything
         SPDLOG_INFO("Indexing believed to be done!");
         lsp::notifications::Progress::Params endMsg;

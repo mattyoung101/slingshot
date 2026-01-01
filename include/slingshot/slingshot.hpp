@@ -10,6 +10,8 @@
 #include "slingshot/indexing.hpp"
 #include "slingshot/remote_debug.hpp"
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <lsp/messagehandler.h>
 #include <memory>
 #include <slang/syntax/SyntaxTree.h>
@@ -53,6 +55,14 @@ inline std::string toString(const SourceRange &range, const SourceManagerPtr &sr
     auto end = toString(range.end(), srcMgr);
 
     return fmt::format("{}..{}", begin, end);
+}
+
+inline std::string readFile(const std::filesystem::path &path) {
+    // TODO does this bugger all error checking
+    std::ifstream t(path);
+    std::stringstream buffer;
+    buffer << t.rdbuf();
+    return buffer.str();
 }
 
 } // namespace slingshot

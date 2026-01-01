@@ -100,9 +100,13 @@ public:
 
     /// Inserts a document with the specified absolute path 'path' and contents 'document'. The document hash
     /// is computed using xxHash64, if the document is already in the index, it will not be inserted.
-    void insert(const std::filesystem::path &path, const std::string &document);
+    /// @param isIndex true if this is a document submitted by the directory walk, false if it's a real
+    /// document
+    void insert(const std::filesystem::path &path, const std::string &document, bool isIndex);
 
-    void insert(const std::filesystem::path &path);
+    /// @param isIndex true if this is a document submitted by the directory walk, false if it's a real
+    /// document
+    void insert(const std::filesystem::path &path, bool isIndex);
 
     /// Associates parse data with a path in the syntax tree
     void associateParse(

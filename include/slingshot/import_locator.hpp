@@ -26,25 +26,36 @@ using namespace slang::syntax;
 /// - Enums/typedefs
 class ImportableFinderVisitor : public SyntaxVisitor<ImportableFinderVisitor> {
 public:
+    // required symbols
     void handle(const PackageImportItemSyntax &syntax);
-
     void handle(const HierarchyInstantiationSyntax &syntax);
+
+    // provided symbols
+    void handle(const ModuleHeaderSyntax &syntax);
 
     auto getRequiredSymbols() {
         return requiredSymbols;
     }
 
+    auto getProvidedSymbols() {
+        return providedSymbols;
+    }
+
 private:
     std::vector<std::string> requiredSymbols;
+    std::vector<std::string> providedSymbols;
+};
+
+class Imports {
+public:
+    std::vector<std::string> requiredSymbols;
+    std::vector<std::string> providedSymbols;
 };
 
 class ImportLocator {
 public:
-    /// Uses the @ref ImportableFinderVisitor and index to locate required documents to compile the given
-    /// document
-    /// Returns std::nullopt if we couldn't find any of the symbols required
-    static std::optional<std::vector<std::shared_ptr<SyntaxTree>>> locateRequiredDocuments(
-        const std::shared_ptr<SyntaxTree> &tree);
+    /// Uses the @ref ImportableFinderVisitor and index to locate required and provided symbols
+    static Imports locateRequiredProvidedImports(const std::shared_ptr<SyntaxTree> &tree);
 };
 
 } // namespace slingshot

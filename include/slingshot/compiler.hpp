@@ -5,8 +5,10 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
+#include <atomic>
 #include <slang/ast/Compilation.h>
 #include <slang/syntax/SyntaxTree.h>
+#include <thread>
 #define BS_THREAD_POOL_NATIVE_EXTENSIONS
 #include "BS_thread_pool.hpp"
 #include "ankerl/unordered_dense.h"
@@ -17,6 +19,7 @@
 #include <filesystem>
 #include <lsp/types.h>
 #include <memory>
+#include <moodycamel/blockingconcurrentqueue.h>
 #include <optional>
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
@@ -103,8 +106,11 @@ public:
 private:
     BS::thread_pool<> pool;
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
+    /// mapping of a document to all the documents it requires to build the AST
+    ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::filesystem::path>> requiredDocuments;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
     std::shared_mutex lock;
+    std::atomic_int indexingJobsInProgress;
 
     void maybeUpdateIndexingProgress(const std::filesystem::path &path);
 

@@ -26,8 +26,6 @@ public:
     void linkDocuments(const std::filesystem::path &provider, const std::filesystem::path &requirer,
         const std::string &symbol);
 
-    // TODO what if we need to unlink documents?
-
     /// Performs a topological sort of the document graph if possible.
     std::optional<std::vector<std::filesystem::path>> topologicalSort();
 
@@ -36,9 +34,22 @@ public:
 
     /// Given a symbol and a document the symbol is from, queries the list of unresolved symbols and resolve
     /// any outstanding symbols
-    bool tryLinkSymbol(const std::filesystem::path &path, const std::string &symbol);
+    void registerProvidedSymbol(const std::filesystem::path &path, const std::string &symbol);
+
+    void registerRequiredSymbol(const std::filesystem::path &path, const std::string &symbol);
+
+    /// Dumps the graph to a DOT file
+    void dumpDot();
 
 private:
+    struct UnresolvedSymbol {
+        /// LHS, this side provides the symbol
+        std::optional<std::filesystem::path> lhs;
+        /// RHS, this side requires the symbol
+        std::optional<std::filesystem::path> rhs;
+        std::string symbol;
+    };
+
     /// the actual graph data structure, vertices are paths, and edges are the symbols that are inherited from
     /// these documents.
     /// the direction of the vertex A ---(sym)--> B means that A provides the symbol "sym" **TO** B.
@@ -48,9 +59,7 @@ private:
     /// graaflib makes use vertex IDs, so we store a mapping of vertices to paths here
     ankerl::unordered_dense::map<std::filesystem::path, graaf::vertex_id_t> vertices {};
 
-    /// mapping of files -> list of symbols that are unresolved, and which we may be able to build nodes out
-    /// of later
-    ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::string>> unresolvedSymbols {};
+    std::vector<UnresolvedSymbol> unresolvedSymbols {};
 };
 
 } // namespace slingshot

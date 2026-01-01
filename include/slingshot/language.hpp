@@ -55,17 +55,17 @@ public:
     }
 
     void addPort(const std::string &portName, PortDirection dir) {
-        SPDLOG_DEBUG("Add port {} to module {}", portName, name);
+        SPDLOG_TRACE("Add port {} to module {}", portName, name);
         ports.push_back(Port { .name = portName, .direction = dir });
     }
 
     void addParameter(const std::string &paramName) {
-        SPDLOG_DEBUG("Add parameter {} to module {}", paramName, name);
+        SPDLOG_TRACE("Add parameter {} to module {}", paramName, name);
         parameters.insert(paramName);
     }
 
     void addVariable(const std::string &varName) {
-        SPDLOG_DEBUG("Add variable {} to module {}", varName, name);
+        SPDLOG_TRACE("Add variable {} to module {}", varName, name);
         variables.insert(varName);
     }
 
@@ -106,7 +106,7 @@ public:
         if (currentModule != std::nullopt) {
             SPDLOG_ERROR("Starting a module when a module is already active!");
         }
-        SPDLOG_DEBUG("Start module: {}", name);
+        SPDLOG_TRACE("Start module: {}", name);
         currentModule = Module(name);
     }
 
@@ -117,7 +117,7 @@ public:
             SPDLOG_ERROR("Trying to end a module, but no module is active!");
             return;
         }
-        SPDLOG_DEBUG("End module: {}", currentModule->name);
+        SPDLOG_TRACE("End module: {}", currentModule->name);
         modules.push_back(*currentModule);
         currentModule = std::nullopt;
     }

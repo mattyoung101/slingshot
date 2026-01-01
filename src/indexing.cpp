@@ -25,7 +25,7 @@
 
 using namespace slingshot;
 
-void IndexManager::insert(const std::filesystem::path &path, const std::string &document) {
+void IndexManager::insert(const std::filesystem::path &path, const std::string &document, bool isIndex) {
     // ensure absolute
     auto realPath = std::filesystem::absolute(path);
     SPDLOG_TRACE("Insert {}", realPath.string());
@@ -47,17 +47,21 @@ void IndexManager::insert(const std::filesystem::path &path, const std::string &
     }
 
     // regardless, schedule a compilation job for this
-    g_compilerManager.submitCompilationJob(document, realPath);
+    if (isIndex) {
+        g_compilerManager.indexDocument(document, realPath);
+    } else {
+        g_compilerManager.submitCompilationJob(document, realPath);
+    }
 }
 
-void IndexManager::insert(const std::filesystem::path &path) {
+void IndexManager::insert(const std::filesystem::path &path, bool isIndex) {
     // read the file to a string
     // TODO does this bugger all error checking
     std::ifstream t(path);
     std::stringstream buffer;
     buffer << t.rdbuf();
 
-    insert(path, buffer.str());
+    insert(path, buffer.str(), isIndex);
 }
 
 void IndexManager::associateParse(
@@ -119,7 +123,7 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
         // we lie a bit here, submit directly for indexing if they told us its a path but it's actually a
         // single file
         SPDLOG_INFO("Discovered (direct) document: {}", path.string());
-        insert(std::filesystem::absolute(path));
+        insert(std::filesystem::absolute(path), true);
         return;
     }
 
@@ -146,7 +150,7 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
             continue;
         }
         SPDLOG_INFO("Discovered document: {}", dirEntry.path().string());
-        insert(std::filesystem::absolute(dirEntry));
+        insert(dirEntry, true);
     }
 
     // we've finished queueing jobs now, so later at some point we can officially terminate the indexing

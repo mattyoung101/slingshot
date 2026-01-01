@@ -13,14 +13,14 @@
 using namespace slingshot;
 
 void LangLifterVisitor::handle(const ModuleHeaderSyntax &syntax) {
-    SPDLOG_DEBUG("Visit module header");
+    SPDLOG_TRACE("Visit module header");
     doc.maybeFlushModule();
     doc.startModule(std::string(syntax.name.valueText()));
     visitDefault(syntax);
 }
 
 void LangLifterVisitor::handle(const NetPortHeaderSyntax &syntax) {
-    SPDLOG_DEBUG("Visit net port header: {}", syntax.toString());
+    SPDLOG_TRACE("Visit net port header: {}", syntax.toString());
     doc.doIfModuleIsActive([&syntax](lang::Module &module) {
         // first, find the port direction
         lang::PortDirection direction = lang::PortDirection::Unknown;
@@ -31,13 +31,13 @@ void LangLifterVisitor::handle(const NetPortHeaderSyntax &syntax) {
         } else if (syntax.direction.kind == slang::parsing::TokenKind::InOutKeyword) {
             direction = lang::PortDirection::InOut;
         } else {
-            SPDLOG_ERROR("Unknown port direction from Slang: {}", syntax.direction.toString());
+            SPDLOG_WARN("Unknown port direction from Slang: {}", syntax.direction.toString());
         }
 
         // next, we need to find the name of the port; locate its header first
         auto *implicitAnsiPort = syntax.parent->as_if<ImplicitAnsiPortSyntax>();
         if (implicitAnsiPort == nullptr) {
-            SPDLOG_ERROR("Unable to determine port name for port: {}", syntax.toString());
+            SPDLOG_WARN("Unable to determine port name for port: {}", syntax.toString());
             return;
         }
         auto portName = implicitAnsiPort->declarator->name.valueText();
@@ -48,7 +48,7 @@ void LangLifterVisitor::handle(const NetPortHeaderSyntax &syntax) {
 }
 
 void LangLifterVisitor::handle(const ImplicitAnsiPortSyntax &syntax) {
-    SPDLOG_DEBUG("Visit implicit ANSI port: {}", syntax.toString());
+    SPDLOG_TRACE("Visit implicit ANSI port: {}", syntax.toString());
     doc.doIfModuleIsActive([&syntax](lang::Module &module) {
         // first, find the port direction
         lang::PortDirection direction = lang::PortDirection::Unknown;
@@ -66,7 +66,7 @@ void LangLifterVisitor::handle(const ImplicitAnsiPortSyntax &syntax) {
         } else if (header->direction.kind == slang::parsing::TokenKind::InOutKeyword) {
             direction = lang::PortDirection::InOut;
         } else {
-            SPDLOG_ERROR("Unknown port direction from Slang: {}", header->direction.toString());
+            SPDLOG_WARN("Unknown port direction from Slang: {}", header->direction.toString());
         }
 
         auto portName = syntax.declarator->name.valueText();
@@ -77,7 +77,7 @@ void LangLifterVisitor::handle(const ImplicitAnsiPortSyntax &syntax) {
 }
 
 void LangLifterVisitor::handle(const DeclaratorSyntax &syntax) {
-    SPDLOG_DEBUG("Visit declarator: {}", syntax.toString());
+    SPDLOG_TRACE("Visit declarator: {}", syntax.toString());
     doc.doIfModuleIsActive([&syntax](lang::Module &module) {
         auto name = std::string(syntax.name.valueText());
 
@@ -93,7 +93,7 @@ void LangLifterVisitor::handle(const DeclaratorSyntax &syntax) {
 }
 
 void LangLifterVisitor::handle(const ParameterDeclarationSyntax &syntax) {
-    SPDLOG_DEBUG("Handle param declaration: {}", syntax.toString());
+    SPDLOG_TRACE("Handle param declaration: {}", syntax.toString());
     doc.doIfModuleIsActive([&syntax](lang::Module &module) {
         if (syntax.declarators.size() != 1) {
             SPDLOG_WARN("Parameter declarator {} does not contain exactly 1 declaration?!",

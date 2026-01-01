@@ -32,40 +32,19 @@ void ImportableFinderVisitor::handle(const HierarchyInstantiationSyntax &syntax)
     visitDefault(syntax);
 }
 
-std::optional<std::vector<std::shared_ptr<SyntaxTree>>> ImportLocator::locateRequiredDocuments(
-    const std::shared_ptr<SyntaxTree> &tree) {
-    // find all the required symbols
+void ImportableFinderVisitor::handle(const ModuleHeaderSyntax &syntax) {
+    // this apparently will also handle packages
+    providedSymbols.emplace_back(syntax.name.valueText());
+    SPDLOG_DEBUG("Discovered provided symbol: {}", syntax.name.valueText());
+    visitDefault(syntax);
+}
+
+Imports ImportLocator::locateRequiredProvidedImports(const std::shared_ptr<SyntaxTree> &tree) {
     ImportableFinderVisitor visitor;
     visitor.visit(tree->root());
 
-    auto requiredSymbols = visitor.getRequiredSymbols();
-    SPDLOG_DEBUG("Need to find {} required symbols for the document", requiredSymbols.size());
-
-    std::vector<SyntaxTreePtr> out;
-
-    for (const auto &symbol : requiredSymbols) {
-        // maybe it's a module?
-        auto maybeModule = g_indexManager.locateDocumentForModule(symbol);
-        if (maybeModule.has_value() && maybeModule != std::nullopt) {
-            out.push_back(*maybeModule);
-            continue;
-        }
-
-        // maybe it's a package?
-        auto maybePackage = g_indexManager.locateDocumentForPackage(symbol);
-        if (maybePackage.has_value() && maybePackage != std::nullopt) {
-            out.push_back(*maybePackage);
-            continue;
-        }
-
-        // maybe it's a typedef?
-
-        // otherwise, everything failed: we can't resolve this item
-        SPDLOG_ERROR("Unable to resolve document for symbol: {}", symbol);
-        // return failure
-        return std::nullopt;
-    }
-
-    // we found all the symbols, in this case
-    return out;
+    return {
+        .requiredSymbols = visitor.getRequiredSymbols(),
+        .providedSymbols = visitor.getProvidedSymbols(),
+    };
 }
