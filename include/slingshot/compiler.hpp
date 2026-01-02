@@ -112,6 +112,9 @@ private:
     std::shared_mutex lock;
     std::atomic_int indexingJobsInProgress;
 
+    /// Performs a bulk compilation of all the documents in the index, once the document graph has been built
+    void performBulkCompilation();
+
     void maybeUpdateIndexingProgress(const std::filesystem::path &path);
 
     std::shared_ptr<slang::syntax::SyntaxTree> doCstParse(

@@ -40,7 +40,6 @@ std::optional<std::vector<std::filesystem::path>> DocumentGraph::topologicalSort
     }
 
     std::vector<std::filesystem::path> out;
-    out.resize(sorted->size());
     for (const auto &vert : *sorted) {
         auto value = graph.get_vertex(vert);
         out.push_back(value);
@@ -69,7 +68,7 @@ bool DocumentGraph::hasIndexed(const std::filesystem::path &path) {
 }
 
 void DocumentGraph::registerProvidedSymbol(const std::filesystem::path &path, const std::string &symbol) {
-    SPDLOG_DEBUG("Register provided symbol {} by document {}", symbol, path.string());
+    SPDLOG_DEBUG("{} ---(PROVIDES SYMBOL)---> '{}'", path.string(), symbol);
     auto it = unresolvedSymbols.begin();
     while (it != unresolvedSymbols.end()) {
         auto &unresolved = *it;
@@ -78,16 +77,16 @@ void DocumentGraph::registerProvidedSymbol(const std::filesystem::path &path, co
             // maybe we can resolve some missing things?
             if (unresolved.lhs == std::nullopt) {
                 unresolved.lhs = path;
-                SPDLOG_DEBUG("Resolved LHS for path {} with symbol {}", path.string(), symbol);
+                SPDLOG_TRACE("Resolved LHS for path {} with symbol {}", path.string(), symbol);
             }
             if (unresolved.rhs == std::nullopt) {
                 unresolved.rhs = path;
-                SPDLOG_DEBUG("Resolved RHS for path {} with symbol {}", path.string(), symbol);
+                SPDLOG_TRACE("Resolved RHS for path {} with symbol {}", path.string(), symbol);
             }
 
             // and now, maybe the resolution is complete?
             if (unresolved.lhs != std::nullopt && unresolved.rhs != std::nullopt) {
-                SPDLOG_WARN("Completed symbol graph linking: {} ---({})---> {}", unresolved.lhs->string(),
+                SPDLOG_INFO("Completed symbol graph linking: {} ---({})---> {}", unresolved.lhs->string(),
                     symbol, unresolved.rhs->string());
                 linkDocuments(*unresolved.lhs, *unresolved.rhs, symbol);
                 it = unresolvedSymbols.erase(it);
@@ -101,7 +100,7 @@ void DocumentGraph::registerProvidedSymbol(const std::filesystem::path &path, co
 }
 
 void DocumentGraph::registerRequiredSymbol(const std::filesystem::path &path, const std::string &symbol) {
-    SPDLOG_DEBUG("Register required symbol {} by document {}", symbol, path.string());
+    SPDLOG_DEBUG("{} ---(REQUIRES SYMBOL)---> {}", path.string(), symbol);
     unresolvedSymbols.push_back(UnresolvedSymbol { .lhs = std::nullopt, .rhs = path, .symbol = symbol });
 }
 

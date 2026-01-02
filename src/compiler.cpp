@@ -11,6 +11,7 @@
 #include <iterator>
 #include <optional>
 #include <random>
+#include <spdlog/fmt/bundled/format.h>
 #include <thread>
 #include <vector>
 #define BS_THREAD_POOL_NATIVE_EXTENSIONS
@@ -316,6 +317,7 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::file
         for (const auto &doc : docs) {
             auto result = g_indexManager.retrieve(doc);
             if (result.has_value() && result != std::nullopt && (*result)->tree != nullptr) {
+                SPDLOG_DEBUG("{} ---(requires)---> {}", path.string(), doc.string());
                 compilation->addSyntaxTree((*result)->tree);
             } else {
                 SPDLOG_WARN("Required document {} present in CompilerManager, but could not retrieve from "
@@ -392,11 +394,68 @@ void CompilationManager::maybeFinaliseIndexingProgress() {
         && indexingJobsInProgress <= 0) {
         // then we can submit a work done progress end, we've finished everything
         SPDLOG_INFO("Indexing believed to be done!");
-        lsp::notifications::Progress::Params endMsg;
-        endMsg.token = "SlingshotIndexProgress";
-        endMsg.value = lsp::toJson(lsp::WorkDoneProgressEnd());
-        g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(endMsg));
 
-        g_indexManager.isInitialIndexInProgress = false;
+        // since we've just finished, submit a bulk compilation job
+        pool.detach_task([this] { performBulkCompilation(); });
     }
+}
+
+void CompilationManager::performBulkCompilation() {
+    SPDLOG_INFO("Performing bulk compilation");
+
+    auto indexLock = g_indexManager.acquireReadLock();
+    auto compilerLock = g_compilerManager.acquireWriteLock();
+
+    // keep track of all the prior documents we've seen in our topological traversal
+    std::vector<std::filesystem::path> allPriorDocs;
+
+    // and this is why we do the topo sort, right! because now we now the exact order we need to compile all
+    // the documents in!
+    auto topoSort = g_indexManager.documentGraph->topologicalSort();
+    if (!topoSort.has_value() || topoSort == std::nullopt) {
+        SPDLOG_ERROR("Failed to topologically sort the document graph!");
+        goto done; // NOLINT(cppcoreguidelines-avoid-goto): we're using it, idgaf
+    }
+
+    for (size_t i = 0; i < topoSort->size(); i++) {
+        const auto &doc = topoSort->at(i);
+        SPDLOG_DEBUG("({}/{}) {}", i, topoSort->size(), doc.string());
+
+        // send progress notification
+        lsp::WorkDoneProgressReport report;
+        report.message = fmt::format("Bulk compiling ({}/{})", i, topoSort->size());
+        lsp::notifications::Progress::Params progress;
+        progress.token = "SlingshotIndexProgress";
+        progress.value = lsp::toJson(std::move(report));
+        g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
+
+        requiredDocuments[doc] = allPriorDocs;
+
+        // perform the compilation itself
+        // since the doc has been indexed, we can just pull the CST out of there
+        auto entry = g_indexManager.retrieve(doc);
+        if (!entry.has_value() || entry == std::nullopt) {
+            SPDLOG_ERROR("Document {} not in index somehow?!", doc.string());
+            continue;
+        }
+
+        // auto cst = (*entry)->tree;
+        // auto buf = sourceMgr->getSourceText(BufferID buffer)
+        // auto ast = doAstParse(doc, const SourceBuffer &buf, DiagnosticEngine &diagEngine, const
+        // std::shared_ptr<slang::syntax::SyntaxTree> &tree)
+
+        allPriorDocs.push_back(doc);
+
+        // FIXME I don't think we should do this allPriorDocs stuff, we should probably do a BFS-based
+        // discovery
+    }
+
+    // TODO force also us to recompile all documents we have open, so we re-issue diagnostics
+
+done:
+    lsp::notifications::Progress::Params endMsg;
+    endMsg.token = "SlingshotIndexProgress";
+    endMsg.value = lsp::toJson(lsp::WorkDoneProgressEnd());
+    g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(endMsg));
+    g_indexManager.isInitialIndexInProgress = false;
 }
