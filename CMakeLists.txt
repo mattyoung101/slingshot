@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.21)
 project(slingshot
     LANGUAGES C CXX
-    VERSION 1.0.0
+    VERSION 1.1.0
     DESCRIPTION "SystemVerilog language server"
     HOMEPAGE_URL "https://github.com/mattyoung101/slingshot"
 )
-set(CPACK_PACKAGE_CONTACT "Matt Young <matt@mlyoung.cool>")
+set(CPACK_PACKAGE_CONTACT "M. L. Young <matt@mlyoung.cool>")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 

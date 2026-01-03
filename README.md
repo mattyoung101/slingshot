@@ -1,6 +1,6 @@
 # Slingshot - SystemVerilog LSP
 > [!IMPORTANT]
-> **This is the new rewrite, in C++ using Slang. The old version of Slingshot is on the "legacy" branch.**
+> **This is BETA quality software; bugs may be present. Please file issues on the issue tracker.**
 
 **Slingshot** is a language server for the **SystemVerilog** hardware description language, with
 a focus on accurate multi-file completion. The overarching goal is to make SystemVerilog
@@ -8,8 +8,11 @@ as intuitive to edit as C++ or Rust.
 
 Compared to other SV LSPs, the main feature that Slingshot brings to the table is a completion-first approach,
 using the powerful [Slang](https://github.com/MikePopoloski/slang) frontend. The intent is to provide fast,
-accurate and robust completion even in complex projects. The trade-off is this does mean that features such as
-"go-to-reference" take somewhat of a backseat.
+accurate and robust completion even in complex projects. Slingshot also features an advanced indexing system,
+to power this completion system, that features graph-based dependency resolution.
+
+The trade-off is this does mean that features such as "go-to-reference" take somewhat of a backseat; though
+the plan is to implement them eventually.
 
 Slingshot is (now) written in C++23. Previously, it was written in Kotlin and used ANTLR. This new rewrite
 aims to:
@@ -18,12 +21,14 @@ aims to:
 
 ## Features
 - Diagnostics
-  - Based on the powerful Slang SystemVerilog frontend
-- Advanced completion system
+  - Based on the Slang SystemVerilog frontend, which is considered best in its class
+- Completion system
     - Context-sensitive completion, based off the Slang parse tree, a "best-effort" approach to only recommend
       valid completions
-    - Slang's parser is highly error resistant, making it excellent for this use case
-- Multi-threaded, high-performance, project-wide index and compilation system
+- Advanced indexing system
+    - Graph-based (DAG with topological sort) automatic dependency tracking between SV documents
+        - Improves performance by only compiling the documents necessary to index a file
+    - Multi-threaded for high-performance on large codebases
 - Simple configuration
   - Slingshot is configured through a simple `.slingshot.toml` file declared in the project's root
   directory
@@ -126,7 +131,7 @@ I do not use any LLMs when developing this project, and I will not accept contri
 are written in whole or in part using LLMs. These tickets will be closed on sight.
 
 ## Licence
-Copyright (c) 2023-2025 M. L. Young. Available under the Mozilla Public License v2.0
+Copyright (c) 2023-2026 M. L. Young. Available under the Mozilla Public License v2.0
 
 > This Source Code Form is subject to the terms of the Mozilla Public
 > License, v. 2.0. If a copy of the MPL was not distributed with this
