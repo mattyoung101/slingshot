@@ -1,10 +1,11 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025 M. L. Young.
+// Copyright (c) 2025-2026 M. L. Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/document_graph.hpp"
+#include "slingshot/slingshot.hpp"
 #include <filesystem>
 #include <graaflib/algorithm/topological_sorting/dfs_topological_sorting.h>
 #include <graaflib/edge.h>
@@ -24,6 +25,7 @@ void DocumentGraph::insertDocument(const std::filesystem::path &path) {
     vertices[path] = graph.add_vertex(path);
 }
 
+// FIXME should be private
 void DocumentGraph::linkDocuments(
     const std::filesystem::path &provider, const std::filesystem::path &requirer, const std::string &symbol) {
     auto providerId = vertices.at(provider);
@@ -97,10 +99,11 @@ void DocumentGraph::registerProvidedSymbol(const std::filesystem::path &path, co
             it++;
         }
     }
+    symbolProviders[path].push_back(symbol);
 }
 
 void DocumentGraph::registerRequiredSymbol(const std::filesystem::path &path, const std::string &symbol) {
-    SPDLOG_DEBUG("{} ---(REQUIRES SYMBOL)---> {}", path.string(), symbol);
+    SPDLOG_DEBUG("{} ---(REQUIRES SYMBOL)---> '{}'", path.string(), symbol);
     unresolvedSymbols.push_back(UnresolvedSymbol { .lhs = std::nullopt, .rhs = path, .symbol = symbol });
 }
 
@@ -115,4 +118,46 @@ void DocumentGraph::dumpDot() {
     } };
 
     graaf::io::to_dot(graph, "/tmp/slingshot_document_graph.dot", vertex_writer, edge_writer);
+}
+
+void DocumentGraph::finaliseOutstandingSymbols() {
+    auto it = unresolvedSymbols.begin();
+    while (it != unresolvedSymbols.end()) {
+        auto &sym = *it;
+        SPDLOG_DEBUG("Still unresolved symbol '{}': LHS '{}', RHS '{}'", sym.symbol, toString(sym.lhs),
+            toString(sym.rhs));
+
+        if (!hasValue(sym.lhs)) {
+            // see if we can find a resolver for this symbol in the graph
+            auto provider = findProvider(sym.symbol);
+            if (hasValue(provider)) {
+                SPDLOG_DEBUG("Found provider for symbol '{}': '{}'", sym.symbol, provider->string());
+                linkDocuments(*provider, *sym.rhs, sym.symbol);
+                it = unresolvedSymbols.erase(it);
+            } else {
+                SPDLOG_WARN("Could NOT provide provider for unresolved symbol '{}' wanted by '{}'",
+                    sym.symbol, sym.rhs->string());
+                it++;
+            }
+        } else {
+            // if the unresolved part is on the RHS, we don't handle that yet; doesn't seem to come up in
+            // practice much
+            SPDLOG_WARN("Unresolved symbol '{}' has an unresolved RHS, which is unhandled", sym.symbol);
+            it++;
+        }
+    }
+}
+
+std::optional<std::filesystem::path> DocumentGraph::findProvider(const std::string &symbol) {
+    for (const auto &pair : symbolProviders) {
+        const auto &[doc, symbols] = pair;
+        for (const auto &s : symbols) {
+            if (s == symbol) {
+                // this document provides the symbol we want: we found a provider
+                return doc;
+            }
+        }
+    }
+    // no luck
+    return std::nullopt;
 }

@@ -239,7 +239,7 @@ void CompilationManager::indexDocument(const std::string &document, const std::f
             g_indexManager.associateParse(path, tree);
 
             // figure out what symbols this document provides and requires
-            auto imports = ImportLocator::locateRequiredProvidedImports(tree);
+            auto imports = ImportLocator::locateRequiredProvidedImports(tree, path);
             {
                 auto lock = g_indexManager.acquireWriteLock();
                 for (const auto &provided : imports.providedSymbols) {
@@ -405,6 +405,8 @@ void CompilationManager::performBulkCompilation() {
 
     auto indexLock = g_indexManager.acquireReadLock();
     auto compilerLock = g_compilerManager.acquireWriteLock();
+
+    g_indexManager.documentGraph->finaliseOutstandingSymbols();
 
     // keep track of all the prior documents we've seen in our topological traversal
     std::vector<std::filesystem::path> allPriorDocs;

@@ -1,6 +1,6 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025 M. L. Young.
+// Copyright (c) 2025-2026 M. L. Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -9,11 +9,11 @@
 #include "slingshot/completion.hpp"
 #include "slingshot/indexing.hpp"
 #include "slingshot/remote_debug.hpp"
-#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <lsp/messagehandler.h>
 #include <memory>
+#include <optional>
 #include <slang/syntax/SyntaxTree.h>
 #include <slang/text/SourceLocation.h>
 #include <slang/text/SourceManager.h>
@@ -40,24 +40,36 @@ using SourceManagerPtr = std::shared_ptr<slang::SourceManager>;
 
 /// Adds all the elements of B to the vector A
 template <class T>
-inline void addAll(std::vector<T> &a, const std::vector<T> &b) {
+constexpr void addAll(std::vector<T> &a, const std::vector<T> &b) {
     a.insert(a.end(), b.begin(), b.end());
 }
 
-inline std::string toString(const SourceLocation &loc, const SourceManagerPtr &srcMgr) {
+constexpr std::string toString(const SourceLocation &loc, const SourceManagerPtr &srcMgr) {
     auto line = srcMgr->getLineNumber(loc);
     auto col = srcMgr->getColumnNumber(loc);
     return fmt::format("{}:{}", line, col);
 }
 
-inline std::string toString(const SourceRange &range, const SourceManagerPtr &srcMgr) {
+constexpr std::string toString(const SourceRange &range, const SourceManagerPtr &srcMgr) {
     auto begin = toString(range.start(), srcMgr);
     auto end = toString(range.end(), srcMgr);
 
     return fmt::format("{}..{}", begin, end);
 }
 
-inline std::string readFile(const std::filesystem::path &path) {
+constexpr std::string toString(const std::optional<std::filesystem::path> &value) {
+    if (value.has_value() && value != std::nullopt) {
+        return value->string();
+    }
+    return "(null)";
+}
+
+template <typename T>
+constexpr bool hasValue(const std::optional<T> &opt) {
+    return opt.has_value() && opt != std::nullopt;
+}
+
+constexpr std::string readFile(const std::filesystem::path &path) {
     // TODO does this bugger all error checking
     std::ifstream t(path);
     std::stringstream buffer;

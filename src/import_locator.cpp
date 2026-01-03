@@ -6,6 +6,7 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/import_locator.hpp"
 #include "slingshot/slingshot.hpp"
+#include <filesystem>
 #include <lsp/types.h>
 #include <memory>
 #include <optional>
@@ -22,13 +23,13 @@ using namespace slingshot;
 
 void ImportableFinderVisitor::handle(const PackageImportItemSyntax &syntax) {
     requiredSymbols.emplace_back(syntax.package.valueText());
-    SPDLOG_DEBUG("Discovered required symbol: {}", syntax.package.valueText());
+    SPDLOG_DEBUG("Discovered {} requires: {}", path.string(), syntax.package.valueText());
     visitDefault(syntax);
 }
 
 void ImportableFinderVisitor::handle(const HierarchyInstantiationSyntax &syntax) {
     requiredSymbols.emplace_back(syntax.type.valueText());
-    SPDLOG_DEBUG("Discovered required symbol: {}", syntax.type.valueText());
+    SPDLOG_DEBUG("Discovered {} requres: {}", path.string(), syntax.type.valueText());
     visitDefault(syntax);
 }
 
@@ -39,8 +40,9 @@ void ImportableFinderVisitor::handle(const ModuleHeaderSyntax &syntax) {
     visitDefault(syntax);
 }
 
-Imports ImportLocator::locateRequiredProvidedImports(const std::shared_ptr<SyntaxTree> &tree) {
-    ImportableFinderVisitor visitor;
+Imports ImportLocator::locateRequiredProvidedImports(
+    const std::shared_ptr<SyntaxTree> &tree, const std::filesystem::path &path) {
+    ImportableFinderVisitor visitor(path);
     visitor.visit(tree->root());
 
     return {
