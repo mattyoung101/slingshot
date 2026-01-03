@@ -441,18 +441,17 @@ void CompilationManager::performBulkCompilation() {
             continue;
         }
 
-        // auto cst = (*entry)->tree;
-        // auto buf = sourceMgr->getSourceText(BufferID buffer)
-        // auto ast = doAstParse(doc, const SourceBuffer &buf, DiagnosticEngine &diagEngine, const
-        // std::shared_ptr<slang::syntax::SyntaxTree> &tree)
+        // TODO parse the AST; not super necessary atm but it'd probably help the indexer?
 
         allPriorDocs.push_back(doc);
-
-        // FIXME I don't think we should do this allPriorDocs stuff, we should probably do a BFS-based
-        // discovery
     }
 
-    // TODO force also us to recompile all documents we have open, so we re-issue diagnostics
+    // we also need to recompile all the open files now
+    SPDLOG_DEBUG("Recompiling documents now that indexing is done");
+    compilerLock.unlock();
+    for (const auto &doc : openFiles) {
+        submitCompilationJob(readFile(doc), doc);
+    }
 
 done:
     lsp::notifications::Progress::Params endMsg;

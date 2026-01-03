@@ -12,7 +12,6 @@
 #include <graaflib/graph.h>
 #include <graaflib/io/dot.h>
 #include <graaflib/types.h>
-#include <iterator>
 #include <optional>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -25,7 +24,6 @@ void DocumentGraph::insertDocument(const std::filesystem::path &path) {
     vertices[path] = graph.add_vertex(path);
 }
 
-// FIXME should be private
 void DocumentGraph::linkDocuments(
     const std::filesystem::path &provider, const std::filesystem::path &requirer, const std::string &symbol) {
     auto providerId = vertices.at(provider);

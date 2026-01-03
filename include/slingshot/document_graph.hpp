@@ -21,11 +21,6 @@ class DocumentGraph {
 public:
     void insertDocument(const std::filesystem::path &path);
 
-    /// Links the document that provides the symbol ("provider"/"A") to the document that requires the symbol
-    /// ("requirer"/B). This creates the edge A ---(sym)--> B.
-    void linkDocuments(const std::filesystem::path &provider, const std::filesystem::path &requirer,
-        const std::string &symbol);
-
     /// Performs a topological sort of the document graph if possible.
     std::optional<std::vector<std::filesystem::path>> topologicalSort();
 
@@ -50,6 +45,11 @@ private:
         std::optional<std::filesystem::path> rhs;
         std::string symbol;
     };
+
+    /// Links the document that provides the symbol ("provider"/"A") to the document that requires the symbol
+    /// ("requirer"/B). This creates the edge A ---(sym)--> B.
+    void linkDocuments(const std::filesystem::path &provider, const std::filesystem::path &requirer,
+        const std::string &symbol);
 
     std::optional<std::filesystem::path> findProvider(const std::string &symbol);
 
