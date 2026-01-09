@@ -106,9 +106,7 @@ This is the setup I use for development as well.
 
 ### Troubleshooting
 Slingshot issues can be diagnosed by reading the log file. This is located in
-`~/.local/share/slingshot/slingshot-$PID.log`, where `$PID` is the Slingshot process ID. You can
-just read the most recent log file. Currently, the 5 most recent log files are retained in that
-directory. The `lnav` tool is very useful for reading Slingshot log files.
+`~/.local/share/slingshot/slingshot.log`.
 
 If there are errors about missing includes or not being able to find certain files, please make
 sure you have read [docs/config.md](docs/config.md) and created your `.slingshot.toml` file. Then,
@@ -120,15 +118,29 @@ You must include your log file, detailed description of the issue, and also a Sy
 example if possible. As my time is extremely limited, I may not be able to respond to or
 fix bug tickets. Pull requests are welcome as well, but may take some time to review.
 
-## Design goals
-See [docs/design_goals.md](docs/design_goals.md)
+## Design philosophy and goals
+Slingshot's primary goals across the board are **stability**, **performance** and **accuracy**. Stability is
+always difficult in an unsafe language like C++, but we try as much as we can, including through the use of
+ASan and UBSan.
+
+For its feature set, Slingshot prioritises these features and all the infrastructure necessary to make them
+stable and performant:
+- Autocompletion
+- Diagnostics (error checking)
+- Niceties (e.g. progress bars and simple configuration)
+
+This is a pretty small set of features, but is the minimum set to have a reasonably nice editing experience.
+Once those features are stabilised, I plan to eventually move out into more advanced features such as
+go-to-definition, but importantly _only after_ the core features are sufficiently stable.
 
 ## Implementation details
 See [docs/impl_details.md](docs/impl_details.md)
 
 ## No AI policy
-I do not use any LLMs when developing this project, and I will not accept contributions, issues or code that
-are written in whole or in part using LLMs. These tickets will be closed on sight.
+As part of Slingshot's design policy of performance and stability, I will not accept any pull requests or
+issues that are written in whole or in part using LLMs. I also do not _use_ any LLMs when authoring Slingshot
+code or documentation. Submitting a PR or issue that is believed to be written using AI will result in it
+being immediately closed without exception.
 
 ## Licence
 Copyright (c) 2023-2026 M. L. Young. Available under the Mozilla Public License v2.0
@@ -137,16 +149,16 @@ Copyright (c) 2023-2026 M. L. Young. Available under the Mozilla Public License 
 > License, v. 2.0. If a copy of the MPL was not distributed with this
 > file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-### Third party libraries
+## Third party libraries
 Slingshot uses the following 3rd party libraries:
 
-- spdlog
-- fmt
-- Slang
-- ankerl::unordered_dense
-- nlohmann::json
-- lsp-framework
-- BS::thread_pool
-- TOML++
-- sockpp
-- Graaf
+- **spdlog**: MIT licence
+- **fmt**: MIT licence
+- **Slang**: MIT licence
+- **ankerl::unordered_dense**: MIT licence
+- **nlohmann::json:** MIT licence
+- **lsp-framework:** MIT licence
+- **BS::thread_pool:** MIT licence
+- **TOML++:** MIT licence
+- **sockpp:** BSD 3-Clause licence
+- **Graaf:** MIT licence

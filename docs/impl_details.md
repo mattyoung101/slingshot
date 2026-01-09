@@ -19,6 +19,7 @@ The compiler module, defined in `compiler.cpp/compiler.hpp` wraps Slang and perf
 - Abstract Syntax Tree (AST) parsing and analysis for diagnostics
 - Higher level analysis (currently broken, probably?) using Slang's `AnalysisManager`
 - Language lifting to the internal lang module for completion
+- Dependency graph computation
 
 The compiler uses a thread pool and operates asynchronously in the background. Compilation jobs can be
 submitted to the pool. Once the compilation job has finished, the job will call `IndexManager` methods to
@@ -44,6 +45,40 @@ pulling data from the index.
 The intent is to one day be able to serialise and deserialise the index to/from disk, but this is troublesome
 due to the nature of C++ being a dogwater programming language. Hence, _deserialising_ internal Slang syntax
 nodes is very complicated and something I would need to collaborate with the Slang project itself on.
+
+### Dependency graph
+The index also includes a dependency graph, which is modelled as a DAG (Directed Acyclic Graph) using the
+Graaf library.
+
+The import locator (`import_locator.cpp/.h`) analyses the CST of a SV document to figure out both what symbols
+the document exports, and what symbols is required.
+
+Then, the document graph (`document_graph.cpp/.h`) builds a DAG using the Graaf library. The graph is modelled
+as:
+
+```
+A ---(sym)---> B
+```
+
+where "A" is the document that provides the symbol "sym" to document "B".
+
+Later, the document graph can be topologically sorted by the Graaf library to determine the correct order to
+compile all the documents in, and hence also what documents a given document depends on the be validly
+compiled.
+
+### Building the index
+The index is built by recursively walking the include dirs from the config file. Then, each document is added
+to the `CompilationManager` thread pool for indexing.
+
+The indexing process compiles the CST and performs the lang lifting, but does not parse the AST. This is also
+added to the dependency graph.
+
+Once the dependency graph is built, it's finalised to resolve any outstanding dependencies. After this, the
+graph is topologically sorted. Then, a bulk compilation is performed serially: each document is compiled in
+order, and the dependencies are monitored by storing all previous documents in the loop.
+
+Once the dependency graph is computed, the diagnostics are re-evaluated for all open clients and resubmitted.
+The index will not be built again until the server is killed.
 
 ## Completion system
 The completion system is how the server attempts to understand SystemVerilog and decide what you want to type
