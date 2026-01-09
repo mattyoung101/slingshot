@@ -24,9 +24,6 @@ public:
     /// Performs a topological sort of the document graph if possible.
     std::optional<std::vector<std::filesystem::path>> topologicalSort();
 
-    /// Returns true if we have indexed and built relationships using this particular path
-    bool hasIndexed(const std::filesystem::path &path);
-
     void registerProvidedSymbol(const std::filesystem::path &path, const std::string &symbol);
 
     void registerRequiredSymbol(const std::filesystem::path &path, const std::string &symbol);

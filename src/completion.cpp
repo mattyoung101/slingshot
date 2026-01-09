@@ -1,12 +1,13 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025 M. L. Young.
+// Copyright (c) 2025-2026 M. L. Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/completion.hpp"
 #include "slingshot/conversions.hpp"
 #include "slingshot/indexing.hpp"
+#include "slingshot/language.hpp"
 #include "slingshot/slingshot.hpp"
 #include <algorithm>
 #include <ankerl/unordered_dense.h>
@@ -42,20 +43,6 @@ namespace {
 /// Same as SourceRange::contains(), expect that it includes <= on the end position, i.e. it's inclusive
 constexpr bool containsRelaxed(const SourceLocation &loc, const SourceRange &range) {
     return loc >= range.start() && loc <= range.end();
-}
-
-/// Returns true if and only if the node "node" contains a SyntaxNode of the kind specified in its direct
-/// parental hierarchy
-inline bool containsInDirectHierarchy(const SyntaxNode &node, const SyntaxKind &kind) {
-    SyntaxNode *parent = node.parent;
-    while (parent != nullptr) {
-        if (parent->kind == kind) {
-            return true;
-        }
-        // get the parent's parent
-        parent = parent->parent;
-    }
-    return false;
 }
 
 inline bool containsInDirectHierarchy(const SyntaxNode &node, const std::vector<SyntaxKind> &kinds) {
@@ -94,14 +81,21 @@ void CompletionSyntaxVisitor::handle(const EventControlWithExpressionSyntax &syn
         auto parentText = syntax.parent->toString();
         if (!parentText.contains("posedge") && !parentText.contains("negedge")) {
             RECOMMEND(CompletionGenerator::generateEdge());
+        } else {
+            // now that we've typed "posedge"/"negedge"; we can recommend variables
+            // making sure we only recommend either Input or InOut ports
+            RECOMMEND(CompletionGenerator::generateVariableSameModuleFilter(
+                activeModule, doc, lang::PortDirection::Input));
+            RECOMMEND(CompletionGenerator::generateVariableSameModuleFilter(
+                activeModule, doc, lang::PortDirection::InOut));
         }
     })
 }
 
 void CompletionSyntaxVisitor::handle(const ExpressionStatementSyntax &syntax) {
-    SPDLOG_DEBUG("Visit expression {}", syntax.toString(),
+    SPDLOG_TRACE("Visit expression {}", syntax.toString(),
         toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
-    SPDLOG_DEBUG("Type of the expression parent is: {}", toString(syntax.parent->kind));
+    SPDLOG_TRACE("Type of the expression parent is: {}", toString(syntax.parent->kind));
     BEGIN({
         // TODO determine if we are on LHS or RHS and change what we recommend
 
@@ -117,7 +111,7 @@ void CompletionSyntaxVisitor::handle(const ExpressionStatementSyntax &syntax) {
 }
 
 void CompletionSyntaxVisitor::handle(const AnsiPortListSyntax &syntax) {
-    SPDLOG_DEBUG("Visit ANSI port syntax {}", syntax.toString());
+    SPDLOG_TRACE("Visit ANSI port syntax {}", syntax.toString());
 
     BEGIN({
         RECOMMEND(CompletionGenerator::generateLogic());
@@ -128,7 +122,7 @@ void CompletionSyntaxVisitor::handle(const AnsiPortListSyntax &syntax) {
 
 // NOTE: the parser detects typing in a module as a DataDeclaration a lot of the time
 void CompletionSyntaxVisitor::handle(const DataDeclarationSyntax &syntax) {
-    SPDLOG_DEBUG("Visit data declaration syntax: {}", syntax.toString());
+    SPDLOG_TRACE("Visit data declaration syntax: {}", syntax.toString());
 
     BEGIN({
         RECOMMEND(CompletionGenerator::generateLogic());
@@ -142,7 +136,7 @@ void CompletionSyntaxVisitor::handle(const DataDeclarationSyntax &syntax) {
 // TODO continuous assign
 
 void CompletionSyntaxVisitor::handle(const ModuleDeclarationSyntax &syntax) {
-    SPDLOG_DEBUG("Visit module decalaration");
+    SPDLOG_TRACE("Visit module decalaration");
 
     if (containsRelaxed(cursor, syntax.sourceRange())) {
         auto name = syntax.header->name.valueText();

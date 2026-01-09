@@ -1,16 +1,14 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025 M. L. Young.
+// Copyright (c) 2025-2026 M. L. Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/import_locator.hpp"
-#include <algorithm>
 #include <exception>
 #include <filesystem>
 #include <iterator>
 #include <optional>
-#include <random>
 #include <spdlog/fmt/bundled/format.h>
 #include <thread>
 #include <vector>
@@ -152,6 +150,7 @@ void CompilationManager::submitCompilationJob(
 
         bufferIds[path] = buf.id;
         bufferIdsInverse[buf.id] = path;
+        bufMap[path] = buf;
     }
 
     pool.detach_task([buf, path, this, document] {
@@ -216,6 +215,7 @@ void CompilationManager::indexDocument(const std::string &document, const std::f
 
         bufferIds[path] = buf.id;
         bufferIdsInverse[buf.id] = path;
+        bufMap[path] = buf;
     }
 
     pool.detach_task([buf, path, this, document] {
@@ -264,6 +264,7 @@ void CompilationManager::indexDocument(const std::string &document, const std::f
     });
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void CompilationManager::maybeUpdateIndexingProgress(const std::filesystem::path &path) {
     if (g_indexManager.isInitialIndexInProgress) {
         // in that case, send a progress notification
@@ -309,7 +310,7 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::file
     // only initially add the document itself as a syntax tree, we'll discover the other documents later
     compilation->addSyntaxTree(tree);
 
-    // FIXME we should take out a lock on this, probably, if we don't already have one at this time
+    auto lock = acquireReadLock();
     if (!requiredDocuments.contains(path)) {
         SPDLOG_WARN("Required documents for path {} are unknown!", path.string());
     } else {
@@ -317,7 +318,7 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::file
         for (const auto &doc : docs) {
             auto result = g_indexManager.retrieve(doc);
             if (result.has_value() && result != std::nullopt && (*result)->tree != nullptr) {
-                SPDLOG_DEBUG("{} ---(requires)---> {}", path.string(), doc.string());
+                SPDLOG_TRACE("{} ---(requires)---> {}", path.string(), doc.string());
                 compilation->addSyntaxTree((*result)->tree);
             } else {
                 SPDLOG_WARN("Required document {} present in CompilerManager, but could not retrieve from "
@@ -359,6 +360,7 @@ void CompilationManager::doAnalysis(
     }
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void CompilationManager::doLifting(
     const std::filesystem::path &path, std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
     SPDLOG_TRACE("Lifting language");
@@ -373,6 +375,7 @@ void CompilationManager::doLifting(
 void CompilationManager::issueDiagnostics(
     const std::filesystem::path &path, const LSPDiagnosticClient::Ptr &diagClient) {
     // we only do this if the text document is open, to avoid extraneous errors
+    auto lock = acquireReadLock();
     if (openFiles.contains(path)) {
         SPDLOG_DEBUG("Issue {} diagnostics to client for buffer {}", diagClient->getLspDiagnostics().size(),
             path.string());
@@ -441,7 +444,10 @@ void CompilationManager::performBulkCompilation() {
             continue;
         }
 
-        // TODO parse the AST; not super necessary atm but it'd probably help the indexer?
+        // we can parse the AST in future, but there isn't a real need to do so now
+        // auto buf = bufMap.at(doc);
+        // auto dummyEngine = DiagnosticEngine(*sourceMgr);
+        // auto ast = doAstParse(doc, buf, dummyEngine, (*entry)->tree);
 
         allPriorDocs.push_back(doc);
     }

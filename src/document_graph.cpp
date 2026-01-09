@@ -20,7 +20,7 @@
 using namespace slingshot;
 
 void DocumentGraph::insertDocument(const std::filesystem::path &path) {
-    SPDLOG_DEBUG("Insert document {} into graph", path.string());
+    SPDLOG_TRACE("Insert document vertex {} into graph", path.string());
     vertices[path] = graph.add_vertex(path);
 }
 
@@ -33,38 +33,20 @@ void DocumentGraph::linkDocuments(
 
 std::optional<std::vector<std::filesystem::path>> DocumentGraph::topologicalSort() {
     std::optional<std::vector<graaf::vertex_id_t>> sorted = graaf::algorithm::dfs_topological_sort(graph);
-    if (!sorted.has_value() || sorted == std::nullopt) {
+    if (!hasValue(sorted)) {
         SPDLOG_ERROR("Failed to perform topological sort of document graph; this graph has cycles!");
         SPDLOG_ERROR("This probably means your project is malformed and has dependency cycles.");
         return std::nullopt;
     }
 
     std::vector<std::filesystem::path> out;
+    out.reserve(sorted->size());
     for (const auto &vert : *sorted) {
         auto value = graph.get_vertex(vert);
         out.push_back(value);
     }
 
     return out;
-}
-
-bool DocumentGraph::hasIndexed(const std::filesystem::path &path) {
-    // FIXME sloowwww; O(|E|)
-    for (const auto &relationship : graph.get_edges()) {
-        const auto &[edge, symbol] = relationship;
-        const auto &[left, right] = edge;
-
-        const auto leftValue = graph.get_vertex(left);
-        const auto rightValue = graph.get_vertex(right);
-        if (leftValue == path || rightValue == path) {
-            // we say this document has been indexed if there is *at least one* edge that has it on the LHS or
-            // RHS
-            return true;
-        }
-    }
-
-    // otherwise, really no edges at all? not indexed!
-    return false;
 }
 
 void DocumentGraph::registerProvidedSymbol(const std::filesystem::path &path, const std::string &symbol) {

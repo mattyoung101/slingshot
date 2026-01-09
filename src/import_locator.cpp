@@ -5,18 +5,15 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/import_locator.hpp"
-#include "slingshot/slingshot.hpp"
 #include <filesystem>
 #include <lsp/types.h>
 #include <memory>
-#include <optional>
 #include <slang/ast/Compilation.h>
 #include <slang/syntax/AllSyntax.h>
 #include <slang/syntax/SyntaxTree.h>
 #include <slang/syntax/SyntaxVisitor.h>
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
-#include <string>
 #include <vector>
 
 using namespace slingshot;

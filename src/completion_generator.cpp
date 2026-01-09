@@ -148,3 +148,30 @@ std::vector<lsp::CompletionItem> CompletionGenerator::generateVariableSameModule
     }
     return out;
 }
+
+std::vector<lsp::CompletionItem> CompletionGenerator::generateVariableSameModuleFilter(
+    const std::optional<std::string> &activeModule, const lang::Document &doc,
+    const lang::PortDirection &filter) {
+    std::vector<lsp::CompletionItem> out;
+    if (activeModule != std::nullopt) {
+        auto module = doc.getModuleByName(*activeModule);
+        if (module != std::nullopt) {
+            for (const auto &port : module->ports) {
+                // perform filtering
+                if (port.direction != filter) {
+                    continue;
+                }
+                out.push_back(lsp::CompletionItem {
+                    .label = port.name,
+                    .kind = lsp::CompletionItemKind::Field,
+                });
+            }
+        }
+
+        // no need to filter local variables
+        for (const auto &var : module->variables) {
+            out.push_back(lsp::CompletionItem { .label = var, .kind = lsp::CompletionItemKind::Variable });
+        }
+    }
+    return out;
+}

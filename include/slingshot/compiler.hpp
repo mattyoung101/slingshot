@@ -8,7 +8,6 @@
 #include <atomic>
 #include <slang/ast/Compilation.h>
 #include <slang/syntax/SyntaxTree.h>
-#include <thread>
 #define BS_THREAD_POOL_NATIVE_EXTENSIONS
 #include "BS_thread_pool.hpp"
 #include "ankerl/unordered_dense.h"
@@ -55,6 +54,11 @@ private:
     std::vector<lsp::Diagnostic> lspDiags;
     std::shared_ptr<SourceManager> sourceMgr;
     std::filesystem::path targetPath;
+};
+
+class DummyDiagnosticClient : public DiagnosticClient {
+public:
+    void report(const ReportedDiagnostic &diagnostic) override { };
 };
 
 class CompilationManager {
@@ -108,6 +112,7 @@ private:
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
     /// mapping of a document to all the documents it requires to build the AST
     ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::filesystem::path>> requiredDocuments;
+    ankerl::unordered_dense::map<std::filesystem::path, SourceBuffer> bufMap;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
     std::shared_mutex lock;
     std::atomic_int indexingJobsInProgress;

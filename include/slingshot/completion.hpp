@@ -1,6 +1,6 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025 M. L. Young.
+// Copyright (c) 2025-2026 M. L. Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -126,10 +126,16 @@ public:
 
     static std::vector<lsp::CompletionItem> generateSystemTasks();
 
+    /// Generates the "input"/"output" keywords
     static std::vector<lsp::CompletionItem> generateInputOutput();
 
     static std::vector<lsp::CompletionItem> generateVariableSameModule(
         const std::optional<std::string> &activeModule, const lang::Document &doc);
+
+    /// Same as generateVariableSameModule, but also includes a filter on the port type if known
+    static std::vector<lsp::CompletionItem> generateVariableSameModuleFilter(
+        const std::optional<std::string> &activeModule, const lang::Document &doc,
+        const lang::PortDirection &filter);
 };
 
 } // namespace slingshot
