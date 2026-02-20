@@ -18,3 +18,6 @@ build_debug: cmake_debug
 build_all:
     cd build; ninja
     cd build_debug; ninja
+
+clang-tidy:
+    run-clang-tidy -p build -config-file .clang-tidy -source-filter /home/matt/workspace/slingshot/src/ -use-color

@@ -26,3 +26,8 @@ Checks: >
   -misc-include-cleaner,
   -misc-no-recursion,
   -llvm-prefer-static-over-anonymous-namespace,
+  -readability-convert-member-functions-to-static,
+  -misc-const-correctness
+
+# FIXME:
+# - we should bring back misc-const-correctness once we have time to fix it, for now it's noise

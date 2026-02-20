@@ -113,10 +113,12 @@ function(add_slingshot_target TARGET)
     install(TARGETS ${TARGET})
 endfunction()
 
+
 # Adds a Slingshot test
 function(add_slingshot_test TARGET SOURCE)
     message(STATUS "Add test: ${TARGET} Source file: ${SOURCE}")
 
+    # TODO compile a generic test library that includes all of this
     add_executable(${TARGET}
         src/handlers.cpp
         src/indexing.cpp

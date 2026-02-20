@@ -15,6 +15,7 @@
 #include <lsp/messages.h>
 #include <lsp/types.h>
 #include <lsp/uri.h>
+#include <optional>
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/syntax/AllSyntax.h>
@@ -166,6 +167,12 @@ std::vector<lsp::CompletionItem> CompletionManager::getCompletions(
     // visit the syntax tree, based on cursor position
     auto cursor = toSlangLocation(pos, path, g_compilerManager.getSourceManager());
     SPDLOG_DEBUG("Completion cursor pos: {}", toString(cursor, g_compilerManager.getSourceManager()));
+
+    if (indexEntry->doc == std::nullopt) {
+        // document not available
+        return {};
+    }
+
     CompletionSyntaxVisitor visitor(cursor, *indexEntry->doc);
     visitor.visit(tree->root());
 
