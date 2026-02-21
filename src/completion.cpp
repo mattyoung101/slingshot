@@ -148,6 +148,14 @@ void CompletionSyntaxVisitor::handle(const ModuleDeclarationSyntax &syntax) {
     visitDefault(syntax);
 }
 
+void CompletionSyntaxVisitor::handle(const ConditionalPredicateSyntax &syntax) {
+    SPDLOG_TRACE("Visit conditional predicate syntax");
+
+    BEGIN({
+        RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+    })
+}
+
 constexpr bool recListContains(
     const std::vector<lsp::CompletionItem> &recs, const lsp::CompletionItem &target) {
     auto targetKind = target.kind.value_or(lsp::CompletionItemKind::Unit).value();

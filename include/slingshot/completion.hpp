@@ -85,6 +85,8 @@ public:
 
     void handle(const DataDeclarationSyntax &syntax);
 
+    void handle(const ConditionalPredicateSyntax &syntax);
+
     /// The recommended things to complete
     std::vector<lsp::CompletionItem> recommendations;
 
