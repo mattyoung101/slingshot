@@ -332,7 +332,8 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::file
         lock.unlock();
         for (const auto &doc : docs) {
             auto result = g_indexManager.retrieve(doc);
-            // we need an index lock before we can read, see: https://github.com/mlyoung101/slingshot/issues/72#issuecomment-3858321765
+            // we need an index lock before we can read, see:
+            // https://github.com/mlyoung101/slingshot/issues/72#issuecomment-3858321765
             auto lock = g_indexManager.acquireLock();
             if (result.has_value() && result != std::nullopt && (*result)->tree != nullptr) {
                 SPDLOG_TRACE("{} ---(requires)---> {}", path.string(), doc.string());
@@ -416,23 +417,25 @@ void CompilationManager::maybeFinaliseIndexingProgress() {
         SPDLOG_INFO("Indexing believed to be done!");
 
         // since we've just finished, submit a bulk compilation job
-        pool.detach_task([this] { performBulkCompilation(); });
+        pool.detach_task([this] { performBulkCompilation(true); });
     }
 }
 
-void CompilationManager::performBulkCompilation() {
+void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) {
     SPDLOG_INFO("Performing bulk compilation");
 
     auto indexLock = g_indexManager.acquireLock();
     auto compilerLock = acquireLock();
 
     // send progress notification
-    lsp::WorkDoneProgressReport report;
-    report.message = "Updating document graph";
-    lsp::notifications::Progress::Params progress;
-    progress.token = "SlingshotIndexProgress";
-    progress.value = lsp::toJson(std::move(report));
-    g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
+    if (shouldSendLspNotification) {
+        lsp::WorkDoneProgressReport report;
+        report.message = "Updating document graph";
+        lsp::notifications::Progress::Params progress;
+        progress.token = "SlingshotIndexProgress";
+        progress.value = lsp::toJson(std::move(report));
+        g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
+    }
 
     g_indexManager.documentGraph->finaliseOutstandingSymbols();
 
@@ -476,11 +479,13 @@ void CompilationManager::performBulkCompilation() {
     }
 
 done:
-    lsp::notifications::Progress::Params endMsg;
-    endMsg.token = "SlingshotIndexProgress";
-    endMsg.value = lsp::toJson(lsp::WorkDoneProgressEnd());
-    g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(endMsg));
-    g_indexManager.isInitialIndexInProgress = false;
+    if (shouldSendLspNotification) {
+        lsp::notifications::Progress::Params endMsg;
+        endMsg.token = "SlingshotIndexProgress";
+        endMsg.value = lsp::toJson(lsp::WorkDoneProgressEnd());
+        g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(endMsg));
+        g_indexManager.isInitialIndexInProgress = false;
+    }
 }
 
 void CompilationManager::reIndexDocument(
@@ -501,7 +506,5 @@ void CompilationManager::reIndexDocument(
         importHashes[path] = imports.hash();
     }
 
-    // TODO start a work in progress?
-
-    performBulkCompilation();
+    performBulkCompilation(false);
 }

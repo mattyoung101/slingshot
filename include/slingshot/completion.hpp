@@ -87,6 +87,8 @@ public:
 
     void handle(const ConditionalPredicateSyntax &syntax);
 
+    void handle(const HierarchyInstantiationSyntax &syntax);
+
     /// The recommended things to complete
     std::vector<lsp::CompletionItem> recommendations;
 

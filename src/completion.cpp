@@ -74,9 +74,6 @@ void CompletionSyntaxVisitor::recommend(
 }
 
 void CompletionSyntaxVisitor::handle(const EventControlWithExpressionSyntax &syntax) {
-    SPDLOG_DEBUG("Visit event control expr '{}' range: {}", syntax.toString(),
-        toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
-
     BEGIN({
         // HACK we should make an AST walker for this, toString() is probably very slow
         auto parentText = syntax.parent->toString();
@@ -90,13 +87,13 @@ void CompletionSyntaxVisitor::handle(const EventControlWithExpressionSyntax &syn
             RECOMMEND(CompletionGenerator::generateVariableSameModuleFilter(
                 activeModule, doc, lang::PortDirection::InOut));
         }
+
+    SPDLOG_DEBUG("Complete event control expr '{}' range: {}", syntax.toString(),
+        toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
     })
 }
 
 void CompletionSyntaxVisitor::handle(const ExpressionStatementSyntax &syntax) {
-    SPDLOG_TRACE("Visit expression {}", syntax.toString(),
-        toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
-    SPDLOG_TRACE("Type of the expression parent is: {}", toString(syntax.parent->kind));
     BEGIN({
         // TODO determine if we are on LHS or RHS and change what we recommend
 
@@ -108,23 +105,24 @@ void CompletionSyntaxVisitor::handle(const ExpressionStatementSyntax &syntax) {
         if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
             RECOMMEND(CompletionGenerator::generateAlways());
         }
+
+    SPDLOG_TRACE("Complete expression statement: {}", syntax.toString(),
+        toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
+    // SPDLOG_TRACE("Type of the expression parent is: {}", toString(syntax.parent->kind));
     });
 }
 
 void CompletionSyntaxVisitor::handle(const AnsiPortListSyntax &syntax) {
-    SPDLOG_TRACE("Visit ANSI port syntax {}", syntax.toString());
-
     BEGIN({
         RECOMMEND(CompletionGenerator::generateLogic());
         RECOMMEND(CompletionGenerator::generateInputOutput());
         RECOMMEND(CompletionGenerator::generateSystemTasks());
+    SPDLOG_TRACE("Complete ANSI port syntax {}", syntax.toString());
     })
 }
 
 // NOTE: the parser detects typing in a module as a DataDeclaration a lot of the time
 void CompletionSyntaxVisitor::handle(const DataDeclarationSyntax &syntax) {
-    SPDLOG_TRACE("Visit data declaration syntax: {}", syntax.toString());
-
     BEGIN({
         RECOMMEND(CompletionGenerator::generateLogic());
         RECOMMEND(CompletionGenerator::generateIf());
@@ -132,27 +130,39 @@ void CompletionSyntaxVisitor::handle(const DataDeclarationSyntax &syntax) {
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
         RECOMMEND(CompletionGenerator::generateModuleInstantiations());
         // don't recommend system tasks because we're more or less on the LHS of something
+        SPDLOG_TRACE("Complete data declaration syntax: {}", syntax.toString());
     })
 }
 
 // TODO continuous assign
 
 void CompletionSyntaxVisitor::handle(const ModuleDeclarationSyntax &syntax) {
-    SPDLOG_TRACE("Visit module decalaration");
 
     if (containsRelaxed(cursor, syntax.sourceRange())) {
         auto name = syntax.header->name.valueText();
         SPDLOG_DEBUG("Active module: {}", name);
         activeModule = name;
+        SPDLOG_TRACE("Complete module decalaration: {}", syntax.toString());
     }
     visitDefault(syntax);
 }
 
 void CompletionSyntaxVisitor::handle(const ConditionalPredicateSyntax &syntax) {
-    SPDLOG_TRACE("Visit conditional predicate syntax");
-
     BEGIN({
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+    SPDLOG_TRACE("Complete conditional predicate syntax: {}", syntax.toString());
+    })
+}
+
+void CompletionSyntaxVisitor::handle(const HierarchyInstantiationSyntax &syntax) {
+
+    BEGIN({
+        RECOMMEND(CompletionGenerator::generateLogic());
+        RECOMMEND(CompletionGenerator::generateIf());
+        RECOMMEND(CompletionGenerator::generateAlways());
+        RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+        RECOMMEND(CompletionGenerator::generateModuleInstantiations());
+    SPDLOG_TRACE("Complete hierarchy instantiation syntax syntax: {}", syntax.toString());
     })
 }
 

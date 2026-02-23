@@ -20,6 +20,7 @@
 #include <exception>
 #include <filesystem>
 #include <memory>
+#include <spdlog/common.h>
 #include <spdlog/sinks/ansicolor_sink.h>
 #include <unistd.h>
 
@@ -51,7 +52,7 @@ int main() {
     using namespace slang;
     using namespace slingshot;
 
-    auto level = spdlog::level::debug;
+    auto level = spdlog::level::trace;
 
     spdlog::set_level(level);
     spdlog::flush_on(level);
