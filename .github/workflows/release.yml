@@ -2,10 +2,6 @@ name: "Release"
 
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Specify tag to create"
-        required: true
 
 jobs:
   build:
@@ -58,12 +54,18 @@ jobs:
       - name: Package
         run: cd build; cpack -G DEB; cpack -G RPM; cpack -G TXZ; cpack -G ZIP;
 
+      - name: Determine current tag
+        uses: mathiasvr/command-output@v1
+        id: tag
+        with:
+          run: awk -F= '/^CMAKE_PROJECT_VERSION:STATIC=/{print $2}' build/CMakeCache.txt
+
       - name: Create Release
         id: create-release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.tag }}
-          name: ${{ github.event.inputs.tag }}
+          tag_name: v${{ steps.tag.outputs.stdout }}
+          name: v${{ steps.tag.outputs.stdout }}
           draft: true
           prerelease: false
           body: >
