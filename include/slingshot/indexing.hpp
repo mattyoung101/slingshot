@@ -35,6 +35,9 @@ public:
     std::string path {};
     uint64_t hash {};
 
+    /// Time in nanoseconds from std::chrono::steady_clock this index entry was last updated successfully
+    uint64_t lastUpdated {};
+
     /// Parse tree
     /// WARNING May be nullptr if not yet parsed
     std::shared_ptr<slang::syntax::SyntaxTree> tree {};

@@ -6,6 +6,7 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/handlers.hpp"
 #include "slingshot/slingshot.hpp"
+#include <chrono>
 #include <exception>
 #include <filesystem>
 #include <lsp/messages.h>
@@ -139,8 +140,6 @@ void textDocumentClose(const lsp::notifications::TextDocument_DidClose::Params &
 }
 
 void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params &&params) {
-    SPDLOG_TRACE("Change document: {}", params.textDocument.uri.path());
-
     for (const lsp::TextDocumentContentChangeEvent &change : params.contentChanges) {
         std::visit(
             [&](auto &&arg) {
@@ -152,6 +151,7 @@ void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params
                 }
                 if constexpr (std::is_same_v<T, lsp::TextDocumentContentChangeEvent_Text>) {
                     const lsp::TextDocumentContentChangeEvent_Text &event = arg;
+                    SPDLOG_TRACE("===== UPDATE {} =====\n{}\n", params.textDocument.uri.path(), event.text);
                     g_indexManager.insert(
                         std::filesystem::absolute(params.textDocument.uri.path()), event.text, false);
                 }

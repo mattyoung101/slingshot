@@ -72,6 +72,8 @@ void IndexManager::associateParse(
 
     if (result.has_value()) {
         (*result)->tree = tree;
+        // we'll also update the last updated time, since this is valid
+        (*result)->lastUpdated = timeNowNs();
         SPDLOG_TRACE("Result has value, attempting to mark as valid");
         (*result)->makeValid();
     } else {

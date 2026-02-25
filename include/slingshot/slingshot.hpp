@@ -9,6 +9,7 @@
 #include "slingshot/completion.hpp"
 #include "slingshot/indexing.hpp"
 #include "slingshot/remote_debug.hpp"
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <lsp/messagehandler.h>
@@ -77,6 +78,12 @@ constexpr std::string readFile(const std::filesystem::path &path) {
     std::stringstream buffer;
     buffer << t.rdbuf();
     return buffer.str();
+}
+
+constexpr size_t timeNowNs() {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch())
+        .count();
 }
 
 } // namespace slingshot

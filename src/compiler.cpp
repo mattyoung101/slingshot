@@ -5,6 +5,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/import_locator.hpp"
+#include <chrono>
 #include <exception>
 #include <filesystem>
 #include <iterator>
@@ -153,11 +154,29 @@ void CompilationManager::submitCompilationJob(
         bufMap[path] = buf;
     }
 
-    pool.detach_task([buf, path, this, document] {
+    auto now = timeNowNs();
+
+    pool.detach_task([buf, path, this, document, now] {
         try {
             SPDLOG_DEBUG("Submitting document {} for compilation", path.string());
 
             BS::this_thread::set_os_thread_name("Compiler");
+
+            {
+                // is the data out of date?
+                auto entry = g_indexManager.retrieve(path);
+                // if the last updated time is AFTER our compilation job was submitted, we know our data is
+                // old
+                if (entry.has_value()) {
+                    auto entryTime = (*entry)->lastUpdated;
+                    if (entryTime > now) {
+                        SPDLOG_WARN(
+                            "Dropping old compilation job! Our time: {}, entry time: {}", now, entryTime);
+                        return;
+                    }
+                    SPDLOG_TRACE("Compilation job is valid, we can proceed");
+                }
+            }
 
             // setup the diagnostics engine
             DiagnosticEngine diagEngine { *sourceMgr };
@@ -218,11 +237,29 @@ void CompilationManager::indexDocument(const std::string &document, const std::f
         bufMap[path] = buf;
     }
 
-    pool.detach_task([buf, path, this, document] {
+    auto now = timeNowNs();
+
+    pool.detach_task([buf, path, this, document, now] {
         try {
             SPDLOG_DEBUG("Submitting document {} for indexing", path.string());
 
             BS::this_thread::set_os_thread_name("Compiler");
+
+            {
+                // is the data out of date?
+                auto entry = g_indexManager.retrieve(path);
+                // if the last updated time is AFTER our compilation job was submitted, we know our data is
+                // old
+                if (entry.has_value()) {
+                    auto entryTime = (*entry)->lastUpdated;
+                    if (entryTime > now) {
+                        SPDLOG_WARN(
+                            "Dropping old compilation job! Our time: {}, entry time: {}", now, entryTime);
+                        return;
+                    }
+                    SPDLOG_TRACE("Compilation job is valid, we can proceed");
+                }
+            }
 
             // indexing is conceptually very similar to compilation, but we don't collect diagnostics, don't
             // do analysis, and spend most of our effort building the document graph
