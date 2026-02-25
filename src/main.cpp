@@ -52,7 +52,7 @@ int main() {
     using namespace slang;
     using namespace slingshot;
 
-    auto level = spdlog::level::trace;
+    auto level = spdlog::level::debug;
 
     spdlog::set_level(level);
     spdlog::flush_on(level);
