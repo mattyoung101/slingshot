@@ -55,10 +55,8 @@ jobs:
         run: cd build; cpack -G DEB; cpack -G RPM; cpack -G TXZ; cpack -G ZIP;
 
       - name: Determine current tag
-        uses: mathiasvr/command-output@v1
         id: tag
-        with:
-          run: awk -F= '/^CMAKE_PROJECT_VERSION:STATIC=/{print $2}' build/CMakeCache.txt
+        run: awk -F= '/^CMAKE_PROJECT_VERSION:STATIC=/{print $2}' build/CMakeCache.txt | xargs >> "$GITHUB_OUTPUT"
 
       - name: Create Release
         id: create-release
@@ -82,6 +80,7 @@ jobs:
       - name: Upload assets
         run: |
           cd build;
+          echo "Tag: v${{steps.tag.outputs.stdout}}";
           for artefact in slingshot-*; do
-            gh release upload "v${{ steps.tag.outputs.stdout }}" $artefact;
+            gh release upload "v${{steps.tag.outputs.stdout}}" $artefact;
           done;
