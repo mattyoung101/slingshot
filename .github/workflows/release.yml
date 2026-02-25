@@ -83,5 +83,5 @@ jobs:
         run: |
           cd build;
           for artefact in slingshot-*; do
-            gh release upload ${{ github.event.inputs.tag }} $artefact;
+            gh release upload v${{ steps.tag.outputs.stdout }} $artefact;
           done;
