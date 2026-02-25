@@ -66,6 +66,16 @@ jobs:
           name: ${{ github.event.inputs.tag }}
           draft: true
           prerelease: false
+          body: >
+              # New features
+              \- foo
+
+              **Minor changes**
+              \- foo
+
+              # Fixes
+              \- foo
+          generate_release_notes: true
 
       - name: Upload assets
         run: |
