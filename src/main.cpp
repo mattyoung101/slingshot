@@ -90,7 +90,7 @@ int main() {
     }
 
     SPDLOG_INFO(
-        "Slingshot LSP v{} - (c) 2023-2025 M. L. Young. Licenced under the MPL 2.0.", SLINGSHOT_VERSION);
+        "Slingshot LSP v{} - (c) 2023-2026 M. L. Young. Licenced under the MPL 2.0.", SLINGSHOT_VERSION);
     SPDLOG_INFO("Slang version: {}.{}", VersionInfo::getMajor(), VersionInfo::getMinor());
 
     g_debugger.boot(REMOTE_DEBUGGER_PORT);
