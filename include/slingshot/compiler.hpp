@@ -70,10 +70,7 @@ public:
     // its own thread
 
     /// Submits a compilation job asynchronously
-    void submitCompilationJob(const std::string &document, const std::filesystem::path &path);
-
-    /// Submits an indexing job asynchronously; which is slightly different from a compilation job
-    void indexDocument(const std::string &document, const std::filesystem::path &path);
+    void submitCompilationJob(const std::string &document, const std::filesystem::path &path, bool isIndex);
 
     std::optional<Diagnostics> getDiagnostics(const std::filesystem::path &path);
 
@@ -138,6 +135,9 @@ private:
 
     void reIndexDocument(
         const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree);
+
+    /// Recompiles a document that's already in the index, used by reIndexDocument
+    void reCompileDocument(const std::filesystem::path &path);
 };
 
 } // namespace slingshot

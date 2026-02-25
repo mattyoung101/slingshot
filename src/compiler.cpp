@@ -5,6 +5,7 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/import_locator.hpp"
+#include <atomic>
 #include <chrono>
 #include <exception>
 #include <filesystem>
@@ -139,7 +140,7 @@ void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
 }
 
 void CompilationManager::submitCompilationJob(
-    const std::string &document, const std::filesystem::path &path) {
+    const std::string &document, const std::filesystem::path &path, bool isIndex) {
 
     SourceBuffer buf;
 
@@ -156,7 +157,7 @@ void CompilationManager::submitCompilationJob(
 
     auto now = timeNowNs();
 
-    pool.detach_task([buf, path, this, document, now] {
+    pool.detach_task([buf, path, this, document, now, isIndex] {
         try {
             SPDLOG_DEBUG("Submitting document {} for compilation", path.string());
 
@@ -176,6 +177,12 @@ void CompilationManager::submitCompilationJob(
                     }
                     SPDLOG_TRACE("Compilation job is valid, we can proceed");
                 }
+            }
+
+            SPDLOG_TRACE("==== COMPILING {} contents: =====\n{}", path.string(), document);
+
+            if (isIndex) {
+                maybeUpdateIndexingProgress(path);
             }
 
             // setup the diagnostics engine
@@ -201,7 +208,7 @@ void CompilationManager::submitCompilationJob(
                 // let's wait for a second to ensure that work gets done, then re-submit and try again.
                 SPDLOG_WARN("Failed to compile document: {}. Resubmitting job in 1s.", path.string());
                 std::this_thread::sleep_for(1s);
-                submitCompilationJob(document, path);
+                submitCompilationJob(document, path, isIndex);
                 return;
             }
 
@@ -214,91 +221,14 @@ void CompilationManager::submitCompilationJob(
             // publish diagnostics to the client
             issueDiagnostics(path, diagClient);
 
+            if (isIndex) {
+                indexingJobsInProgress--;
+            }
+
             // also check here if the indexing is done, in case it failed earlier
             maybeFinaliseIndexingProgress();
         } catch (const std::exception &e) {
             SPDLOG_ERROR("Caught exception in compilation job: {}", e.what());
-        }
-    });
-}
-
-void CompilationManager::indexDocument(const std::string &document, const std::filesystem::path &path) {
-    SourceBuffer buf;
-    indexingJobsInProgress++;
-
-    {
-        auto lock = acquireLock();
-
-        // FIXME this may leak memory
-        buf = sourceMgr->assignText(document);
-
-        bufferIds[path] = buf.id;
-        bufferIdsInverse[buf.id] = path;
-        bufMap[path] = buf;
-    }
-
-    auto now = timeNowNs();
-
-    pool.detach_task([buf, path, this, document, now] {
-        try {
-            SPDLOG_DEBUG("Submitting document {} for indexing", path.string());
-
-            BS::this_thread::set_os_thread_name("Compiler");
-
-            {
-                // is the data out of date?
-                auto entry = g_indexManager.retrieve(path);
-                // if the last updated time is AFTER our compilation job was submitted, we know our data is
-                // old
-                if (entry.has_value()) {
-                    auto entryTime = (*entry)->lastUpdated;
-                    if (entryTime > now) {
-                        SPDLOG_WARN(
-                            "Dropping old compilation job! Our time: {}, entry time: {}", now, entryTime);
-                        return;
-                    }
-                    SPDLOG_TRACE("Compilation job is valid, we can proceed");
-                }
-            }
-
-            // indexing is conceptually very similar to compilation, but we don't collect diagnostics, don't
-            // do analysis, and spend most of our effort building the document graph
-
-            // is the initial index in progress?
-            maybeUpdateIndexingProgress(path);
-
-            // do initial CST parse
-            auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr);
-            SPDLOG_TRACE(
-                "Parsed document {}, got {} initial diagnostics", path.string(), tree->diagnostics().size());
-            // this is essential so that later, we will have the parse tree associated with this current
-            // document
-            g_indexManager.associateParse(path, tree);
-
-            // figure out what symbols this document provides and requires
-            auto imports = ImportLocator::locateRequiredProvidedImports(tree, path);
-            {
-                auto indexLock = g_indexManager.acquireLock();
-                auto compilerLock = acquireLock();
-                for (const auto &provided : imports.providedSymbols) {
-                    g_indexManager.documentGraph->registerProvidedSymbol(path, provided);
-                }
-                for (const auto &required : imports.requiredSymbols) {
-                    g_indexManager.documentGraph->registerRequiredSymbol(path, required);
-                }
-                importHashes[path] = imports.hash();
-            }
-
-            // lift to our own internal higher level representation for completion
-            doLifting(path, tree);
-
-            indexingJobsInProgress--;
-
-            // finalise the indexing progress, if it's active
-            maybeFinaliseIndexingProgress();
-
-        } catch (const std::exception &e) {
-            SPDLOG_ERROR("Caught exception in thread pool: {}", e.what());
         }
     });
 }
@@ -319,7 +249,7 @@ void CompilationManager::maybeUpdateIndexingProgress(const std::filesystem::path
 std::shared_ptr<slang::syntax::SyntaxTree> CompilationManager::doCstParse(
     const std::filesystem::path &path, const SourceBuffer &buf, DiagnosticEngine &diagEngine) {
     auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr);
-    SPDLOG_TRACE("Parsed document {}, got {} initial diagnostics", path.string(), tree->diagnostics().size());
+    SPDLOG_TRACE("Parsed document {}, got {} CST diagnostics", path.string(), tree->diagnostics().size());
     // this is essential so that later, we will have the parse tree associated with this current
     // document
     g_indexManager.associateParse(path, tree);
@@ -509,10 +439,12 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
         allPriorDocs.push_back(doc);
     }
 
-    // we also need to recompile all the open files now
+    // we also need to recompile all the open files now, to clear out all the warnings
     SPDLOG_DEBUG("Recompiling documents now that indexing is done");
     for (const auto &doc : openFiles) {
-        submitCompilationJob(readFile(doc), doc);
+        // do NOT pull from disk, pull from the index!
+        // see: https://github.com/mlyoung101/slingshot/issues/76
+        reCompileDocument(doc);
     }
 
 done:
@@ -527,7 +459,7 @@ done:
 
 void CompilationManager::reIndexDocument(
     const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
-    SPDLOG_DEBUG("Reindexing document: {}", path.string());
+    SPDLOG_DEBUG("Reindexing document: {}, contents:\n", path.string(), tree->root().toString());
 
     // figure out what symbols this document provides and requires
     auto imports = ImportLocator::locateRequiredProvidedImports(tree, path);
@@ -544,4 +476,76 @@ void CompilationManager::reIndexDocument(
     }
 
     performBulkCompilation(false);
+}
+
+void CompilationManager::reCompileDocument(const std::filesystem::path &path) {
+    auto now = timeNowNs();
+
+    pool.detach_task([path, this, now] {
+        try {
+            SPDLOG_DEBUG("Recompiling document after re-index: {}", path.string());
+
+            BS::this_thread::set_os_thread_name("Compiler");
+
+            {
+                // is the data out of date?
+                auto entry = g_indexManager.retrieve(path);
+                // if the last updated time is AFTER our compilation job was submitted, we know our data is
+                // old
+                if (entry.has_value()) {
+                    auto entryTime = (*entry)->lastUpdated;
+                    if (entryTime > now) {
+                        SPDLOG_WARN(
+                            "Dropping old compilation job! Our time: {}, entry time: {}", now, entryTime);
+                        return;
+                    }
+                    SPDLOG_TRACE("Compilation job is valid, we can proceed");
+                }
+            }
+
+            SourceBuffer buf;
+            {
+                auto lock = acquireLock();
+                if (!bufMap.contains(path)) {
+                    SPDLOG_ERROR("bufMap does not contain path {}, cannot reindex!", path.string());
+                    return;
+                }
+                buf = bufMap.at(path);
+            }
+
+            SPDLOG_TRACE("==== RE-COMPILING {}", path.string());
+
+            // setup the diagnostics engine
+            DiagnosticEngine diagEngine { *sourceMgr };
+            // get more diagnostics
+            diagEngine.setIgnoreAllNotes(false);
+            diagEngine.setIgnoreAllWarnings(false);
+
+            // this is our custom listener for diagnostics that we'll filter and report to the LSP
+            LSPDiagnosticClient::Ptr diagClient = std::make_shared<LSPDiagnosticClient>(path);
+            diagClient->setSourceManager(sourceMgr);
+            diagEngine.addClient(diagClient);
+
+            // do initial CST parse
+            auto tree = doCstParse(path, buf, diagEngine);
+
+            // do AST parse
+            auto compilation = doAstParse(path, buf, diagEngine, tree);
+            if (compilation == nullptr) {
+                SPDLOG_WARN("Failed to re-compile document: {}!", path.string());
+                return;
+            }
+
+            // also perform analysis
+            doAnalysis(buf, diagEngine, compilation);
+
+            // lift to our own internal higher level representation for completion
+            doLifting(path, tree);
+
+            // publish diagnostics to the client
+            issueDiagnostics(path, diagClient);
+        } catch (const std::exception &e) {
+            SPDLOG_ERROR("Caught exception in re-compilation job: {}", e.what());
+        }
+    });
 }

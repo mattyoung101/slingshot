@@ -46,11 +46,7 @@ void IndexManager::insert(const std::filesystem::path &path, const std::string &
 
     // regardless, schedule a compilation job for this
     lock.unlock();
-    if (isIndex) {
-        g_compilerManager.indexDocument(document, realPath);
-    } else {
-        g_compilerManager.submitCompilationJob(document, realPath);
-    }
+    g_compilerManager.submitCompilationJob(document, realPath, isIndex);
 }
 
 void IndexManager::insert(const std::filesystem::path &path, bool isIndex) {

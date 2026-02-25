@@ -13,14 +13,14 @@
 using namespace slingshot;
 
 void LangLifterVisitor::handle(const ModuleHeaderSyntax &syntax) {
-    SPDLOG_TRACE("Visit module header");
+    // SPDLOG_TRACE("Visit module header");
     doc.maybeFlushModule();
     doc.startModule(std::string(syntax.name.valueText()));
     visitDefault(syntax);
 }
 
 void LangLifterVisitor::handle(const NetPortHeaderSyntax &syntax) {
-    SPDLOG_TRACE("Visit net port header: {}", syntax.toString());
+    // SPDLOG_TRACE("Visit net port header: {}", syntax.toString());
     doc.doIfModuleIsActive([&syntax](lang::Module &module) {
         // first, find the port direction
         lang::PortDirection direction = lang::PortDirection::Unknown;
@@ -48,7 +48,7 @@ void LangLifterVisitor::handle(const NetPortHeaderSyntax &syntax) {
 }
 
 void LangLifterVisitor::handle(const ImplicitAnsiPortSyntax &syntax) {
-    SPDLOG_TRACE("Visit implicit ANSI port: {}", syntax.toString());
+    // SPDLOG_TRACE("Visit implicit ANSI port: {}", syntax.toString());
     doc.doIfModuleIsActive([&syntax](lang::Module &module) {
         // first, find the port direction
         lang::PortDirection direction = lang::PortDirection::Unknown;
@@ -77,7 +77,7 @@ void LangLifterVisitor::handle(const ImplicitAnsiPortSyntax &syntax) {
 }
 
 void LangLifterVisitor::handle(const DeclaratorSyntax &syntax) {
-    SPDLOG_TRACE("Visit declarator: {}", syntax.toString());
+    // SPDLOG_TRACE("Visit declarator: {}", syntax.toString());
     doc.doIfModuleIsActive([&syntax](lang::Module &module) {
         auto name = std::string(syntax.name.valueText());
 
@@ -93,7 +93,7 @@ void LangLifterVisitor::handle(const DeclaratorSyntax &syntax) {
 }
 
 void LangLifterVisitor::handle(const ParameterDeclarationSyntax &syntax) {
-    SPDLOG_TRACE("Handle param declaration: {}", syntax.toString());
+    // SPDLOG_TRACE("Handle param declaration: {}", syntax.toString());
     doc.doIfModuleIsActive([&syntax](lang::Module &module) {
         if (syntax.declarators.size() != 1) {
             SPDLOG_WARN("Parameter declarator {} does not contain exactly 1 declaration?!",

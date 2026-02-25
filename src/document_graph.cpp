@@ -138,7 +138,7 @@ void DocumentGraph::finaliseOutstandingSymbols() {
                 linkDocuments(*provider, *sym.rhs, sym.symbol);
                 it = unresolvedSymbols.erase(it);
             } else {
-                SPDLOG_WARN("Could NOT provide provider for unresolved symbol '{}' wanted by '{}'",
+                SPDLOG_DEBUG("Could NOT provide provider for unresolved symbol '{}' wanted by '{}'",
                     sym.symbol, sym.rhs->string());
                 it++;
             }
