@@ -55,15 +55,17 @@ jobs:
         run: cd build; cpack -G DEB; cpack -G RPM; cpack -G TXZ; cpack -G ZIP;
 
       - name: Determine current tag
-        id: tag
-        run: awk -F= '/^CMAKE_PROJECT_VERSION:STATIC=/{print $2}' build/CMakeCache.txt | xargs >> "$GITHUB_OUTPUT"
+        id: version
+        # https://stackoverflow.com/a/65616499
+        run: |
+          echo "TAG_NAME=v$(awk -F= '/^CMAKE_PROJECT_VERSION:STATIC=/{print $2}' build/CMakeCache.txt | xargs)" > $GITHUB_OUTPUT
 
       - name: Create Release
         id: create-release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.tag.outputs.stdout }}
-          name: v${{ steps.tag.outputs.stdout }}
+          tag_name: ${{ steps.version.outputs.TAG_NAME }}
+          name: ${{ steps.version.outputs.TAG_NAME }}
           draft: true
           prerelease: false
           body: >
@@ -80,7 +82,7 @@ jobs:
       - name: Upload assets
         run: |
           cd build;
-          echo "Tag: v${{steps.tag.outputs.stdout}}";
+          echo "Tag: ${{ steps.version.outputs.TAG_NAME }}";
           for artefact in slingshot-*; do
-            gh release upload "v${{steps.tag.outputs.stdout}}" $artefact;
+            gh release upload "${{ steps.version.outputs.TAG_NAME }}" $artefact;
           done;
