@@ -68,15 +68,17 @@ jobs:
           name: ${{ steps.version.outputs.TAG_NAME }}
           draft: true
           prerelease: false
-          body: >
+          body: |
               # New features
-              \- foo
+              - foo
 
               **Minor changes**
-              \- foo
+              - foo
 
               # Fixes
-              \- foo
+              - foo
+
+              ---
           generate_release_notes: true
 
       - name: Upload assets
