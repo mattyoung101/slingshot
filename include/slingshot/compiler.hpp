@@ -5,12 +5,14 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
+#include "moodycamel/concurrentqueue.h"
 #include "slingshot/import_locator.hpp"
 #include <atomic>
 #include <cstdint>
 #include <mutex>
 #include <slang/ast/Compilation.h>
 #include <slang/syntax/SyntaxTree.h>
+#include <slang/util/Util.h>
 #define BS_THREAD_POOL_NATIVE_EXTENSIONS
 #include "BS_thread_pool.hpp"
 #include "ankerl/unordered_dense.h"
@@ -64,10 +66,21 @@ public:
     void report(const ReportedDiagnostic &diagnostic) override { };
 };
 
+class TimestampedDiagnostics {
+public:
+    /// Time at which these diagnostics were generated
+    uint64_t timestamp;
+
+    std::filesystem::path path;
+
+    /// Diagnostics
+    LSPDiagnosticClient::Ptr lspDiags;
+};
+
 class CompilationManager {
 public:
-    // TODO update: the *indexing* should run in the thread pool, but the compilation job should just run on
-    // its own thread
+    /// Starts the outgoing diagnostics thread
+    void startOutgoingDiagnostics();
 
     /// Submits a compilation job asynchronously
     void submitCompilationJob(const std::string &document, const std::filesystem::path &path, bool isIndex);
@@ -113,6 +126,9 @@ private:
     std::recursive_mutex lock;
     std::atomic_int indexingJobsInProgress;
 
+    /// outgoing, timestamped diagnostics
+    moodycamel::BlockingConcurrentQueue<TimestampedDiagnostics> outgoingDiagnostics{};
+
     /// Performs a bulk compilation of all the documents in the index, once the document graph has been built
     void performBulkCompilation(bool shouldSendLspNotification);
 
@@ -138,6 +154,8 @@ private:
 
     /// Recompiles a document that's already in the index, used by reIndexDocument
     void reCompileDocument(const std::filesystem::path &path);
+
+    void outgoingDiagnosticsThread();
 };
 
 } // namespace slingshot

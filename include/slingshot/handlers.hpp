@@ -23,9 +23,6 @@ void textDocumentChange(const lsp::notifications::TextDocument_DidChange::Params
 
 void textDocumentSave(const lsp::notifications::TextDocument_DidSave::Params &&params);
 
-lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
-    const lsp::requests::TextDocument_Diagnostic::Params &&params);
-
 lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     const lsp::requests::TextDocument_Completion::Params &&params);
 

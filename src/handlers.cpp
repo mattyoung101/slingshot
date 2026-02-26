@@ -86,6 +86,8 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
         }
     }
 
+    g_compilerManager.startOutgoingDiagnostics();
+
     return lsp::requests::Initialize::Result{
 				.capabilities = {
 					.positionEncoding = lsp::PositionEncodingKind::UTF8,
@@ -99,11 +101,11 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
 					.completionProvider = lsp::CompletionOptions {
                         .triggerCharacters = std::vector<std::string>{".", "`", "[", "{"},
 					},
-					.diagnosticProvider = lsp::DiagnosticOptions {
-						.interFileDependencies = false, // TODO this should eventually be true
-						.workspaceDiagnostics = false,
-						.identifier = "Slingshot",
-					},
+					// .diagnosticProvider = lsp::DiagnosticOptions {
+					// 	.interFileDependencies = false, // TODO this should eventually be true
+					// 	.workspaceDiagnostics = false,
+					// 	.identifier = "Slingshot",
+					// },
 				},
 				.serverInfo = lsp::InitializeResultServerInfo{
 					.name    = "Slingshot",
@@ -167,12 +169,6 @@ void textDocumentSave(const lsp::notifications::TextDocument_DidSave::Params &&p
         // register in the document database
         g_indexManager.insert(std::filesystem::absolute(params.textDocument.uri.path()), *params.text, false);
     }
-}
-
-lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
-    const lsp::requests::TextDocument_Diagnostic::Params &&params) {
-    // we push diagnostics to the client when WE are ready, return nothing
-    return {};
 }
 
 lsp::requests::TextDocument_Completion::Result textDocumentCompletion(

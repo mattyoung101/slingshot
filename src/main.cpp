@@ -32,7 +32,6 @@ void addCallbacks(std::shared_ptr<lsp::MessageHandler> &msgHandler) {
     msgHandler->add<lsp::notifications::Exit>(slingshot::handlers::exit);
     msgHandler->add<lsp::notifications::TextDocument_DidOpen>(slingshot::handlers::textDocumentOpen);
     msgHandler->add<lsp::notifications::TextDocument_DidChange>(slingshot::handlers::textDocumentChange);
-    msgHandler->add<lsp::requests::TextDocument_Diagnostic>(slingshot::handlers::textDocumentDiagnostic);
     msgHandler->add<lsp::requests::TextDocument_Completion>(slingshot::handlers::textDocumentCompletion);
     msgHandler->add<lsp::notifications::TextDocument_DidClose>(slingshot::handlers::textDocumentClose);
 }
@@ -52,7 +51,7 @@ int main() {
     using namespace slang;
     using namespace slingshot;
 
-    auto level = spdlog::level::debug;
+    auto level = spdlog::level::trace;
 
     spdlog::set_level(level);
     spdlog::flush_on(level);

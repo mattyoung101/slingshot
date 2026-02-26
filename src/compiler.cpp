@@ -7,6 +7,7 @@
 #include "slingshot/import_locator.hpp"
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <exception>
 #include <filesystem>
 #include <iterator>
@@ -218,8 +219,8 @@ void CompilationManager::submitCompilationJob(
             // lift to our own internal higher level representation for completion
             doLifting(path, tree);
 
-            // publish diagnostics to the client
-            issueDiagnostics(path, diagClient);
+            // enqueue outgoing diagnostics
+            outgoingDiagnostics.enqueue({ .timestamp = timeNowNs(), .path = path, .lspDiags = diagClient });
 
             if (isIndex) {
                 indexingJobsInProgress--;
@@ -459,7 +460,7 @@ done:
 
 void CompilationManager::reIndexDocument(
     const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
-    SPDLOG_DEBUG("Reindexing document: {}, contents:\n", path.string(), tree->root().toString());
+    SPDLOG_DEBUG("Reindexing document: {}, contents:{}\n", path.string(), tree->root().toString());
 
     // figure out what symbols this document provides and requires
     auto imports = ImportLocator::locateRequiredProvidedImports(tree, path);
@@ -542,10 +543,41 @@ void CompilationManager::reCompileDocument(const std::filesystem::path &path) {
             // lift to our own internal higher level representation for completion
             doLifting(path, tree);
 
-            // publish diagnostics to the client
-            issueDiagnostics(path, diagClient);
+            // enqueue diagnostics
+            outgoingDiagnostics.enqueue({ .timestamp = timeNowNs(), .path = path, .lspDiags = diagClient });
         } catch (const std::exception &e) {
             SPDLOG_ERROR("Caught exception in re-compilation job: {}", e.what());
         }
     });
+}
+
+void CompilationManager::startOutgoingDiagnostics() {
+    SPDLOG_INFO("Booting outgoing diagnostics thread");
+
+    auto thread = std::thread(&CompilationManager::outgoingDiagnosticsThread, this);
+    pthread_setname_np(thread.native_handle(), "DiagOut");
+    thread.detach();
+}
+
+void CompilationManager::outgoingDiagnosticsThread() {
+    SPDLOG_DEBUG("Enter outgoingDiagnosticsThread");
+
+    uint64_t lastTime = 0;
+
+    while (true) {
+        TimestampedDiagnostics diag;
+        outgoingDiagnostics.wait_dequeue(diag);
+
+        // if (lastTime > diag.timestamp) {
+        //     SPDLOG_WARN("Discarding old diagnostic. Last diag issued at {}, but this one is at {}", lastTime,
+        //         diag.timestamp);
+        //     continue;
+        // }
+
+        issueDiagnostics(diag.path, diag.lspDiags);
+        lastTime = diag.timestamp;
+
+        // wait for 500 ms (rate limit!)
+        std::this_thread::sleep_for(500ms);
+    }
 }
