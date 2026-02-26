@@ -133,6 +133,11 @@ void DocumentGraph::finaliseOutstandingSymbols() {
         if (!sym.lhs.has_value()) {
             // see if we can find a resolver for this symbol in the graph
             auto provider = findProvider(sym.symbol);
+            if (!sym.rhs.has_value()) {
+                SPDLOG_WARN("RHS does not have a value (bugprone), skipping");
+                it++;
+                continue;
+            }
             if (provider.has_value()) {
                 SPDLOG_DEBUG("Found provider for symbol '{}': '{}'", sym.symbol, provider->string());
                 linkDocuments(*provider, *sym.rhs, sym.symbol);
