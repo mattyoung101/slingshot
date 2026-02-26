@@ -366,12 +366,17 @@ void CompilationManager::issueDiagnostics(
         SPDLOG_DEBUG("Issue {} diagnostics to client for buffer {}", diagClient->getLspDiagnostics().size(),
             path.string());
 
-        lsp::notifications::TextDocument_PublishDiagnostics::Params lspDiagMsg;
-        lspDiagMsg.diagnostics = diagClient->getLspDiagnostics();
-        lspDiagMsg.uri = lsp::Uri::parse("file://" + path.string());
+        // NOTE: this is absolutely fucking ridiculous, but is apparently required to stop Neovim from
+        // ignoring our push diagnostic messages?! are we fucking insane?! why does this work?!
+        // see: https://github.com/mlyoung101/slingshot/issues/76
+        for (int i = 0; i < 3; i++) {
+            lsp::notifications::TextDocument_PublishDiagnostics::Params lspDiagMsg;
+            lspDiagMsg.diagnostics = diagClient->getLspDiagnostics();
+            lspDiagMsg.uri = lsp::Uri::parse("file://" + path.string());
 
-        g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(
-            std::move(lspDiagMsg));
+            g_msgHandler->sendNotification<lsp::notifications::TextDocument_PublishDiagnostics>(
+                std::move(lspDiagMsg));
+        }
     }
 }
 
@@ -562,22 +567,21 @@ void CompilationManager::startOutgoingDiagnostics() {
 void CompilationManager::outgoingDiagnosticsThread() {
     SPDLOG_DEBUG("Enter outgoingDiagnosticsThread");
 
-    uint64_t lastTime = 0;
+    ankerl::unordered_dense::map<std::filesystem::path, uint64_t> lastTimes;
 
     while (true) {
         TimestampedDiagnostics diag;
         outgoingDiagnostics.wait_dequeue(diag);
 
-        // if (lastTime > diag.timestamp) {
-        //     SPDLOG_WARN("Discarding old diagnostic. Last diag issued at {}, but this one is at {}", lastTime,
-        //         diag.timestamp);
-        //     continue;
-        // }
+        if (lastTimes.contains(diag.path) && lastTimes.at(diag.path) > diag.timestamp) {
+            SPDLOG_WARN("Discarding old diagnostic for path: {}", diag.path.string());
+            continue;
+        }
 
         issueDiagnostics(diag.path, diag.lspDiags);
-        lastTime = diag.timestamp;
+        lastTimes[diag.path] = diag.timestamp;
 
         // wait for 500 ms (rate limit!)
-        std::this_thread::sleep_for(500ms);
+        std::this_thread::sleep_for(100ms);
     }
 }
