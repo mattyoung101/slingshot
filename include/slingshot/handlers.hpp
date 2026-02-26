@@ -26,4 +26,7 @@ void textDocumentSave(const lsp::notifications::TextDocument_DidSave::Params &&p
 lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     const lsp::requests::TextDocument_Completion::Params &&params);
 
+lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
+    const lsp::requests::TextDocument_Diagnostic::Params &&params);
+
 } // namespace slingshot::handlers

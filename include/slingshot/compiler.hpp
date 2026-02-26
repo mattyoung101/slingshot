@@ -79,9 +79,6 @@ public:
 
 class CompilationManager {
 public:
-    /// Starts the outgoing diagnostics thread
-    void startOutgoingDiagnostics();
-
     /// Submits a compilation job asynchronously
     void submitCompilationJob(const std::string &document, const std::filesystem::path &path, bool isIndex);
 
@@ -102,6 +99,9 @@ public:
 
     /// Inverse of bufferIds
     ankerl::unordered_dense::map<BufferID, std::filesystem::path> bufferIdsInverse;
+
+    /// outgoing, timestamped diagnostics
+    std::vector<TimestampedDiagnostics> outgoingDiagnostics{};
 
     /// Gets the source manager. This is really only a hack to plumb this shit into the completion system.
     std::shared_ptr<SourceManager> getSourceManager() {
@@ -125,9 +125,6 @@ private:
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
     std::recursive_mutex lock;
     std::atomic_int indexingJobsInProgress;
-
-    /// outgoing, timestamped diagnostics
-    moodycamel::BlockingConcurrentQueue<TimestampedDiagnostics> outgoingDiagnostics{};
 
     /// Performs a bulk compilation of all the documents in the index, once the document graph has been built
     void performBulkCompilation(bool shouldSendLspNotification);
@@ -154,8 +151,6 @@ private:
 
     /// Recompiles a document that's already in the index, used by reIndexDocument
     void reCompileDocument(const std::filesystem::path &path);
-
-    void outgoingDiagnosticsThread();
 };
 
 } // namespace slingshot

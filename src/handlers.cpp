@@ -6,6 +6,7 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/handlers.hpp"
 #include "slingshot/slingshot.hpp"
+#include <algorithm>
 #include <chrono>
 #include <exception>
 #include <filesystem>
@@ -86,8 +87,6 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
         }
     }
 
-    g_compilerManager.startOutgoingDiagnostics();
-
     return lsp::requests::Initialize::Result{
 				.capabilities = {
 					.positionEncoding = lsp::PositionEncodingKind::UTF8,
@@ -101,11 +100,11 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
 					.completionProvider = lsp::CompletionOptions {
                         .triggerCharacters = std::vector<std::string>{".", "`", "[", "{"},
 					},
-					// .diagnosticProvider = lsp::DiagnosticOptions {
-					// 	.interFileDependencies = false, // TODO this should eventually be true
-					// 	.workspaceDiagnostics = false,
-					// 	.identifier = "Slingshot",
-					// },
+					.diagnosticProvider = lsp::DiagnosticOptions {
+						.interFileDependencies = false, // TODO this should eventually be true
+						.workspaceDiagnostics = false,
+						.identifier = "Slingshot",
+					},
 				},
 				.serverInfo = lsp::InitializeResultServerInfo{
 					.name    = "Slingshot",
@@ -192,6 +191,51 @@ lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     (*result)->ensureValidByWaiting();
 
     return CompletionManager::getCompletions(path, params.position, *result);
+}
+
+lsp::requests::TextDocument_Diagnostic::Result textDocumentDiagnostic(
+    const lsp::requests::TextDocument_Diagnostic::Params &&params) {
+    auto compilerLock = g_compilerManager.acquireLock();
+    auto indexerLock = g_indexManager.acquireLock();
+
+    if (g_indexManager.isInitialIndexInProgress) {
+        SPDLOG_DEBUG("Refusing to issue diagnostics while indexing is in progress");
+        // FIXME request diagnostics later
+        return lsp::RelatedUnchangedDocumentDiagnosticReport{};
+    }
+
+    if (!g_compilerManager.openFiles.contains(params.textDocument.uri.path())) {
+        SPDLOG_TRACE("Document {} is not open, skip issuing diagnostics", params.textDocument.uri.path());
+        return lsp::RelatedUnchangedDocumentDiagnosticReport{};
+    }
+
+    // find documents related to the text document specified
+    std::vector<TimestampedDiagnostics> relatedDiagnostics;
+    for (const auto &diag : g_compilerManager.outgoingDiagnostics) {
+        if (diag.path == params.textDocument.uri.path()) {
+            relatedDiagnostics.push_back(diag);
+        }
+    }
+
+    SPDLOG_TRACE("Found {} related diagnostics out of {} for path {}", relatedDiagnostics.size(),
+        g_compilerManager.outgoingDiagnostics.size(), params.textDocument.uri.path());
+
+    if (relatedDiagnostics.empty()) {
+        return {};
+    }
+
+    // find the most recent diagnostic
+    // NOLINTNEXTLINE(modernize-use-ranges) not supported on older compilers
+    std::sort(relatedDiagnostics.begin(), relatedDiagnostics.end(),
+        [](const auto &a, const auto &b) { return a.timestamp < b.timestamp; });
+
+    lsp::RelatedFullDocumentDiagnosticReport out;
+    out.items = relatedDiagnostics[0].lspDiags->getLspDiagnostics();
+
+    // FIXME we should remove only the relatedDiagnostics, not everything
+    g_compilerManager.outgoingDiagnostics.clear();
+
+    return out;
 }
 
 } // namespace slingshot::handlers

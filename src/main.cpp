@@ -34,6 +34,7 @@ void addCallbacks(std::shared_ptr<lsp::MessageHandler> &msgHandler) {
     msgHandler->add<lsp::notifications::TextDocument_DidChange>(slingshot::handlers::textDocumentChange);
     msgHandler->add<lsp::requests::TextDocument_Completion>(slingshot::handlers::textDocumentCompletion);
     msgHandler->add<lsp::notifications::TextDocument_DidClose>(slingshot::handlers::textDocumentClose);
+    msgHandler->add<lsp::requests::TextDocument_Diagnostic>(slingshot::handlers::textDocumentDiagnostic);
 }
 
 } // namespace

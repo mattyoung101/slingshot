@@ -220,7 +220,11 @@ void CompilationManager::submitCompilationJob(
             doLifting(path, tree);
 
             // enqueue outgoing diagnostics
-            outgoingDiagnostics.enqueue({ .timestamp = timeNowNs(), .path = path, .lspDiags = diagClient });
+            {
+                auto lock = acquireLock();
+                outgoingDiagnostics.push_back(TimestampedDiagnostics {
+                    .timestamp = timeNowNs(), .path = path, .lspDiags = diagClient });
+            }
 
             if (isIndex) {
                 indexingJobsInProgress--;
@@ -544,40 +548,13 @@ void CompilationManager::reCompileDocument(const std::filesystem::path &path) {
             doLifting(path, tree);
 
             // enqueue diagnostics
-            outgoingDiagnostics.enqueue({ .timestamp = timeNowNs(), .path = path, .lspDiags = diagClient });
+            {
+                auto lock = acquireLock();
+                outgoingDiagnostics.push_back(TimestampedDiagnostics {
+                    .timestamp = timeNowNs(), .path = path, .lspDiags = diagClient });
+            }
         } catch (const std::exception &e) {
             SPDLOG_ERROR("Caught exception in re-compilation job: {}", e.what());
         }
     });
-}
-
-void CompilationManager::startOutgoingDiagnostics() {
-    SPDLOG_INFO("Booting outgoing diagnostics thread");
-
-    auto thread = std::thread(&CompilationManager::outgoingDiagnosticsThread, this);
-    pthread_setname_np(thread.native_handle(), "DiagOut");
-    thread.detach();
-}
-
-void CompilationManager::outgoingDiagnosticsThread() {
-    SPDLOG_DEBUG("Enter outgoingDiagnosticsThread");
-
-    uint64_t lastTime = 0;
-
-    while (true) {
-        TimestampedDiagnostics diag;
-        outgoingDiagnostics.wait_dequeue(diag);
-
-        // if (lastTime > diag.timestamp) {
-        //     SPDLOG_WARN("Discarding old diagnostic. Last diag issued at {}, but this one is at {}", lastTime,
-        //         diag.timestamp);
-        //     continue;
-        // }
-
-        issueDiagnostics(diag.path, diag.lspDiags);
-        lastTime = diag.timestamp;
-
-        // wait for 500 ms (rate limit!)
-        std::this_thread::sleep_for(500ms);
-    }
 }
