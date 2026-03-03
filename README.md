@@ -2,14 +2,14 @@
 > [!IMPORTANT]
 > **This is BETA quality software; bugs may be present. Please file issues on the issue tracker.**
 
-**Slingshot** is a language server for the **SystemVerilog** hardware description language, with
-a focus on accurate multi-file completion. The overarching goal is to make SystemVerilog
-as intuitive to edit as C++ or Rust.
+**Slingshot** is a language server for the **SystemVerilog** hardware description language, with a focus on
+**stability**, **performance**, and **accuracy** in autocomplete. The overarching goal is to make
+SystemVerilog as intuitive to edit as C++ or Rust.
 
 Compared to other SV LSPs, the main feature that Slingshot brings to the table is a completion-first approach,
 using the powerful [Slang](https://github.com/MikePopoloski/slang) frontend. The intent is to provide fast,
-accurate and robust completion even in complex projects. Slingshot also features an advanced indexing system,
-to power this completion system, that features graph-based dependency resolution.
+accurate and robust completion even in complex projects. Slingshot also features an **advanced multi-threaded
+indexing system**, to power this completion system, that features graph-based dependency resolution.
 
 The trade-off is this does mean that features such as "go-to-reference" take somewhat of a backseat; though
 the plan is to implement them eventually.
@@ -140,14 +140,26 @@ go-to-definition, but importantly _only after_ the core features are sufficientl
 ## Implementation details
 See [docs/impl_details.md](docs/impl_details.md)
 
-## No AI policy
-As part of Slingshot's design policy of performance and stability, I will not accept any pull requests or
-issues that are written in whole or in part using LLMs. I also do not _use_ any LLMs when authoring Slingshot
-code or documentation. Submitting a PR or issue that is believed to be written using AI will result in it
-being immediately closed without exception.
+## Contributing guidelines
+### No AI policy
+As part of Slingshot's design philosophy, as well as the tenuous copyright and ethical situation around the
+use of LLMs, I will **not** accept any pull requests or issues that are written in whole or in part using
+LLMs. I also do not use any LLMs in any way when working on Slingshot. All bugs are 100% proudly human
+generated.
+
+Slingshot's mission in this AI-age (bubble?) is to assist human developers writing good SystemVerilog code
+through rigorous, disciplined and explainable syntax-tree analysis.
+
+> [!IMPORTANT]
+> Submitting a PR or issue that is reasonably believed to be written using AI will result in it being
+> immediately closed without exception.
+
+This is based on precedent from [Zig](https://ziglang.org/code-of-conduct/#strict-no-llm-no-ai-policy),
+[QEMU](https://www.qemu.org/docs/master/devel/code-provenance.html#use-of-ai-generated-content),
+[LibreOffice](https://wiki.documentfoundation.org/Development/AI_policy), and others.
 
 ## Licence
-Copyright (c) 2023-2026 M. L. Young. Available under the Mozilla Public License v2.0
+Copyright (c) 2023-2026 M. L. Young. Available under the Mozilla Public License v2.0.
 
 > This Source Code Form is subject to the terms of the Mozilla Public
 > License, v. 2.0. If a copy of the MPL was not distributed with this
