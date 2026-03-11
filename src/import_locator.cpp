@@ -18,16 +18,29 @@
 
 using namespace slingshot;
 
+// TODO listen to ScopedName
+
 void ImportableFinderVisitor::handle(const PackageImportItemSyntax &syntax) {
     requiredSymbols.emplace_back(syntax.package.valueText());
-    SPDLOG_DEBUG("Discovered {} requires: {}", path.string(), syntax.package.valueText());
+    SPDLOG_DEBUG("{} REQUIRES {} (PackageImport)", path.string(), syntax.package.valueText());
     visitDefault(syntax);
 }
 
 void ImportableFinderVisitor::handle(const HierarchyInstantiationSyntax &syntax) {
     requiredSymbols.emplace_back(syntax.type.valueText());
-    SPDLOG_DEBUG("Discovered {} requres: {}", path.string(), syntax.type.valueText());
+    SPDLOG_DEBUG("{} REQUIRES {} (HierarchyInstantiation)", path.string(), syntax.type.valueText());
     visitDefault(syntax);
+}
+
+void ImportableFinderVisitor::handle(const IdentifierNameSyntax &syntax) {
+    auto name = syntax.identifier.valueText();
+
+    // FIXME this is completely fucking stupid we need to actually check properly if it's a pkg or not
+    if (name.contains("pkg")) {
+        requiredSymbols.emplace_back(name);
+        SPDLOG_DEBUG("{} REQUIRES {} (HierarchyInstantiation)", path.string(), name);
+        visitDefault(syntax);
+    }
 }
 
 void ImportableFinderVisitor::handle(const ModuleHeaderSyntax &syntax) {

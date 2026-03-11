@@ -403,7 +403,7 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
     // send progress notification
     if (shouldSendLspNotification) {
         lsp::WorkDoneProgressReport report;
-        report.message = "Updating document graph";
+        report.message = "Finalising document graph";
         lsp::notifications::Progress::Params progress;
         progress.token = "SlingshotIndexProgress";
         progress.value = lsp::toJson(std::move(report));
@@ -448,6 +448,16 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
     // we also need to recompile all the open files now, to clear out all the warnings
     SPDLOG_DEBUG("Recompiling documents now that indexing is done");
     for (const auto &doc : openFiles) {
+        // send progress notification
+        if (shouldSendLspNotification) {
+            lsp::WorkDoneProgressReport report;
+            report.message = "Recompilig open document " + doc.string();
+            lsp::notifications::Progress::Params progress;
+            progress.token = "SlingshotIndexProgress";
+            progress.value = lsp::toJson(std::move(report));
+            g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
+        }
+
         // do NOT pull from disk, pull from the index!
         // see: https://github.com/mlyoung101/slingshot/issues/76
         reCompileDocument(doc);
@@ -465,7 +475,7 @@ done:
 
 void CompilationManager::reIndexDocument(
     const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
-    SPDLOG_DEBUG("Reindexing document: {}, contents:{}\n", path.string(), tree->root().toString());
+    SPDLOG_TRACE("Reindexing document: {}, contents:{}\n", path.string(), tree->root().toString());
 
     // figure out what symbols this document provides and requires
     auto imports = ImportLocator::locateRequiredProvidedImports(tree, path);

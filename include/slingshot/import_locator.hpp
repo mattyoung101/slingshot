@@ -37,6 +37,7 @@ public:
     // required symbols
     void handle(const PackageImportItemSyntax &syntax);
     void handle(const HierarchyInstantiationSyntax &syntax);
+    void handle(const IdentifierNameSyntax &syntax);
 
     // provided symbols
     void handle(const ModuleHeaderSyntax &syntax);
