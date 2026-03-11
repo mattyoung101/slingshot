@@ -39,8 +39,9 @@ void ImportableFinderVisitor::handle(const IdentifierNameSyntax &syntax) {
     if (name.contains("pkg")) {
         requiredSymbols.emplace_back(name);
         SPDLOG_DEBUG("{} REQUIRES {} (HierarchyInstantiation)", path.string(), name);
-        visitDefault(syntax);
     }
+
+    visitDefault(syntax);
 }
 
 void ImportableFinderVisitor::handle(const ModuleHeaderSyntax &syntax) {

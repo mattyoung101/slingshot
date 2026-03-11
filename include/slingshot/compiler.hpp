@@ -132,6 +132,8 @@ private:
     /// Performs a bulk compilation of all the documents in the index, once the document graph has been built
     void performBulkCompilation(bool shouldSendLspNotification);
 
+    void locateAllRequiredDocuments();
+
     void maybeUpdateIndexingProgress(const std::filesystem::path &path);
 
     std::shared_ptr<slang::syntax::SyntaxTree> doCstParse(

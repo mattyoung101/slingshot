@@ -127,7 +127,7 @@ void DocumentGraph::finaliseOutstandingSymbols() {
     auto it = unresolvedSymbols.begin();
     while (it != unresolvedSymbols.end()) {
         auto &sym = *it;
-        SPDLOG_DEBUG("Still unresolved symbol '{}': LHS '{}', RHS '{}'", sym.symbol, toString(sym.lhs),
+        SPDLOG_DEBUG("Trying to finalise outstanding symbol '{}': LHS '{}', RHS '{}'", sym.symbol, toString(sym.lhs),
             toString(sym.rhs));
 
         if (!sym.lhs.has_value()) {

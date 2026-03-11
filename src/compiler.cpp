@@ -197,8 +197,14 @@ void CompilationManager::submitCompilationJob(
             diagClient->setSourceManager(sourceMgr);
             diagEngine.addClient(diagClient);
 
-            // do initial CST parse
+            // do initial CST parse, no dependencies, nothing
             auto tree = doCstParse(path, buf, diagEngine);
+
+            // if we're doing the initial index, make SURE that we update the import table before we perform AST
+            // compilation. AST compilation will complain if we have no import table.
+            if (isIndex) {
+                reIndexDocument(path, tree);
+            }
 
             // do AST parse
             auto compilation = doAstParse(path, buf, diagEngine, tree);
@@ -286,8 +292,8 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::file
     } else {
         // determine if the document graph needs rebuilding, by checking the import table
         auto imports = ImportLocator::locateRequiredProvidedImports(tree, path);
-        if (importHashes[path] != imports.hash()) {
-            SPDLOG_WARN("Import table changed, document graph must be rebuilt!");
+        if (importHashes[path] != imports.hash() && !g_indexManager.isInitialIndexInProgress) {
+            SPDLOG_WARN("Import table changed outside of indexing, document graph must be rebuilt!");
             // this unlock and relock shenanigan is necessary to avoid deadlocks, at least according to
             // ThreadSanitizer
             lock.unlock();
@@ -394,21 +400,9 @@ void CompilationManager::maybeFinaliseIndexingProgress() {
     }
 }
 
-void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) {
-    SPDLOG_INFO("Performing bulk compilation");
-
-    auto indexLock = g_indexManager.acquireLock();
-    auto compilerLock = acquireLock();
-
-    // send progress notification
-    if (shouldSendLspNotification) {
-        lsp::WorkDoneProgressReport report;
-        report.message = "Finalising document graph";
-        lsp::notifications::Progress::Params progress;
-        progress.token = "SlingshotIndexProgress";
-        progress.value = lsp::toJson(std::move(report));
-        g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
-    }
+// REQUIRES ITS OWN LOCK
+void CompilationManager::locateAllRequiredDocuments() {
+    SPDLOG_INFO("Locating all required documents");
 
     g_indexManager.documentGraph->finaliseOutstandingSymbols();
 
@@ -420,7 +414,7 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
     auto topoSort = g_indexManager.documentGraph->topologicalSort();
     if (!topoSort.has_value() || topoSort == std::nullopt) {
         SPDLOG_ERROR("Failed to topologically sort the document graph!");
-        goto done; // NOLINT(cppcoreguidelines-avoid-goto): we're using it, idgaf
+        return;
     }
 
     for (size_t i = 0; i < topoSort->size(); i++) {
@@ -437,13 +431,27 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
             continue;
         }
 
-        // we can parse the AST in future, but there isn't a real need to do so now
-        // auto buf = bufMap.at(doc);
-        // auto dummyEngine = DiagnosticEngine(*sourceMgr);
-        // auto ast = doAstParse(doc, buf, dummyEngine, (*entry)->tree);
-
         allPriorDocs.push_back(doc);
     }
+}
+
+void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) {
+    SPDLOG_INFO("Performing bulk compilation");
+
+    auto indexLock = g_indexManager.acquireLock();
+    auto compilerLock = acquireLock();
+
+    // send progress notification
+    if (shouldSendLspNotification) {
+        lsp::WorkDoneProgressReport report;
+        report.message = "Finalising document graph";
+        lsp::notifications::Progress::Params progress;
+        progress.token = "SlingshotIndexProgress";
+        progress.value = lsp::toJson(std::move(report));
+        g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
+    }
+
+    locateAllRequiredDocuments();
 
     // we also need to recompile all the open files now, to clear out all the warnings
     SPDLOG_DEBUG("Recompiling documents now that indexing is done");
@@ -463,7 +471,6 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
         reCompileDocument(doc);
     }
 
-done:
     if (shouldSendLspNotification) {
         lsp::notifications::Progress::Params endMsg;
         endMsg.token = "SlingshotIndexProgress";
@@ -489,9 +496,10 @@ void CompilationManager::reIndexDocument(
             g_indexManager.documentGraph->registerRequiredSymbol(path, required);
         }
         importHashes[path] = imports.hash();
-    }
 
-    performBulkCompilation(false);
+        // always attempt to locate outstanding symbols and process the required documents list
+        locateAllRequiredDocuments();
+    }
 }
 
 void CompilationManager::reCompileDocument(const std::filesystem::path &path) {
