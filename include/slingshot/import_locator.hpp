@@ -50,9 +50,14 @@ public:
         return providedSymbols;
     }
 
+    auto getMaybeRequiredSymbols() {
+        return maybeRequiredSymbols;
+    }
+
 private:
     std::vector<std::string> requiredSymbols;
     std::vector<std::string> providedSymbols;
+    std::vector<std::string> maybeRequiredSymbols;
     std::filesystem::path path;
 };
 
@@ -60,6 +65,7 @@ class Imports {
 public:
     std::vector<std::string> requiredSymbols;
     std::vector<std::string> providedSymbols;
+    std::vector<std::string> maybeRequiredSymbols;
 
     uint64_t hash() {
         uint64_t hash = 0xDEADBEEF;
@@ -68,6 +74,10 @@ public:
             hash = ankerl::unordered_dense::detail::wyhash::mix(hash, update);
         }
         for (const auto &sym : providedSymbols) {
+            auto update = ankerl::unordered_dense::detail::wyhash::hash(sym.data(), sym.size());
+            hash = ankerl::unordered_dense::detail::wyhash::mix(hash, update);
+        }
+        for (const auto &sym : maybeRequiredSymbols) {
             auto update = ankerl::unordered_dense::detail::wyhash::hash(sym.data(), sym.size());
             hash = ankerl::unordered_dense::detail::wyhash::mix(hash, update);
         }

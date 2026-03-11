@@ -33,14 +33,10 @@ void ImportableFinderVisitor::handle(const HierarchyInstantiationSyntax &syntax)
 }
 
 void ImportableFinderVisitor::handle(const IdentifierNameSyntax &syntax) {
+    // we don't know yet if we *really* need this, so just put it in the maybe required
     auto name = syntax.identifier.valueText();
-
-    // FIXME this is completely fucking stupid we need to actually check properly if it's a pkg or not
-    if (name.contains("pkg")) {
-        requiredSymbols.emplace_back(name);
-        SPDLOG_DEBUG("{} REQUIRES {} (HierarchyInstantiation)", path.string(), name);
-    }
-
+    maybeRequiredSymbols.emplace_back(name);
+    SPDLOG_DEBUG("{} MAYBE REQUIRES {} (IdentifierName)", path.string(), name);
     visitDefault(syntax);
 }
 
@@ -59,5 +55,6 @@ Imports ImportLocator::locateRequiredProvidedImports(
     return {
         .requiredSymbols = visitor.getRequiredSymbols(),
         .providedSymbols = visitor.getProvidedSymbols(),
+        .maybeRequiredSymbols = visitor.getMaybeRequiredSymbols(),
     };
 }

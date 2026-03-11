@@ -106,7 +106,15 @@ void DocumentGraph::registerProvidedSymbol(const std::filesystem::path &path, co
 
 void DocumentGraph::registerRequiredSymbol(const std::filesystem::path &path, const std::string &symbol) {
     SPDLOG_DEBUG("{} ---(REQUIRES SYMBOL)---> '{}'", path.string(), symbol);
-    unresolvedSymbols.push_back(UnresolvedSymbol { .lhs = std::nullopt, .rhs = path, .symbol = symbol });
+    unresolvedSymbols.push_back(
+        UnresolvedSymbol { .lhs = std::nullopt, .rhs = path, .symbol = symbol, .maybe = false });
+}
+
+void DocumentGraph::registerMaybeRequiredSymbol(
+    const std::filesystem::path &path, const std::string &symbol) {
+    SPDLOG_DEBUG("{} ---(MAYBE requires SYMBOL)---> '{}'", path.string(), symbol);
+    unresolvedSymbols.push_back(
+        UnresolvedSymbol { .lhs = std::nullopt, .rhs = path, .symbol = symbol, .maybe = true });
 }
 
 void DocumentGraph::dumpDot() {
@@ -127,8 +135,8 @@ void DocumentGraph::finaliseOutstandingSymbols() {
     auto it = unresolvedSymbols.begin();
     while (it != unresolvedSymbols.end()) {
         auto &sym = *it;
-        SPDLOG_DEBUG("Trying to finalise outstanding symbol '{}': LHS '{}', RHS '{}'", sym.symbol, toString(sym.lhs),
-            toString(sym.rhs));
+        SPDLOG_DEBUG("Trying to finalise outstanding symbol '{}': LHS '{}', RHS '{}'", sym.symbol,
+            toString(sym.lhs), toString(sym.rhs));
 
         if (!sym.lhs.has_value()) {
             // see if we can find a resolver for this symbol in the graph
@@ -143,6 +151,13 @@ void DocumentGraph::finaliseOutstandingSymbols() {
                 linkDocuments(*provider, *sym.rhs, sym.symbol);
                 it = unresolvedSymbols.erase(it);
             } else {
+                if (sym.maybe) {
+                    SPDLOG_DEBUG(
+                        "Could not immediately find resolver for MAYBE required symbol: '{}' - removing it",
+                        sym.symbol);
+                    it = unresolvedSymbols.erase(it);
+                    continue;
+                }
                 SPDLOG_DEBUG("Could NOT provide provider for unresolved symbol '{}' wanted by '{}'",
                     sym.symbol, sym.rhs->string());
                 it++;

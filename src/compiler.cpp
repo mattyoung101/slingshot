@@ -495,6 +495,9 @@ void CompilationManager::reIndexDocument(
         for (const auto &required : imports.requiredSymbols) {
             g_indexManager.documentGraph->registerRequiredSymbol(path, required);
         }
+        for (const auto &required : imports.maybeRequiredSymbols) {
+            g_indexManager.documentGraph->registerMaybeRequiredSymbol(path, required);
+        }
         importHashes[path] = imports.hash();
 
         // always attempt to locate outstanding symbols and process the required documents list

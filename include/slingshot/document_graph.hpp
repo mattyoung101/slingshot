@@ -28,6 +28,8 @@ public:
 
     void registerRequiredSymbol(const std::filesystem::path &path, const std::string &symbol);
 
+    void registerMaybeRequiredSymbol(const std::filesystem::path &path, const std::string &symbol);
+
     /// Tries to find and resolve outstanding unresolved symbols
     void finaliseOutstandingSymbols();
 
@@ -41,6 +43,8 @@ private:
         /// RHS, this side requires the symbol
         std::optional<std::filesystem::path> rhs;
         std::string symbol;
+        /// Is this symbol *maybe* required?
+        bool maybe;
     };
 
     /// Links the document that provides the symbol ("provider"/"A") to the document that requires the symbol
