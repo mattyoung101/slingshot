@@ -38,12 +38,11 @@ aims to:
 Future features are planned on the [issue tracker](https://github.com/mlyoung101/slingshot/issues).
 
 ### Current state
-Slingshot is being rewritten, but _may_ be useful in some simple projects at the moment. Please keep me
-posted!
+Slingshot is somewhat stable and is ready for testing in larger projects. Please keep me posted!
 
 ### Timeline
-Slingshot is being developed in my free time, and I'm hoping to work on it somewhat during my PhD. One day, it
-might become a joint project of my PhD lab, hopefully.
+Slingshot is being developed in my free time during my PhD. One day, it might become a joint project of my PhD
+lab, hopefully. I do not _always_ have time to work on this project.
 
 ### Known supported editors
 - Neovim v0.11+
