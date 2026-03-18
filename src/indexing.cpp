@@ -9,6 +9,8 @@
 #include "slingshot/language.hpp" // NECESSARY for JSON conversion
 #include "slingshot/slingshot.hpp"
 #include <ankerl/unordered_dense.h>
+#include <cerrno>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <lsp/json/json.h>
@@ -17,10 +19,14 @@
 #include <memory>
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
+#include <slang/parsing/KnownSystemName.h>
 #include <slang/syntax/SyntaxTree.h>
 #include <spdlog/spdlog.h>
 #include <sstream>
 #include <string>
+#if SLINGSHOT_ENABLE_INOTIFY
+#include <sys/inotify.h>
+#endif
 
 using namespace slingshot;
 
@@ -152,6 +158,19 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
 
     // we've finished queueing jobs now, so later at some point we can officially terminate the indexing
     isStillQueueingIndexJobs = false;
+
+#if SLINGSHOT_ENABLE_INOTIFY
+    auto absPath = std::filesystem::absolute(path);
+    int wd = inotify_add_watch(inotifyFd, absPath.c_str(), IN_CREATE | IN_DELETE);
+    if (wd < 0) {
+        SPDLOG_ERROR(
+            "Failed to add inotify watch descriptor for path {}: {}", absPath.string(), strerror(errno));
+        SPDLOG_DEBUG("WHY: wd: {}, fd: {}", wd, inotifyFd);
+    } else {
+        inotifyWd = wd;
+        SPDLOG_DEBUG("Added an inotify watcher, wd: {}, fd: {}", wd, inotifyFd);
+    }
+#endif
 }
 
 ankerl::unordered_dense::set<std::shared_ptr<slang::syntax::SyntaxTree>> IndexManager::getAllSyntaxTrees() {
@@ -218,4 +237,63 @@ std::vector<lang::Document> IndexManager::getAllLangDocs() {
         }
     }
     return out;
+}
+
+void IndexManager::inotifyWatchThread() {
+#if SLINGSHOT_ENABLE_INOTIFY
+    SPDLOG_DEBUG("Enter inotifyWatchThread()");
+
+    // based on https://gist.github.com/wh5a/302353
+
+    constexpr auto EVENT_SIZE = (sizeof(struct inotify_event));
+    constexpr auto BUF_LEN = (1024 * (EVENT_SIZE + 16));
+
+    char buffer[BUF_LEN] = { 0 }; // NOLINT: modernize-avoid-c-arrays
+
+    while (true) {
+        long i = 0;
+        long length = read(inotifyFd, buffer, BUF_LEN); // NOLINT
+        if (length < 0) {
+            SPDLOG_ERROR("Failed to read from inotify fd: {}", strerror(errno));
+            return;
+        }
+
+        while (i < length) {
+            auto *event = (struct inotify_event *) &buffer[i];
+            if (event->len != 0u) {
+                if ((event->mask & IN_CREATE) != 0u) {
+                    if ((event->mask & IN_ISDIR) != 0u) {
+                        SPDLOG_INFO("Dir created: {}", event->name);
+                    } else {
+                        SPDLOG_INFO("File created: {}", event->name);
+                    }
+                } else if ((event->mask & IN_DELETE) != 0u) {
+                    if ((event->mask & IN_ISDIR) != 0u) {
+                        SPDLOG_INFO("Dir deleted: {}", event->name);
+                    } else {
+                        SPDLOG_INFO("File deleted: {}", event->name);
+                    }
+                }
+            }
+            i += EVENT_SIZE + event->len;
+        }
+    }
+
+#endif
+}
+
+void IndexManager::maybeInitialiseInotify() {
+#if SLINGSHOT_ENABLE_INOTIFY
+    SPDLOG_INFO("Setting up inotify");
+    inotifyFd = inotify_init();
+    if (inotifyFd < 0) {
+        SPDLOG_ERROR("Failed to initialise inotify: {}", strerror(errno));
+    } else {
+        SPDLOG_INFO("Inotify init OK");
+    }
+
+    auto thread = std::thread(&IndexManager::inotifyWatchThread, this);
+    pthread_setname_np(thread.native_handle(), "Inotify");
+    thread.detach();
+#endif
 }

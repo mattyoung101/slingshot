@@ -53,6 +53,8 @@ namespace slingshot::handlers {
 lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Params &&params) {
     SPDLOG_INFO("Received init");
 
+    g_indexManager.maybeInitialiseInotify();
+
     if (params.rootUri.isNull()) {
         SPDLOG_ERROR("No root URI path specified!");
     } else {

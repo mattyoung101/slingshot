@@ -23,6 +23,7 @@ include(cmake/CPM.cmake)
 
 option(SLINGSHOT_ENABLE_REMOTE_DEBUGGER "Enables the remote debugger functionality in Slingshot. Does not work
     on Windows." TRUE)
+option(SLINGSHOT_ENABLE_INOTIFY "Enables inotify functionality. Does not work on Windows." TRUE)
 
 ## LINKER
 message(STATUS "Checking if mold is available")
@@ -97,6 +98,12 @@ function(add_slingshot_target TARGET)
         target_compile_definitions(${TARGET} PRIVATE "-DSLINGSHOT_ENABLE_REMOTE_DEBUGGER=0")
     endif()
 
+    if (SLINGSHOT_ENABLE_INOTIFY)
+        target_compile_definitions(${TARGET} PRIVATE "-DSLINGSHOT_ENABLE_INOTIFY=1")
+    else()
+        target_compile_definitions(${TARGET} PRIVATE "-DSLINGSHOT_ENABLE_INOTIFY=0")
+    endif()
+
     #### LINKER
     if (MOLD_RESULT MATCHES "mold 2")
         message(STATUS "mold is available, it will be used")
@@ -113,6 +120,9 @@ function(add_slingshot_target TARGET)
     install(TARGETS ${TARGET})
 endfunction()
 
+########################################################################################################
+########################################################################################################
+########################################################################################################
 
 # Adds a Slingshot test
 function(add_slingshot_test TARGET SOURCE)
@@ -154,6 +164,12 @@ function(add_slingshot_test TARGET SOURCE)
         target_compile_definitions(${TARGET} PRIVATE "-DSLINGSHOT_ENABLE_REMOTE_DEBUGGER=1")
     else()
         target_compile_definitions(${TARGET} PRIVATE "-DSLINGSHOT_ENABLE_REMOTE_DEBUGGER=0")
+    endif()
+
+    if (SLINGSHOT_ENABLE_INOTIFY)
+        target_compile_definitions(${TARGET} PRIVATE "-DSLINGSHOT_ENABLE_INOTIFY=1")
+    else()
+        target_compile_definitions(${TARGET} PRIVATE "-DSLINGSHOT_ENABLE_INOTIFY=0")
     endif()
 
     #### LINKER

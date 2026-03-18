@@ -1,6 +1,6 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025 M. L. Young.
+// Copyright (c) 2025-2026 M. L. Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -16,11 +16,11 @@
 #include <memory>
 #include <mutex>
 #include <optional>
-#include <shared_mutex>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/syntax/SyntaxTree.h>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -141,6 +141,8 @@ public:
 
     std::string dumpSources();
 
+    void maybeInitialiseInotify();
+
     /// Returns a lock on the whole index
     [[nodiscard]] auto acquireLock() {
         SPDLOG_TRACE("Attempt to acquire lock");
@@ -164,6 +166,11 @@ private:
     std::recursive_mutex lock;
     /// The underlying index data structure
     ankerl::unordered_dense::map<std::filesystem::path, IndexEntry::Ptr> index;
+
+    void inotifyWatchThread();
+
+    int inotifyFd;
+    int inotifyWd;
 };
 
 } // namespace slingshot
