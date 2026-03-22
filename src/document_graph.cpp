@@ -46,16 +46,6 @@ std::optional<std::vector<std::filesystem::path>> DocumentGraph::topologicalSort
         // msg.message = "Failed to topologically sort document graph. Project is malformed and has dependency
         // cycles."; g_msgHandler->sendNotification<lsp::notifications::Window_ShowMessage>(std::move(msg));
 
-        // display a message in the client too
-        // in Neovim this actually displays like a confirmation prompt
-        lsp::requests::Window_ShowMessageRequest::Params msg2;
-        msg2.type = lsp::MessageType::Warning;
-        msg2.message = "Slingshot: Indexing failed. Project is malformed and has dependency cycles.";
-        msg2.actions = std::vector<lsp::MessageActionItem>();
-        msg2.actions->push_back(lsp::MessageActionItem { "Acknowledge" });
-        // don't care
-        (void) g_msgHandler->sendRequest<lsp::requests::Window_ShowMessageRequest>(std::move(msg2));
-
         // TODO identify the cycle for debugging
 
         return std::nullopt;
