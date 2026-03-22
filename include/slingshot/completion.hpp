@@ -23,6 +23,7 @@ namespace slingshot {
 using namespace slang;
 using namespace slang::syntax;
 
+// based on: https://docs.amd.com/r/en-US/ug901-vivado-synthesis/Verilog-System-Tasks-and-Functions
 const std::vector<std::string> SYSTEM_TASKS = {
     "display",
     "monitor",
@@ -49,22 +50,8 @@ const std::vector<std::string> SYSTEM_TASKS = {
     "time",
     "signed",
     "unsigned",
-
-    // These pollute the completion list quite a bit, and I can't imagine they are seriously commonly
-    // used, so I'm not including them for now.
-    // "asin",
-    // "acos",
-    // "atan",
-    // "atan2",
-    // "sin",
-    // "cos",
-    // "tan",
-    // "ln",
-    // "log10",
-    // "exp",
-    // "sqrt",
-    // "hypot",
-    // "pow",
+    "countones",
+    "countbits"
 };
 
 /// A syntax visitor that walks the syntax tree, taking into account the cursor position
@@ -88,6 +75,8 @@ public:
     void handle(const ConditionalPredicateSyntax &syntax);
 
     void handle(const HierarchyInstantiationSyntax &syntax);
+
+    void handle(const SimpleSequenceExprSyntax &syntax);
 
     /// The recommended things to complete
     std::vector<lsp::CompletionItem> recommendations;

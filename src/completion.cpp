@@ -137,7 +137,6 @@ void CompletionSyntaxVisitor::handle(const DataDeclarationSyntax &syntax) {
 // TODO continuous assign
 
 void CompletionSyntaxVisitor::handle(const ModuleDeclarationSyntax &syntax) {
-
     if (containsRelaxed(cursor, syntax.sourceRange())) {
         auto name = syntax.header->name.valueText();
         SPDLOG_DEBUG("Active module: {}", name);
@@ -155,7 +154,6 @@ void CompletionSyntaxVisitor::handle(const ConditionalPredicateSyntax &syntax) {
 }
 
 void CompletionSyntaxVisitor::handle(const HierarchyInstantiationSyntax &syntax) {
-
     BEGIN({
         RECOMMEND(CompletionGenerator::generateLogic());
         RECOMMEND(CompletionGenerator::generateIf());
@@ -165,6 +163,24 @@ void CompletionSyntaxVisitor::handle(const HierarchyInstantiationSyntax &syntax)
     SPDLOG_TRACE("Complete hierarchy instantiation syntax syntax: {}", syntax.toString());
     })
 }
+
+void CompletionSyntaxVisitor::handle(const SimpleSequenceExprSyntax &syntax) {
+    BEGIN({
+        if (syntax.expr->kind == SyntaxKind::StringLiteralExpression) {
+            // recommend nothing, we're in a string
+            RECOMMEND({});
+        } else {
+            RECOMMEND(CompletionGenerator::generateLogic());
+            RECOMMEND(CompletionGenerator::generateSystemTasks());
+            RECOMMEND(CompletionGenerator::generateIf());
+            RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+        }
+    })
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 constexpr bool recListContains(
     const std::vector<lsp::CompletionItem> &recs, const lsp::CompletionItem &target) {
