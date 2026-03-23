@@ -78,6 +78,8 @@ public:
 
     void handle(const SimpleSequenceExprSyntax &syntax);
 
+    void handle(const IdentifierNameSyntax &syntax);
+
     /// The recommended things to complete
     std::vector<lsp::CompletionItem> recommendations;
 

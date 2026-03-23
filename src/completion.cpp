@@ -88,8 +88,8 @@ void CompletionSyntaxVisitor::handle(const EventControlWithExpressionSyntax &syn
                 activeModule, doc, lang::PortDirection::InOut));
         }
 
-    SPDLOG_DEBUG("Complete event control expr '{}' range: {}", syntax.toString(),
-        toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
+        SPDLOG_DEBUG("Complete event control expr '{}' range: {}", syntax.toString(),
+            toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
     })
 }
 
@@ -106,9 +106,9 @@ void CompletionSyntaxVisitor::handle(const ExpressionStatementSyntax &syntax) {
             RECOMMEND(CompletionGenerator::generateAlways());
         }
 
-    SPDLOG_TRACE("Complete expression statement: {}", syntax.toString(),
-        toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
-    // SPDLOG_TRACE("Type of the expression parent is: {}", toString(syntax.parent->kind));
+        SPDLOG_TRACE("Complete expression statement: {}", syntax.toString(),
+            toString(syntax.sourceRange(), g_compilerManager.getSourceManager()));
+        // SPDLOG_TRACE("Type of the expression parent is: {}", toString(syntax.parent->kind));
     });
 }
 
@@ -117,7 +117,7 @@ void CompletionSyntaxVisitor::handle(const AnsiPortListSyntax &syntax) {
         RECOMMEND(CompletionGenerator::generateLogic());
         RECOMMEND(CompletionGenerator::generateInputOutput());
         RECOMMEND(CompletionGenerator::generateSystemTasks());
-    SPDLOG_TRACE("Complete ANSI port syntax {}", syntax.toString());
+        SPDLOG_TRACE("Complete ANSI port syntax {}", syntax.toString());
     })
 }
 
@@ -149,7 +149,7 @@ void CompletionSyntaxVisitor::handle(const ModuleDeclarationSyntax &syntax) {
 void CompletionSyntaxVisitor::handle(const ConditionalPredicateSyntax &syntax) {
     BEGIN({
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
-    SPDLOG_TRACE("Complete conditional predicate syntax: {}", syntax.toString());
+        SPDLOG_TRACE("Complete conditional predicate syntax: {}", syntax.toString());
     })
 }
 
@@ -160,7 +160,7 @@ void CompletionSyntaxVisitor::handle(const HierarchyInstantiationSyntax &syntax)
         RECOMMEND(CompletionGenerator::generateAlways());
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
         RECOMMEND(CompletionGenerator::generateModuleInstantiations());
-    SPDLOG_TRACE("Complete hierarchy instantiation syntax syntax: {}", syntax.toString());
+        SPDLOG_TRACE("Complete hierarchy instantiation syntax syntax: {}", syntax.toString());
     })
 }
 
@@ -176,6 +176,10 @@ void CompletionSyntaxVisitor::handle(const SimpleSequenceExprSyntax &syntax) {
             RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
         }
     })
+}
+
+void CompletionSyntaxVisitor::handle(const IdentifierNameSyntax &syntax) {
+    BEGIN({ RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc)); })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////

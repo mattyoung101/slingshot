@@ -95,14 +95,14 @@ void DocumentGraph::registerProvidedSymbol(const std::filesystem::path &path, co
 }
 
 void DocumentGraph::registerRequiredSymbol(const std::filesystem::path &path, const std::string &symbol) {
-    SPDLOG_DEBUG("{} ---(REQUIRES SYMBOL)---> '{}'", path.string(), symbol);
+    SPDLOG_TRACE("{} ---(REQUIRES SYMBOL)---> '{}'", path.string(), symbol);
     unresolvedSymbols.push_back(
         UnresolvedSymbol { .lhs = std::nullopt, .rhs = path, .symbol = symbol, .maybe = false });
 }
 
 void DocumentGraph::registerMaybeRequiredSymbol(
     const std::filesystem::path &path, const std::string &symbol) {
-    SPDLOG_DEBUG("{} ---(MAYBE requires SYMBOL)---> '{}'", path.string(), symbol);
+    SPDLOG_TRACE("{} ---(MAYBE requires SYMBOL)---> '{}'", path.string(), symbol);
     unresolvedSymbols.push_back(
         UnresolvedSymbol { .lhs = std::nullopt, .rhs = path, .symbol = symbol, .maybe = true });
 }
@@ -125,7 +125,7 @@ void DocumentGraph::finaliseOutstandingSymbols() {
     auto it = unresolvedSymbols.begin();
     while (it != unresolvedSymbols.end()) {
         auto &sym = *it;
-        SPDLOG_DEBUG("Trying to finalise outstanding symbol '{}': LHS '{}', RHS '{}'", sym.symbol,
+        SPDLOG_TRACE("Trying to finalise outstanding symbol '{}': LHS '{}', RHS '{}'", sym.symbol,
             toString(sym.lhs), toString(sym.rhs));
 
         if (!sym.lhs.has_value()) {
@@ -142,13 +142,13 @@ void DocumentGraph::finaliseOutstandingSymbols() {
                 it = unresolvedSymbols.erase(it);
             } else {
                 if (sym.maybe) {
-                    SPDLOG_DEBUG(
+                    SPDLOG_TRACE(
                         "Could not immediately find resolver for MAYBE required symbol: '{}' - removing it",
                         sym.symbol);
                     it = unresolvedSymbols.erase(it);
                     continue;
                 }
-                SPDLOG_DEBUG("Could NOT provide provider for unresolved symbol '{}' wanted by '{}'",
+                SPDLOG_TRACE("Could NOT provide provider for unresolved symbol '{}' wanted by '{}'",
                     sym.symbol, sym.rhs->string());
                 it++;
             }

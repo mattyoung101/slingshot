@@ -36,7 +36,7 @@ void ImportableFinderVisitor::handle(const IdentifierNameSyntax &syntax) {
     // we don't know yet if we *really* need this, so just put it in the maybe required
     auto name = syntax.identifier.valueText();
     maybeRequiredSymbols.emplace_back(name);
-    SPDLOG_DEBUG("{} MAYBE REQUIRES {} (IdentifierName)", path.string(), name);
+    SPDLOG_TRACE("{} MAYBE REQUIRES {} (IdentifierName)", path.string(), name);
     visitDefault(syntax);
 }
 
