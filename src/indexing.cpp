@@ -8,6 +8,7 @@
 #include "slingshot/compiler.hpp"
 #include "slingshot/language.hpp" // NECESSARY for JSON conversion
 #include "slingshot/slingshot.hpp"
+#include <algorithm>
 #include <ankerl/unordered_dense.h>
 #include <filesystem>
 #include <fstream>
@@ -222,7 +223,7 @@ std::vector<lang::Document> IndexManager::getAllLangDocs() {
 }
 
 void IndexManager::parseFListFile(const std::filesystem::path &path) {
-    SPDLOG_INFO("Parse F-list file: {}", path.string());
+    SPDLOG_DEBUG("Parse F-list file: {}", path.string());
     if (!std::filesystem::exists(path)) {
         SPDLOG_ERROR("F-list file '{}' does not exist", path.string());
         return;
@@ -230,26 +231,23 @@ void IndexManager::parseFListFile(const std::filesystem::path &path) {
 
     auto contents = readFile(path);
 
-    isStillQueueingIndexJobs = true;
-
-    // first, we need to tell the server about our token
-    lsp::requests::Window_WorkDoneProgress_Create::Params create("SlingshotIndexProgress");
-    auto result = g_msgHandler->sendRequest<lsp::requests::Window_WorkDoneProgress_Create>(std::move(create));
-
-    // NOW, we can actually initiate the work done progress, in a really really stupid way
-    // reference:
-    // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initiatingWorkDoneProgress
-    lsp::notifications::Progress::Params beginMsg;
-    beginMsg.token = "SlingshotIndexProgress";
-    beginMsg.value = lsp::toJson(lsp::WorkDoneProgressBegin());
-    g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(beginMsg));
-
-    isInitialIndexInProgress = true;
+    // in order to fit the F-list file format into our existing include system, we need to find the unique
+    // parent dirs of each of the F-list files, and then scan them. it's a bit ugly. but this is the only way
+    // I've managed to get it to work: any attempt otherwise (including implementing the majority of walkDir
+    // in here) seems to just blow up unique and spectacularly fun ways, including exhausting all of the
+    // system's memory, failing to finish indexing, etc.
+    // I think we have a fundamental problem with how many ridiculously stupid bool hacks we use to manage the
+    // indexer state, which we should fix if we have time.
+    ankerl::unordered_dense::set<std::filesystem::path> uniqueParentDirs;
 
     // https://stackoverflow.com/a/12514641
     std::istringstream iss(contents);
     for (std::string line; std::getline(iss, line);) {
         trim(line);
+        if (line.size() == 0) {
+            // skip empty lines
+            continue;
+        }
 
         if (line.starts_with("+incdir+")) {
             replace(line, "+incdir+", "");
@@ -261,10 +259,22 @@ void IndexManager::parseFListFile(const std::filesystem::path &path) {
             SPDLOG_WARN("Unknown F-list directive in line: {}", line);
         } else {
             // assume a path
-            insert(line, true);
+            auto path= std::filesystem::path(line);
+            if (!path.has_parent_path()) {
+                SPDLOG_WARN("Path {} does not have parent path", path.string());
+                continue;
+            }
+            auto parent = path.parent_path();
+            if (!std::filesystem::is_directory(parent)) {
+                SPDLOG_WARN("Parent of {} ({}) is not a dir", path.string(), parent.string());
+                continue;
+            }
+            uniqueParentDirs.insert(parent);
         }
     }
 
-    // we've finished queueing jobs now, so later at some point we can officially terminate the indexing
-    isStillQueueingIndexJobs = false;
+    SPDLOG_DEBUG("Found {} unique parent dirs", uniqueParentDirs.size());
+    for (const auto &dir : uniqueParentDirs) {
+        walkDir(dir);
+    }
 }

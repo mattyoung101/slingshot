@@ -17,19 +17,22 @@ version = "1.1.0"
 
 # List of include directories, relative to project root, to search for SystemVerilog files.
 # Note: The project root directory is usually the Git root directory.
+# If specified, 'flist_files' must NOT be specified.
 include_dirs = [
   "rtl"
   # ... any other RTL source directories here ...
 ]
 
-# List of F-list files (*.f) to pull dependencies from
+# List of F-list files (*.f) to pull dependencies from.
+# If specified, 'include_dirs' must NOT be specified.
+# Paths are relative to the project root as well.
 flist_files = [
   "my_project.f"
 ]
 ```
 
 If Slingshot is not behaving correctly, see the troubleshooting steps in the main README. I expect
-that a common cause of problems will be that the server can't find the config toml, or that it is
+that a common cause of problems will be that the server can't find the config TOML, or that it is
 not processing the `include_dirs` correctly. Always check the log file (see readme), which contains
 a large amount of information.
 
