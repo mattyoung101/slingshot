@@ -21,6 +21,7 @@
 #include <spdlog/spdlog.h>
 #include <sstream>
 #include <string>
+#include <vector>
 
 using namespace slingshot;
 
@@ -218,4 +219,39 @@ std::vector<lang::Document> IndexManager::getAllLangDocs() {
         }
     }
     return out;
+}
+
+void IndexManager::parseFListFile(const std::filesystem::path &path) {
+    SPDLOG_DEBUG("Parse F-list file: {}", path.string());
+    if (!std::filesystem::exists(path)) {
+        SPDLOG_ERROR("F-list file '{}' does not exist", path.string());
+        return;
+    }
+
+    auto contents = readFile(path);
+
+    // https://stackoverflow.com/a/12514641
+    std::istringstream iss(contents);
+
+    for (std::string line; std::getline(iss, line);) {
+        trim(line);
+
+        if (line.starts_with("+incdir+")) {
+            replace(line, "+incdir+", "");
+            includeDirs.push_back(line);
+            g_compilerManager.addIncludeDir(line);
+        } else if (line.starts_with("+define+")) {
+            SPDLOG_DEBUG("TODO: +define+ unhandled in F-list");
+        } else if (line.starts_with("+")) {
+            SPDLOG_WARN("Unknown F-list directive in line: {}", line);
+        } else {
+            // assume a path
+            insert(line, true);
+        }
+    }
+
+    // finalise
+    for (const auto &dir : includeDirs) {
+        walkDir(dir);
+    }
 }

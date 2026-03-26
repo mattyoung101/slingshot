@@ -159,6 +159,9 @@ public:
     /// Instance of document graph; WARNING must be locked by the person who acquires it
     std::shared_ptr<DocumentGraph> documentGraph = std::make_shared<DocumentGraph>();
 
+    /// Load and parse a *.f (f-list) file
+    void parseFListFile(const std::filesystem::path &path);
+
 private:
     /// Private R/W lock that can be accessed by the acquire{Read/Write}Lock methods
     std::recursive_mutex lock;

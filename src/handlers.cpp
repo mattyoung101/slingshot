@@ -12,25 +12,26 @@
 #include <lsp/messages.h>
 #include <lsp/types.h>
 #include <optional>
+#include <re2/re2.h>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <toml++/toml.hpp>
 #include <vector>
-#include <re2/re2.h>
 
 namespace {
 // https://stackoverflow.com/a/72900791
-std::string SEMVER_REGEX = R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)";
+std::string SEMVER_REGEX
+    = R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)";
 }; // namespace
 
 namespace {
-std::optional<std::vector<std::string>> parseConfigToml(std::filesystem::path &path) {
+void parseConfigToml(std::filesystem::path &path) {
     try {
         auto config = toml::parse_file(path.string());
 
-        if (!config.contains("version") || !config.contains("include_dirs")) {
-            SPDLOG_ERROR("Configuration is missing version or include_dirs keys");
-            return std::nullopt;
+        if (!config.contains("version")) {
+            SPDLOG_ERROR("Configuration is missing version");
+            return;
         }
 
         auto *version = config["version"].as_string();
@@ -43,21 +44,48 @@ std::optional<std::vector<std::string>> parseConfigToml(std::filesystem::path &p
         if (major != slingshot::CONFIG_MAJOR_VERSION) {
             SPDLOG_ERROR("Config major version mismatch. Project uses {} (major: {}), but server uses {}.x.x",
                 std::string(*version), major, slingshot::CONFIG_MAJOR_VERSION);
-            return std::nullopt;
+            return;
         }
 
         SPDLOG_INFO("Parsed config version: v{}.{}.{}", major, minor, patch);
 
-        auto *include_dirs = config["include_dirs"].as_array();
-        std::vector<std::string> out;
-        for (const auto &dir : *include_dirs) {
-            out.emplace_back(*dir.as_string());
+        bool didFindFileSources = false;
+
+        if (config.contains("include_dirs")) {
+            auto *include_dirs = config["include_dirs"].as_array();
+
+            std::vector<std::string> dirs;
+            for (const auto &dir : *include_dirs) {
+                auto str = std::string(*dir.as_string());
+                slingshot::g_compilerManager.addIncludeDir(str);
+                dirs.push_back(str);
+            }
+            slingshot::g_indexManager.includeDirs = dirs;
+
+            // **now** that we've registered the include dirs, we can actually walk the directories
+            for (const auto &dir : dirs) {
+                slingshot::g_indexManager.walkDir(dir);
+            }
+
+            didFindFileSources = true;
         }
 
-        return out;
+        if (config.contains("flist_files")) {
+            auto *flist_files = config["flist_files"].as_array();
+
+            for (const auto &file : *flist_files) {
+                slingshot::g_indexManager.parseFListFile(std::string(*file.as_string()));
+            }
+
+            didFindFileSources = true;
+        }
+
+        if (!didFindFileSources) {
+            SPDLOG_ERROR("Config file defines no file sources. At least one of 'include_dirs' or "
+                         "'flist_files' should be present.");
+        }
     } catch (const std::exception &e) {
-        SPDLOG_ERROR("Failed to parse config toml: {}", e.what());
-        return std::nullopt;
+        SPDLOG_ERROR("Failed to parse config TOML: {}", e.what());
     }
 }
 
@@ -78,22 +106,7 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
 
         if (std::filesystem::exists(tomlFile)) {
             // parse it
-            auto result = parseConfigToml(tomlFile);
-            if (result == std::nullopt) {
-                SPDLOG_ERROR("Failed to parse config toml. See above.");
-            } else {
-                // we have the index file
-                SPDLOG_INFO("Config TOML parsed successfully");
-                for (const auto &dir : *result) {
-                    g_compilerManager.addIncludeDir(dir);
-                }
-                g_indexManager.includeDirs = *result;
-
-                // **now** that we've registered the include dirs, we can actually walk the directories
-                for (const auto &dir : *result) {
-                    g_indexManager.walkDir(dir);
-                }
-            }
+            parseConfigToml(tomlFile);
         } else {
             SPDLOG_ERROR("Could not locate .slingshot.toml file. Index may be non-functional!");
             SPDLOG_ERROR("Tried: {}", tomlFile.string());
