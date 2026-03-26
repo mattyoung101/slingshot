@@ -36,6 +36,9 @@ public:
     /// Dumps the graph to a DOT file
     void dumpDot();
 
+    /// Locates subgraphs (strongly connected components of the main graph)
+    std::vector<graaf::directed_graph<std::filesystem::path, std::string>> determineSubGraphs();
+
 private:
     struct UnresolvedSymbol {
         /// LHS, this side provides the symbol

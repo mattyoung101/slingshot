@@ -7,9 +7,12 @@
 #include "slingshot/document_graph.hpp"
 #include "slingshot/language.hpp"
 #include "slingshot/slingshot.hpp"
+#include <ankerl/unordered_dense.h>
+#include <cstdint>
 #include <filesystem>
-#include <graaflib/algorithm/topological_sorting/dfs_topological_sorting.h>
+#include <graaflib/algorithm/graph_traversal/breadth_first_search.h>
 #include <graaflib/algorithm/strongly_connected_components/tarjan.h>
+#include <graaflib/algorithm/topological_sorting/dfs_topological_sorting.h>
 #include <graaflib/edge.h>
 #include <graaflib/graph.h>
 #include <graaflib/io/dot.h>
@@ -19,9 +22,41 @@
 #include <optional>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <tuple>
 #include <vector>
 
 using namespace slingshot;
+
+using Graph_t = graaf::directed_graph<std::filesystem::path, std::string>;
+
+template <>
+struct ankerl::unordered_dense::hash<std::vector<graaf::vertex_id_t>> {
+    using is_avalanching = void;
+
+    [[nodiscard]] auto operator()(std::vector<graaf::vertex_id_t> const &x) const noexcept -> uint64_t {
+        uint64_t hash = 0xBEEF;
+        for (const auto &elem : x) {
+            uint64_t update = detail::wyhash::hash(elem);
+            hash = detail::wyhash::mix(hash, update);
+        }
+        return hash;
+    }
+};
+
+template <>
+struct ankerl::unordered_dense::hash<std::vector<graaf::edge_id_t>> {
+    using is_avalanching = void;
+
+    [[nodiscard]] auto operator()(std::vector<graaf::edge_id_t> const &x) const noexcept -> uint64_t {
+        uint64_t hash = 0xBEEF;
+        for (const auto &elem : x) {
+            uint64_t update
+                = detail::wyhash::mix(detail::wyhash::hash(elem.first), detail::wyhash::hash(elem.second));
+            hash = detail::wyhash::mix(hash, update);
+        }
+        return hash;
+    }
+};
 
 void DocumentGraph::insertDocument(const std::filesystem::path &path) {
     SPDLOG_TRACE("Insert document vertex {} into graph", path.string());
@@ -190,4 +225,36 @@ void DocumentGraph::locateCycles() {
             // TODO locate the edge that connects this node
         }
     }
+}
+
+std::vector<Graph_t> DocumentGraph::determineSubGraphs() {
+    // a set of all the unique subgraphs; which we store as edges. we can then reconstruct the actual graph
+    // later
+    ankerl::unordered_dense::set<std::vector<graaf::edge_id_t>> subgraphs;
+
+    // do BFS traversal for each node to find all the graphs
+    for (const auto &[vertId, vert] : graph.get_vertices()) {
+        std::vector<graaf::edge_id_t> allEdges;
+        // record all the edges in this subgraph
+        auto edgeCallback = [&allEdges](const graaf::edge_id_t &edge) { allEdges.push_back(edge); };
+        graaf::algorithm::breadth_first_traverse(graph, vertId, edgeCallback);
+
+        // insert into the subgraph; this is fine since it's a set which means it's unique right
+        subgraphs.insert(allEdges);
+    }
+
+    SPDLOG_DEBUG("Found {} unique subgraphs", subgraphs.size());
+
+    std::vector<Graph_t> out;
+    for (const auto &subgraphEdges : subgraphs) {
+        SPDLOG_ERROR("Subgraph has size {} edges", subgraphEdges.size());
+
+        Graph_t subgraph;
+
+        for (const auto &[lhsId, rhsId] : subgraphEdges) {
+
+        }
+    }
+
+    return out;
 }

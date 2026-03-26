@@ -419,6 +419,9 @@ void CompilationManager::locateAllRequiredDocuments() {
     // keep track of all the prior documents we've seen in our topological traversal
     std::vector<std::filesystem::path> allPriorDocs;
 
+    // determine all subgraphs
+    auto subgraphs = g_indexManager.documentGraph->determineSubGraphs();
+
     // and this is why we do the topo sort, right! because now we now the exact order we need to compile all
     // the documents in!
     auto topoSort = g_indexManager.documentGraph->topologicalSort();
