@@ -79,6 +79,7 @@ std::string RemoteDebugger::processMsg(std::string msg) {
     SPDLOG_DEBUG("Received message: {}", msg);
 
     // this is pretty nasty, we'll fix it up eventually
+    // TODO fix it up
     if (msg == "dump index") {
         return g_indexManager.debugDump();
     }
@@ -107,8 +108,19 @@ std::string RemoteDebugger::processMsg(std::string msg) {
         stream.close();
         return sources;
     }
+    if (msg.starts_with("query deps ")) {
+        replace(msg, "query deps ", "");
+        trim(msg);
+        return g_compilerManager.debugGetDepsForFile(msg);
+    }
+    if (msg == "dump toposort") {
+        return g_compilerManager.debugGetTopoSort();
+    }
 
-    return fmt::format("Command '{}' not found", msg);
+    return fmt::format(
+        "Command '{}' not found. Commands are:\n    dump {{index,lang,graph,sources,toposort}}\n   "
+        " sigtrap\n    die\n    query deps {{path}}",
+        msg);
 }
 
 #else

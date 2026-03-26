@@ -405,6 +405,13 @@ void CompilationManager::maybeFinaliseIndexingProgress() {
 
 // REQUIRES ITS OWN LOCK
 void CompilationManager::locateAllRequiredDocuments() {
+    // FIXME: the problem here I think is that this does *not* handle disconnected graphs, like subgraphs,
+    // which of course our graphs are!
+    // especially if the top module is not linked up to the AXI stuff for example in currawong
+    // I think it would be better if we identify all the subgraphs and then do a topological sort for each
+    // subgraph independently
+    // we just need to know what "subgraph" means here; it's probably strongly connected components yeah?
+
     SPDLOG_INFO("Locating all required documents");
 
     g_indexManager.documentGraph->finaliseOutstandingSymbols();
@@ -436,6 +443,14 @@ void CompilationManager::locateAllRequiredDocuments() {
 
         allPriorDocs.push_back(doc);
     }
+
+#if SLINGSHOT_ENABLE_REMOTE_DEBUGGER
+    debugTopoSort = "";
+    for (size_t i = 0; i < topoSort->size(); i++) {
+        const auto &doc = topoSort->at(i);
+        debugTopoSort += fmt::format("({}/{}) {}\n", i, topoSort->size(), doc.string());
+    }
+#endif
 }
 
 void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) {
@@ -608,4 +623,18 @@ void CompilationManager::outgoingDiagnosticsThread() {
         // wait for 500 ms (rate limit!)
         std::this_thread::sleep_for(100ms);
     }
+}
+
+std::string CompilationManager::debugGetDepsForFile(const std::string &path) {
+    auto lock = acquireLock();
+    if (!requiredDocuments.contains(path)) {
+        return fmt::format("Not found in {} deps", requiredDocuments.size());
+    }
+
+    std::string out = fmt::format("Required documents for path {}\n", path);
+    size_t i = 0;
+    for (const auto &req : requiredDocuments[path]) {
+        out += fmt::format("  {}. {}\n", i++, req.string());
+    }
+    return out;
 }

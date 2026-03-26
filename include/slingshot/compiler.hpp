@@ -114,6 +114,13 @@ public:
         return std::unique_lock(lock);
     }
 
+    std::string debugGetDepsForFile(const std::string &path);
+
+    inline std::string debugGetTopoSort() {
+        auto lock = acquireLock();
+        return debugTopoSort;
+    }
+
 private:
     BS::thread_pool<> pool {};
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
@@ -125,6 +132,7 @@ private:
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
     std::recursive_mutex lock;
     std::atomic_int indexingJobsInProgress;
+    std::string debugTopoSort;
 
     /// outgoing, timestamped diagnostics
     moodycamel::BlockingConcurrentQueue<TimestampedDiagnostics> outgoingDiagnostics{};
