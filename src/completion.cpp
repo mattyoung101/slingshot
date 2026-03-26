@@ -174,12 +174,27 @@ void CompletionSyntaxVisitor::handle(const SimpleSequenceExprSyntax &syntax) {
             RECOMMEND(CompletionGenerator::generateSystemTasks());
             RECOMMEND(CompletionGenerator::generateIf());
             RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+
+            if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
+                RECOMMEND(CompletionGenerator::generateAlways());
+            }
         }
+
+        SPDLOG_TRACE("Complete SimpleSequenceExpr syntax: {}", syntax.toString());
     })
 }
 
 void CompletionSyntaxVisitor::handle(const IdentifierNameSyntax &syntax) {
-    BEGIN({ RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc)); })
+    BEGIN({
+        RECOMMEND(CompletionGenerator::generateLogic());
+        RECOMMEND(CompletionGenerator::generateSystemTasks());
+        RECOMMEND(CompletionGenerator::generateIf());
+        RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+
+        if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
+            RECOMMEND(CompletionGenerator::generateAlways());
+        }
+    })
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
