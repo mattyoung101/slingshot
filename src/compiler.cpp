@@ -200,8 +200,8 @@ void CompilationManager::submitCompilationJob(
             // do initial CST parse, no dependencies, nothing
             auto tree = doCstParse(path, buf, diagEngine);
 
-            // if we're doing the initial index, make SURE that we update the import table before we perform AST
-            // compilation. AST compilation will complain if we have no import table.
+            // if we're doing the initial index, make SURE that we update the import table before we perform
+            // AST compilation. AST compilation will complain if we have no import table.
             if (isIndex) {
                 reIndexDocument(path, tree);
             }
@@ -276,7 +276,8 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::file
     // is our only goal here atm
     driver::Driver slangDriver;
     slangDriver.addStandardArgs();
-    slangDriver.options.errorLimit = 999;
+    slangDriver.options.errorLimit = 100;
+    slangDriver.options.maxGenerateSteps = 32;
     auto options = slangDriver.createOptionBag();
 
     // create a compilation, so we can get further diagnostics; this will yield for us the AST,
@@ -318,13 +319,15 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::file
                     doc.string());
             }
         }
+        SPDLOG_TRACE(
+            "Compilation for {} has {} syntax trees", path.string(), compilation->getSyntaxTrees().size());
     }
 
     // finalise it, apparently we have to call getRoot() to do this
     SPDLOG_TRACE("Finalise AST compilation");
     compilation->getRoot();
     for (const auto &diag : compilation->getAllDiagnostics()) {
-        SPDLOG_TRACE("Got an AST diagnostic {}", slang::toString(diag.code));
+        SPDLOG_TRACE("Got an AST diagnostic {} when parsing {}", slang::toString(diag.code), path.string());
         // ensure the diagnostic relates to the file we're compiling
         if (diag.location.buffer() == buf.id) {
             SPDLOG_TRACE("Issued a diagnostic in the AST");

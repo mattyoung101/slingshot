@@ -222,7 +222,7 @@ std::vector<lang::Document> IndexManager::getAllLangDocs() {
 }
 
 void IndexManager::parseFListFile(const std::filesystem::path &path) {
-    SPDLOG_DEBUG("Parse F-list file: {}", path.string());
+    SPDLOG_INFO("Parse F-list file: {}", path.string());
     if (!std::filesystem::exists(path)) {
         SPDLOG_ERROR("F-list file '{}' does not exist", path.string());
         return;
@@ -230,9 +230,24 @@ void IndexManager::parseFListFile(const std::filesystem::path &path) {
 
     auto contents = readFile(path);
 
+    isStillQueueingIndexJobs = true;
+
+    // first, we need to tell the server about our token
+    lsp::requests::Window_WorkDoneProgress_Create::Params create("SlingshotIndexProgress");
+    auto result = g_msgHandler->sendRequest<lsp::requests::Window_WorkDoneProgress_Create>(std::move(create));
+
+    // NOW, we can actually initiate the work done progress, in a really really stupid way
+    // reference:
+    // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initiatingWorkDoneProgress
+    lsp::notifications::Progress::Params beginMsg;
+    beginMsg.token = "SlingshotIndexProgress";
+    beginMsg.value = lsp::toJson(lsp::WorkDoneProgressBegin());
+    g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(beginMsg));
+
+    isInitialIndexInProgress = true;
+
     // https://stackoverflow.com/a/12514641
     std::istringstream iss(contents);
-
     for (std::string line; std::getline(iss, line);) {
         trim(line);
 
@@ -250,8 +265,6 @@ void IndexManager::parseFListFile(const std::filesystem::path &path) {
         }
     }
 
-    // finalise
-    for (const auto &dir : includeDirs) {
-        walkDir(dir);
-    }
+    // we've finished queueing jobs now, so later at some point we can officially terminate the indexing
+    isStillQueueingIndexJobs = false;
 }

@@ -25,7 +25,7 @@ const std::regex SEMVER_REGEX(R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((
 
 namespace {
 void parseConfigToml(std::filesystem::path &path) {
-    // try {
+    try {
         auto config = toml::parse_file(path.string());
 
         if (!config.contains("version")) {
@@ -95,11 +95,9 @@ void parseConfigToml(std::filesystem::path &path) {
 
         if (config.contains("flist_files")) {
             auto *flist_files = config["flist_files"].as_array();
-
             for (const auto &file : *flist_files) {
                 slingshot::g_indexManager.parseFListFile(std::string(*file.as_string()));
             }
-
             didFindFileSources = true;
         }
 
@@ -107,9 +105,9 @@ void parseConfigToml(std::filesystem::path &path) {
             SPDLOG_ERROR("Config file defines no file sources. At least one of 'include_dirs' or "
                          "'flist_files' should be present.");
         }
-    // } catch (const std::exception &e) {
-    //     SPDLOG_ERROR("Failed to parse config TOML: {}", e.what());
-    // }
+    } catch (const std::exception &e) {
+        SPDLOG_ERROR("Failed to parse config TOML: {}", e.what());
+    }
 }
 
 }; // namespace
