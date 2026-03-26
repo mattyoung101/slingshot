@@ -12,7 +12,7 @@
 #include <lsp/messages.h>
 #include <lsp/types.h>
 #include <optional>
-#include <re2/re2.h>
+#include <regex>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <toml++/toml.hpp>
@@ -20,8 +20,7 @@
 
 namespace {
 // https://stackoverflow.com/a/72900791
-std::string SEMVER_REGEX
-    = R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)";
+const std::regex SEMVER_REGEX(R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)");
 }; // namespace
 
 namespace {
@@ -36,14 +35,38 @@ void parseConfigToml(std::filesystem::path &path) {
 
         auto *version = config["version"].as_string();
 
+        std::smatch matches;
         std::string major, minor, patch;
-        if (!RE2::FullMatch(std::string(*version), SEMVER_REGEX, &major, &minor, &patch)) {
+        // wow, what a great language, we love C++, thank you C++, incredible language, great work
+        // fucking awful piecea shit
+        // https://stackoverflow.com/a/32164608
+        std::string temporary = std::string(*version);
+        if (!std::regex_match(temporary, matches, SEMVER_REGEX)) {
             SPDLOG_ERROR("Failed to match config version");
         }
+
+        // also note that this godforsaken language has a slower regex engine than ruby and python 2 COMBINED
+        // see: https://github.com/mariomka/regex-benchmark
+        // anyway, the reason we're using this is because, while std::regex may be an abominably slow and
+        // shittily designed API, it *is* at least included with the terrible language itself. re2 is good but
+        // Google in their infinite wisdom made it completely unportable by depending on an unspecified (!)
+        // version of absl, which will break our CI and break our users trying to install this project. as I
+        // have written about extensively in the README, because this language is so fucking awful, I
+        // absolutely refuse to depend on system deps because that guarantees we will be uncompilable on some
+        // random platform in the future, so we'll just settle to use std::regex instead. after all, we only
+        // have to do this at boot once.
+
+        major = matches[1];
+        minor = matches[2];
+        patch = matches[3];
 
         if (major != slingshot::CONFIG_MAJOR_VERSION) {
             SPDLOG_ERROR("Config major version mismatch. Project uses {} (major: {}), but server uses {}.x.x",
                 std::string(*version), major, slingshot::CONFIG_MAJOR_VERSION);
+            SPDLOG_DEBUG("i.e. {} != {}", major, slingshot::CONFIG_MAJOR_VERSION);
+            for (const auto &match : matches) {
+                SPDLOG_DEBUG("match: {}", match.str());
+            }
             return;
         }
 

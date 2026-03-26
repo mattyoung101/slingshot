@@ -44,7 +44,6 @@ CPMAddPackage(URI "gh:bobluppes/graaf#e0ec371ae8266fb72d986c0de5c47286f34a0589" 
     "SKIP_EXAMPLES ON" "SKIP_BENCHMARKS ON")
 # CPMAddPackage("gh:yohhoy/yamc#4e015a7e8eb0d61c34e6928676c8c78881a72d73")
 CPMAddPackage("gh:catchorg/Catch2@3.11.0")
-CPMAddPackage("gh:google/re2#2025-11-05")
 
 add_library(BS_thread_pool INTERFACE)
 target_include_directories(BS_thread_pool INTERFACE ${BS_thread_pool_SOURCE_DIR}/include)
@@ -78,7 +77,7 @@ function(add_slingshot_target TARGET)
 
     target_link_libraries(${TARGET} PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp
         unordered_dense::unordered_dense nlohmann_json::nlohmann_json BS_thread_pool tomlplusplus::tomlplusplus
-        Graaf::Graaf re2::re2)
+        Graaf::Graaf)
 
     if (SLINGSHOT_ENABLE_REMOTE_DEBUGGER)
         target_link_libraries(${TARGET} PRIVATE sockpp-static)
@@ -137,7 +136,7 @@ function(add_slingshot_test TARGET SOURCE)
 
     target_link_libraries(${TARGET} PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp
         unordered_dense::unordered_dense nlohmann_json::nlohmann_json BS_thread_pool tomlplusplus::tomlplusplus
-        Graaf::Graaf Catch2::Catch2WithMain re2::re2)
+        Graaf::Graaf Catch2::Catch2WithMain)
 
     if (SLINGSHOT_ENABLE_REMOTE_DEBUGGER)
         target_link_libraries(${TARGET} PRIVATE sockpp-static)
