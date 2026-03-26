@@ -24,6 +24,8 @@ include(cmake/CPM.cmake)
 option(SLINGSHOT_ENABLE_REMOTE_DEBUGGER "Enables the remote debugger functionality in Slingshot. Does not work
     on Windows." TRUE)
 
+option(SLINGSHOT_BUILD_TESTS "Enables building tests." TRUE)
+
 ## LINKER
 message(STATUS "Checking if mold is available")
 execute_process(COMMAND "mold" "--version" OUTPUT_VARIABLE MOLD_RESULT)
@@ -181,4 +183,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_slingshot_target(slingshot_msan EXTRA_ARGS "-O0" "-fsanitize=memory")
 endif()
 
-add_slingshot_test(sling_test_indexer test/indexer.cpp)
+if (SLINGSHOT_BUILD_TESTS)
+    add_slingshot_test(sling_test_indexer test/indexer.cpp)
+endif()

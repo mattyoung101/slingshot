@@ -21,7 +21,7 @@ class DocumentGraph {
 public:
     void insertDocument(const std::filesystem::path &path);
 
-    void registerProvidedSymbol(const std::filesystem::path &path, const std::string &symbol);
+   void registerProvidedSymbol(const std::filesystem::path &path, const std::string &symbol);
 
     void registerRequiredSymbol(const std::filesystem::path &path, const std::string &symbol);
 

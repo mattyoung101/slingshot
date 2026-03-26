@@ -6,7 +6,6 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/import_locator.hpp"
 #include <atomic>
-#include <chrono>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
@@ -203,7 +202,7 @@ void CompilationManager::submitCompilationJob(
             // if we're doing the initial index, make SURE that we update the import table before we perform
             // AST compilation. AST compilation will complain if we have no import table.
             if (isIndex) {
-                reIndexDocument(path, tree);
+                reIndexDocument(path, tree, true); // in index, so send notif
             }
 
             // do AST parse
@@ -243,13 +242,7 @@ void CompilationManager::submitCompilationJob(
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void CompilationManager::maybeUpdateIndexingProgress(const std::filesystem::path &path) {
     if (g_indexManager.isInitialIndexInProgress) {
-        // in that case, send a progress notification
-        lsp::WorkDoneProgressReport report;
-        report.message = "Indexing " + path.string();
-        lsp::notifications::Progress::Params progress;
-        progress.token = "SlingshotIndexProgress";
-        progress.value = lsp::toJson(std::move(report));
-        g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
+        sendLspProgressMsg("Indexing " + path.string());
     }
 }
 
@@ -292,13 +285,16 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::file
         SPDLOG_WARN("Required documents for path {} are unknown!", path.string());
     } else {
         // determine if the document graph needs rebuilding, by checking the import table
+        // this will occur e.g. if the user adds another module, changes imports, etc.
+        // computing the import table is quick enough we can do it here.
         auto imports = ImportLocator::locateRequiredProvidedImports(tree, path);
         if (importHashes[path] != imports.hash() && !g_indexManager.isInitialIndexInProgress) {
             SPDLOG_WARN("Import table changed outside of indexing, document graph must be rebuilt!");
             // this unlock and relock shenanigan is necessary to avoid deadlocks, at least according to
             // ThreadSanitizer
             lock.unlock();
-            reIndexDocument(path, tree);
+            // assume indexing done, don't send LSP notification
+            reIndexDocument(path, tree, false);
             lock.lock();
         }
 
@@ -412,7 +408,8 @@ void CompilationManager::locateAllRequiredDocuments(bool shouldSendLspNotificati
 
     if (g_indexManager.documentGraph->doesHaveCycles()) {
         SPDLOG_ERROR("Dependency graph is malformed and has cycles! Cannot compute dependents!");
-        SPDLOG_ERROR("This WILL break the index, you need to fix this by removing self-referential dependencies.");
+        SPDLOG_ERROR(
+            "This WILL break the index, you need to fix this by removing self-referential dependencies.");
         SPDLOG_ERROR("This may assist you:");
         g_indexManager.documentGraph->debugLocateCycles();
         // TODO warn user in GUI
@@ -430,15 +427,8 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
     auto indexLock = g_indexManager.acquireLock();
     auto compilerLock = acquireLock();
 
-    // send progress notification
     if (shouldSendLspNotification) {
-        // TODO this should be its own routine in some other file (maybe handlers.cpp -> lsp.cpp)
-        lsp::WorkDoneProgressReport report;
-        report.message = "Computing document graph";
-        lsp::notifications::Progress::Params progress;
-        progress.token = "SlingshotIndexProgress";
-        progress.value = lsp::toJson(std::move(report));
-        g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
+        sendLspProgressMsg("Computing dependents from document graph");
     }
 
     // TODO do this at the end or only once? it takes a while now
@@ -447,16 +437,6 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
     // we also need to recompile all the open files now, to clear out all the warnings
     SPDLOG_DEBUG("Recompiling documents now that indexing is done");
     for (const auto &doc : openFiles) {
-        // send progress notification
-        if (shouldSendLspNotification) {
-            lsp::WorkDoneProgressReport report;
-            report.message = "Recompilig open document " + doc.string();
-            lsp::notifications::Progress::Params progress;
-            progress.token = "SlingshotIndexProgress";
-            progress.value = lsp::toJson(std::move(report));
-            g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
-        }
-
         // do NOT pull from disk, pull from the index!
         // see: https://github.com/mlyoung101/slingshot/issues/76
         reCompileDocument(doc);
@@ -472,8 +452,8 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
     }
 }
 
-void CompilationManager::reIndexDocument(
-    const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
+void CompilationManager::reIndexDocument(const std::filesystem::path &path,
+    const std::shared_ptr<slang::syntax::SyntaxTree> &tree, bool shouldSendLspNotification) {
     SPDLOG_TRACE("Reindexing document: {}, contents:{}\n", path.string(), tree->root().toString());
 
     // figure out what symbols this document provides and requires
@@ -493,7 +473,7 @@ void CompilationManager::reIndexDocument(
         importHashes[path] = imports.hash();
 
         // always attempt to locate outstanding symbols and process the required documents list
-        locateAllRequiredDocuments(false); // TODO should this be true or false
+        locateAllRequiredDocuments(shouldSendLspNotification);
     }
 }
 

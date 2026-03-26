@@ -13,6 +13,9 @@
 #include <filesystem>
 #include <fstream>
 #include <lsp/messagehandler.h>
+#include <lsp/messages.h>
+#include <lsp/types.h>
+#include <lsp/uri.h>
 #include <memory>
 #include <optional>
 #include <slang/syntax/SyntaxTree.h>
@@ -112,6 +115,15 @@ inline bool replace(std::string &str, const std::string &from, const std::string
         return false;
     str.replace(start_pos, from.length(), to);
     return true;
+}
+
+inline void sendLspProgressMsg(const std::string &msg) {
+    lsp::WorkDoneProgressReport report;
+    report.message = msg;
+    lsp::notifications::Progress::Params progress;
+    progress.token = "SlingshotIndexProgress";
+    progress.value = lsp::toJson(std::move(report));
+    g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
 }
 
 } // namespace slingshot

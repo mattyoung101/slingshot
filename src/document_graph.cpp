@@ -225,17 +225,15 @@ std::vector<std::filesystem::path> DocumentGraph::locateRequiredDependents(
         const auto &rhs = invertedGraph.get_vertex(rhsId);
 
         // this **IS** the right way around (since we're on the inverted graph, remember)
-        // if (!contains(dependents, rhs)) {
-            dependents.push_back(rhs);
-        // }
+        dependents.push_back(rhs);
     };
 
     // perform the BFS
     graaf::algorithm::breadth_first_traverse(invertedGraph, invertedVertex, edgeCallback);
 
-    SPDLOG_DEBUG("Dependents for {}:", path.string());
+    SPDLOG_TRACE("Dependents for {}:", path.string());
     for (const auto &d : dependents) {
-        SPDLOG_DEBUG("    {}", d.string());
+        SPDLOG_TRACE("    {}", d.string());
     }
 
     return dependents;

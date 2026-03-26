@@ -95,7 +95,7 @@ public:
     }
 
     /// List of files the editor has open
-    ankerl::unordered_dense::set<std::filesystem::path> openFiles {};
+    ankerl::unordered_dense::set<std::filesystem::path> openFiles { };
 
     /// Association between a FS path and a Slang BufferID once it's been added to the internal SourceManager
     ankerl::unordered_dense::map<std::filesystem::path, BufferID> bufferIds;
@@ -122,7 +122,7 @@ public:
     }
 
 private:
-    BS::thread_pool<> pool {};
+    BS::thread_pool<> pool { };
     ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
     /// mapping of a document to all the documents it requires to build the AST
     ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::filesystem::path>> requiredDocuments;
@@ -135,7 +135,7 @@ private:
     std::string debugTopoSort;
 
     /// outgoing, timestamped diagnostics
-    moodycamel::BlockingConcurrentQueue<TimestampedDiagnostics> outgoingDiagnostics{};
+    moodycamel::BlockingConcurrentQueue<TimestampedDiagnostics> outgoingDiagnostics { };
 
     /// Performs a bulk compilation of all the documents in the index, once the document graph has been built
     void performBulkCompilation(bool shouldSendLspNotification);
@@ -159,8 +159,8 @@ private:
 
     void maybeFinaliseIndexingProgress();
 
-    void reIndexDocument(
-        const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree);
+    void reIndexDocument(const std::filesystem::path &path,
+        const std::shared_ptr<slang::syntax::SyntaxTree> &tree, bool shouldSendLspNotification);
 
     /// Recompiles a document that's already in the index, used by reIndexDocument
     void reCompileDocument(const std::filesystem::path &path);
