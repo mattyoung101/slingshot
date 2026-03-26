@@ -33,7 +33,8 @@ public:
     /// Dumps the graph to a DOT file
     void dumpDot();
 
-    /// Locates the required dependents, i.e. documents that are required to compile the document specified
+    /// Locates the required dependents, i.e. documents that are required to compile the document specified.
+    /// This is performed using a backwards BFS.
     std::vector<std::filesystem::path> locateRequiredDependents(const std::filesystem::path &path);
 
     /// Computes, if not cached, if the graph has cycles and returns it

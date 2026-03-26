@@ -181,8 +181,8 @@ void CompilationManager::submitCompilationJob(
 
             SPDLOG_TRACE("==== COMPILING {} contents: =====\n{}", path.string(), document);
 
-            if (isIndex) {
-                maybeUpdateIndexingProgress(path);
+            if (isIndex && g_indexManager.isInitialIndexInProgress) {
+                sendLspProgressMsg("Indexing " + path.string());
             }
 
             // setup the diagnostics engine
@@ -237,13 +237,6 @@ void CompilationManager::submitCompilationJob(
             SPDLOG_ERROR("Caught exception in compilation job: {}", e.what());
         }
     });
-}
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-void CompilationManager::maybeUpdateIndexingProgress(const std::filesystem::path &path) {
-    if (g_indexManager.isInitialIndexInProgress) {
-        sendLspProgressMsg("Indexing " + path.string());
-    }
 }
 
 std::shared_ptr<slang::syntax::SyntaxTree> CompilationManager::doCstParse(
@@ -477,6 +470,8 @@ void CompilationManager::reIndexDocument(const std::filesystem::path &path,
     }
 }
 
+// FIXME if we were smart (which we're not), this should mostly be inlined into submitCompilationJob; it
+// stinks that we're duplicating it here
 void CompilationManager::reCompileDocument(const std::filesystem::path &path) {
     auto now = timeNowNs();
 
