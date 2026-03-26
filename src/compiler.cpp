@@ -324,7 +324,7 @@ std::shared_ptr<ast::Compilation> CompilationManager::doAstParse(const std::file
     SPDLOG_TRACE("Finalise AST compilation");
     compilation->getRoot();
     for (const auto &diag : compilation->getAllDiagnostics()) {
-        SPDLOG_TRACE("Got an AST diagnostic");
+        SPDLOG_TRACE("Got an AST diagnostic {}", slang::toString(diag.code));
         // ensure the diagnostic relates to the file we're compiling
         if (diag.location.buffer() == buf.id) {
             SPDLOG_TRACE("Issued a diagnostic in the AST");

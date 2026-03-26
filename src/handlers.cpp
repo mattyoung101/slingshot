@@ -26,7 +26,7 @@ std::string SEMVER_REGEX
 
 namespace {
 void parseConfigToml(std::filesystem::path &path) {
-    try {
+    // try {
         auto config = toml::parse_file(path.string());
 
         if (!config.contains("version")) {
@@ -84,9 +84,9 @@ void parseConfigToml(std::filesystem::path &path) {
             SPDLOG_ERROR("Config file defines no file sources. At least one of 'include_dirs' or "
                          "'flist_files' should be present.");
         }
-    } catch (const std::exception &e) {
-        SPDLOG_ERROR("Failed to parse config TOML: {}", e.what());
-    }
+    // } catch (const std::exception &e) {
+    //     SPDLOG_ERROR("Failed to parse config TOML: {}", e.what());
+    // }
 }
 
 }; // namespace

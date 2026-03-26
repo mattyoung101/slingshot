@@ -5,9 +5,11 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/document_graph.hpp"
+#include "slingshot/language.hpp"
 #include "slingshot/slingshot.hpp"
 #include <filesystem>
 #include <graaflib/algorithm/topological_sorting/dfs_topological_sorting.h>
+#include <graaflib/algorithm/strongly_connected_components/tarjan.h>
 #include <graaflib/edge.h>
 #include <graaflib/graph.h>
 #include <graaflib/io/dot.h>
@@ -30,6 +32,12 @@ void DocumentGraph::linkDocuments(
     const std::filesystem::path &provider, const std::filesystem::path &requirer, const std::string &symbol) {
     auto providerId = vertices.at(provider);
     auto requirerId = vertices.at(requirer);
+    // HACK: this isn't the smartest way to solve this problem, but it's impossible for a document to depend
+    // on itself, so reject self-referential edges
+    if (providerId == requirerId) {
+        SPDLOG_WARN("Rejecting self-edge on vetex {} symbol {}", provider.string(), symbol);
+        return;
+    }
     graph.add_edge(providerId, requirerId, symbol);
 }
 
@@ -39,14 +47,8 @@ std::optional<std::vector<std::filesystem::path>> DocumentGraph::topologicalSort
         SPDLOG_ERROR("Failed to perform topological sort of document graph; this graph has cycles!");
         SPDLOG_ERROR("This probably means your project is malformed and has dependency cycles.");
 
-        // NOTE Neovim doesn't seem to like this, so we do the one below instead
-        // display a message in the client too
-        // lsp::notifications::Window_ShowMessage::Params msg;
-        // msg.type = lsp::MessageType::Warning;
-        // msg.message = "Failed to topologically sort document graph. Project is malformed and has dependency
-        // cycles."; g_msgHandler->sendNotification<lsp::notifications::Window_ShowMessage>(std::move(msg));
-
-        // TODO identify the cycle for debugging
+        // identify and print the cycle for debugging
+        locateCycles();
 
         return std::nullopt;
     }
@@ -129,14 +131,16 @@ void DocumentGraph::finaliseOutstandingSymbols() {
             toString(sym.lhs), toString(sym.rhs));
 
         if (!sym.lhs.has_value()) {
-            // see if we can find a resolver for this symbol in the graph
-            auto provider = findProvider(sym.symbol);
             if (!sym.rhs.has_value()) {
                 SPDLOG_WARN("RHS does not have a value (bugprone), skipping");
                 it++;
                 continue;
             }
-            if (provider.has_value()) {
+
+            // see if we can find a resolver for this symbol in the graph
+            auto provider = findProvider(sym.symbol);
+            // ensure also that we're not creating self loops
+            if (provider.has_value() && *provider != sym.rhs) {
                 SPDLOG_DEBUG("Found provider for symbol '{}': '{}'", sym.symbol, provider->string());
                 linkDocuments(*provider, *sym.rhs, sym.symbol);
                 it = unresolvedSymbols.erase(it);
@@ -173,4 +177,17 @@ std::optional<std::filesystem::path> DocumentGraph::findProvider(const std::stri
     }
     // no luck
     return std::nullopt;
+}
+
+void DocumentGraph::locateCycles() {
+    // this method is probably not perfect, i'm not a 1337 leetcoder sorry
+    auto sccs = graaf::algorithm::tarjans_strongly_connected_components(graph);
+    SPDLOG_ERROR("Graph has {} SCCs", sccs.size());
+    for (const auto &scc : sccs) {
+        SPDLOG_ERROR("SCC has size {}", scc.size());
+        for (size_t i = 0; i < scc.size(); i++) {
+            SPDLOG_ERROR("    {}. {}", i, scc[i]);
+            // TODO locate the edge that connects this node
+        }
+    }
 }

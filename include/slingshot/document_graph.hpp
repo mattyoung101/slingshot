@@ -67,6 +67,8 @@ private:
     ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::string>> symbolProviders {};
 
     std::vector<UnresolvedSymbol> unresolvedSymbols {};
+
+    void locateCycles();
 };
 
 } // namespace slingshot
