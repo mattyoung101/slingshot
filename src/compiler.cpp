@@ -404,56 +404,24 @@ void CompilationManager::maybeFinaliseIndexingProgress() {
 }
 
 // REQUIRES ITS OWN LOCK
-void CompilationManager::locateAllRequiredDocuments() {
-    // FIXME: the problem here I think is that this does *not* handle disconnected graphs, like subgraphs,
-    // which of course our graphs are!
-    // especially if the top module is not linked up to the AXI stuff for example in currawong
-    // I think it would be better if we identify all the subgraphs and then do a topological sort for each
-    // subgraph independently
-    // we just need to know what "subgraph" means here; it's probably strongly connected components yeah?
-
+void CompilationManager::locateAllRequiredDocuments(bool shouldSendLspNotification) {
     SPDLOG_INFO("Locating all required documents");
 
+    // finalise the graph
     g_indexManager.documentGraph->finaliseOutstandingSymbols();
 
-    // keep track of all the prior documents we've seen in our topological traversal
-    std::vector<std::filesystem::path> allPriorDocs;
-
-    // determine all subgraphs
-    auto subgraphs = g_indexManager.documentGraph->determineSubGraphs();
-
-    // and this is why we do the topo sort, right! because now we now the exact order we need to compile all
-    // the documents in!
-    auto topoSort = g_indexManager.documentGraph->topologicalSort();
-    if (!topoSort.has_value() || topoSort == std::nullopt) {
-        SPDLOG_ERROR("Failed to topologically sort the document graph!");
+    if (g_indexManager.documentGraph->doesHaveCycles()) {
+        SPDLOG_ERROR("Dependency graph is malformed and has cycles! Cannot compute dependents!");
+        SPDLOG_ERROR("This WILL break the index, you need to fix this by removing self-referential dependencies.");
+        SPDLOG_ERROR("This may assist you:");
+        g_indexManager.documentGraph->debugLocateCycles();
+        // TODO warn user in GUI
         return;
     }
 
-    for (size_t i = 0; i < topoSort->size(); i++) {
-        const auto &doc = topoSort->at(i);
-        SPDLOG_TRACE("({}/{}) {}", i, topoSort->size(), doc.string());
-
-        requiredDocuments[doc] = allPriorDocs;
-
-        // perform the compilation itself
-        // since the doc has been indexed, we can just pull the CST out of there
-        auto entry = g_indexManager.retrieve(doc);
-        if (!entry.has_value() || entry == std::nullopt) {
-            SPDLOG_ERROR("Document {} not in index somehow?!", doc.string());
-            continue;
-        }
-
-        allPriorDocs.push_back(doc);
+    for (const auto &doc : g_indexManager.documentGraph->getAllKnownDocuments()) {
+        requiredDocuments[doc] = g_indexManager.documentGraph->locateRequiredDependents(doc);
     }
-
-#if SLINGSHOT_ENABLE_REMOTE_DEBUGGER
-    debugTopoSort = "";
-    for (size_t i = 0; i < topoSort->size(); i++) {
-        const auto &doc = topoSort->at(i);
-        debugTopoSort += fmt::format("({}/{}) {}\n", i, topoSort->size(), doc.string());
-    }
-#endif
 }
 
 void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) {
@@ -464,15 +432,17 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
 
     // send progress notification
     if (shouldSendLspNotification) {
+        // TODO this should be its own routine in some other file (maybe handlers.cpp -> lsp.cpp)
         lsp::WorkDoneProgressReport report;
-        report.message = "Finalising document graph";
+        report.message = "Computing document graph";
         lsp::notifications::Progress::Params progress;
         progress.token = "SlingshotIndexProgress";
         progress.value = lsp::toJson(std::move(report));
         g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(progress));
     }
 
-    locateAllRequiredDocuments();
+    // TODO do this at the end or only once? it takes a while now
+    locateAllRequiredDocuments(shouldSendLspNotification);
 
     // we also need to recompile all the open files now, to clear out all the warnings
     SPDLOG_DEBUG("Recompiling documents now that indexing is done");
@@ -492,6 +462,7 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
         reCompileDocument(doc);
     }
 
+    // FIXME we should only send this once
     if (shouldSendLspNotification) {
         lsp::notifications::Progress::Params endMsg;
         endMsg.token = "SlingshotIndexProgress";
@@ -522,7 +493,7 @@ void CompilationManager::reIndexDocument(
         importHashes[path] = imports.hash();
 
         // always attempt to locate outstanding symbols and process the required documents list
-        locateAllRequiredDocuments();
+        locateAllRequiredDocuments(false); // TODO should this be true or false
     }
 }
 
@@ -623,7 +594,7 @@ void CompilationManager::outgoingDiagnosticsThread() {
         issueDiagnostics(diag.path, diag.lspDiags);
         lastTimes[diag.path] = diag.timestamp;
 
-        // wait for 500 ms (rate limit!)
+        // wait for 100 ms (rate limit!)
         std::this_thread::sleep_for(100ms);
     }
 }

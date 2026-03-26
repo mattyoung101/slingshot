@@ -10,7 +10,9 @@
 #include <ankerl/unordered_dense.h>
 #include <cstdint>
 #include <filesystem>
+#include <graaflib/algorithm/cycle_detection/dfs_cycle_detection.h>
 #include <graaflib/algorithm/graph_traversal/breadth_first_search.h>
+#include <graaflib/algorithm/graph_traversal/depth_first_search.h>
 #include <graaflib/algorithm/strongly_connected_components/tarjan.h>
 #include <graaflib/algorithm/topological_sorting/dfs_topological_sorting.h>
 #include <graaflib/edge.h>
@@ -22,7 +24,6 @@
 #include <optional>
 #include <spdlog/spdlog.h>
 #include <string>
-#include <tuple>
 #include <vector>
 
 using namespace slingshot;
@@ -61,6 +62,8 @@ struct ankerl::unordered_dense::hash<std::vector<graaf::edge_id_t>> {
 void DocumentGraph::insertDocument(const std::filesystem::path &path) {
     SPDLOG_TRACE("Insert document vertex {} into graph", path.string());
     vertices[path] = graph.add_vertex(path);
+    invertedVertices[path] = invertedGraph.add_vertex(path);
+    hasCyclesCacheValid = false;
 }
 
 void DocumentGraph::linkDocuments(
@@ -74,28 +77,8 @@ void DocumentGraph::linkDocuments(
         return;
     }
     graph.add_edge(providerId, requirerId, symbol);
-}
-
-std::optional<std::vector<std::filesystem::path>> DocumentGraph::topologicalSort() {
-    std::optional<std::vector<graaf::vertex_id_t>> sorted = graaf::algorithm::dfs_topological_sort(graph);
-    if (!sorted.has_value()) {
-        SPDLOG_ERROR("Failed to perform topological sort of document graph; this graph has cycles!");
-        SPDLOG_ERROR("This probably means your project is malformed and has dependency cycles.");
-
-        // identify and print the cycle for debugging
-        locateCycles();
-
-        return std::nullopt;
-    }
-
-    std::vector<std::filesystem::path> out;
-    out.reserve(sorted->size());
-    for (const auto &vert : *sorted) {
-        auto value = graph.get_vertex(vert);
-        out.push_back(value);
-    }
-
-    return out;
+    invertedGraph.add_edge(requirerId, providerId, symbol);
+    hasCyclesCacheValid = false;
 }
 
 void DocumentGraph::registerProvidedSymbol(const std::filesystem::path &path, const std::string &symbol) {
@@ -213,7 +196,7 @@ std::optional<std::filesystem::path> DocumentGraph::findProvider(const std::stri
     return std::nullopt;
 }
 
-void DocumentGraph::locateCycles() {
+void DocumentGraph::debugLocateCycles() {
     // this method is probably not perfect, i'm not a 1337 leetcoder sorry
     auto sccs = graaf::algorithm::tarjans_strongly_connected_components(graph);
     SPDLOG_ERROR("Graph has {} SCCs", sccs.size());
@@ -226,32 +209,51 @@ void DocumentGraph::locateCycles() {
     }
 }
 
-std::vector<Graph_t> DocumentGraph::determineSubGraphs() {
-    // a set of all the unique subgraphs; which we store as edges. we can then reconstruct the actual graph
-    // later
-    ankerl::unordered_dense::set<std::vector<graaf::edge_id_t>> subgraphs;
-
-    // do BFS traversal for each node to find all the graphs
-    for (const auto &[vertId, vert] : graph.get_vertices()) {
-        std::vector<graaf::edge_id_t> allEdges;
-        // record all the edges in this subgraph
-        auto edgeCallback = [&allEdges](const graaf::edge_id_t &edge) { allEdges.push_back(edge); };
-        graaf::algorithm::breadth_first_traverse(graph, vertId, edgeCallback);
-
-        // insert into the subgraph; this is fine since it's a set which means it's unique right
-        subgraphs.insert(allEdges);
+std::vector<std::filesystem::path> DocumentGraph::locateRequiredDependents(
+    const std::filesystem::path &path) {
+    if (!invertedVertices.contains(path)) {
+        SPDLOG_ERROR("Specified path {} not in graph", path.string());
+        return { };
     }
 
-    SPDLOG_DEBUG("Found {} unique subgraphs", subgraphs.size());
+    // we do this by performing a BFS on the inverted graph, which we already built earlier (hopefully)
+    auto invertedVertex = invertedVertices[path];
+    std::vector<std::filesystem::path> dependents;
+    auto edgeCallback = [&](const graaf::edge_id_t &edge) {
+        const auto &[lhsId, rhsId] = edge;
+        const auto &lhs = invertedGraph.get_vertex(lhsId);
+        const auto &rhs = invertedGraph.get_vertex(rhsId);
 
-    std::vector<Graph_t> out;
-    for (const auto &subgraphEdges : subgraphs) {
-        SPDLOG_ERROR("Subgraph has size {} edges", subgraphEdges.size());
+        // this **IS** the right way around (since we're on the inverted graph, remember)
+        // if (!contains(dependents, rhs)) {
+            dependents.push_back(rhs);
+        // }
+    };
 
-        Graph_t subgraph;
+    // perform the BFS
+    graaf::algorithm::breadth_first_traverse(invertedGraph, invertedVertex, edgeCallback);
 
-        for (const auto &[lhsId, rhsId] : subgraphEdges) { }
+    SPDLOG_DEBUG("Dependents for {}:", path.string());
+    for (const auto &d : dependents) {
+        SPDLOG_DEBUG("    {}", d.string());
     }
 
+    return dependents;
+}
+
+bool DocumentGraph::doesHaveCycles() {
+    // cache the value, only recompute it if the graph is mutated
+    if (!hasCyclesCacheValid) {
+        hasCycles = graaf::algorithm::dfs_cycle_detection(graph);
+    }
+    return hasCycles;
+}
+
+std::vector<std::filesystem::path> DocumentGraph::getAllKnownDocuments() {
+    std::vector<std::filesystem::path> out;
+    out.reserve(vertices.size());
+    for (const auto &[key, value] : vertices) {
+        out.push_back(key);
+    }
     return out;
 }

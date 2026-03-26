@@ -140,7 +140,7 @@ private:
     /// Performs a bulk compilation of all the documents in the index, once the document graph has been built
     void performBulkCompilation(bool shouldSendLspNotification);
 
-    void locateAllRequiredDocuments();
+    void locateAllRequiredDocuments(bool shouldSendLspNotification);
 
     void maybeUpdateIndexingProgress(const std::filesystem::path &path);
 

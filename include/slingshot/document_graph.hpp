@@ -21,9 +21,6 @@ class DocumentGraph {
 public:
     void insertDocument(const std::filesystem::path &path);
 
-    /// Performs a topological sort of the document graph if possible.
-    std::optional<std::vector<std::filesystem::path>> topologicalSort();
-
     void registerProvidedSymbol(const std::filesystem::path &path, const std::string &symbol);
 
     void registerRequiredSymbol(const std::filesystem::path &path, const std::string &symbol);
@@ -36,8 +33,15 @@ public:
     /// Dumps the graph to a DOT file
     void dumpDot();
 
-    /// Locates subgraphs (strongly connected components of the main graph)
-    std::vector<graaf::directed_graph<std::filesystem::path, std::string>> determineSubGraphs();
+    /// Locates the required dependents, i.e. documents that are required to compile the document specified
+    std::vector<std::filesystem::path> locateRequiredDependents(const std::filesystem::path &path);
+
+    /// Computes, if not cached, if the graph has cycles and returns it
+    bool doesHaveCycles();
+
+    std::vector<std::filesystem::path> getAllKnownDocuments();
+
+    void debugLocateCycles();
 
 private:
     struct UnresolvedSymbol {
@@ -62,16 +66,19 @@ private:
     /// the direction of the vertex A ---(sym)--> B means that A provides the symbol "sym" **TO** B.
     /// it's like this so that we get the result we want from a topo sort.
     graaf::directed_graph<std::filesystem::path, std::string> graph {};
+    graaf::directed_graph<std::filesystem::path, std::string> invertedGraph {};
 
     /// graaflib makes use vertex IDs, so we store a mapping of vertices to paths here
     ankerl::unordered_dense::map<std::filesystem::path, graaf::vertex_id_t> vertices {};
+    ankerl::unordered_dense::map<std::filesystem::path, graaf::vertex_id_t> invertedVertices {};
 
     /// mapping of a file to the symbols it provides, used for findProvider()
     ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::string>> symbolProviders {};
 
     std::vector<UnresolvedSymbol> unresolvedSymbols {};
 
-    void locateCycles();
+    bool hasCycles = false;
+    bool hasCyclesCacheValid = false;
 };
 
 } // namespace slingshot
