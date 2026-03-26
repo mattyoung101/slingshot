@@ -2,10 +2,10 @@ cmake_minimum_required(VERSION 3.21)
 project(slingshot
     LANGUAGES C CXX
     VERSION 1.2.4
-    DESCRIPTION "SystemVerilog language server"
+    DESCRIPTION "SystemVerilog language server powered by Slang"
     HOMEPAGE_URL "https://github.com/mlyoung101/slingshot"
 )
-set(CPACK_PACKAGE_CONTACT "M. L. Young <matt@mlyoung.cool>")
+set(CPACK_PACKAGE_CONTACT "M. L. Young <foss@mlyoung.cool>")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -40,8 +40,8 @@ CPMAddPackage("gh:marzer/tomlplusplus@3.4.0")
 if (SLINGSHOT_ENABLE_REMOTE_DEBUGGER)
     CPMAddPackage(URI "gh:fpagliughi/sockpp#v1.x" OPTIONS "SOCKPP_BUILD_STATIC ON")
 endif()
-CPMAddPackage(URI "gh:bobluppes/graaf#e0ec371ae8266fb72d986c0de5c47286f34a0589" OPTIONS "SKIP_TESTS ON"
-    "SKIP_EXAMPLES ON" "SKIP_BENCHMARKS ON")
+CPMAddPackage(URI "gh:Precision-Contribution-Group/graaf#b82914d7f83d9710be80965425c49899b99085d5"
+    OPTIONS "SKIP_TESTS ON" "SKIP_EXAMPLES ON" "SKIP_BENCHMARKS ON")
 # CPMAddPackage("gh:yohhoy/yamc#4e015a7e8eb0d61c34e6928676c8c78881a72d73")
 CPMAddPackage("gh:catchorg/Catch2@3.11.0")
 

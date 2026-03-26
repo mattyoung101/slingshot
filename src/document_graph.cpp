@@ -145,7 +145,6 @@ void DocumentGraph::registerMaybeRequiredSymbol(
 }
 
 void DocumentGraph::dumpDot() {
-    // TODO lay this out horizontally, needs upstream modification
     const auto vertex_writer { [](graaf::vertex_id_t vertex_id,
                                    const std::filesystem::path &vertex) -> std::string {
         return fmt::format("label=\"{}: {}\"", vertex_id, vertex.string());
@@ -155,7 +154,7 @@ void DocumentGraph::dumpDot() {
         return fmt::format("label=\"{}\"", edge);
     } };
 
-    graaf::io::to_dot(graph, "/tmp/slingshot_document_graph.dot", vertex_writer, edge_writer);
+    graaf::io::to_dot(graph, "/tmp/slingshot_document_graph.dot", vertex_writer, edge_writer, true);
 }
 
 void DocumentGraph::finaliseOutstandingSymbols() {
@@ -251,9 +250,7 @@ std::vector<Graph_t> DocumentGraph::determineSubGraphs() {
 
         Graph_t subgraph;
 
-        for (const auto &[lhsId, rhsId] : subgraphEdges) {
-
-        }
+        for (const auto &[lhsId, rhsId] : subgraphEdges) { }
     }
 
     return out;
