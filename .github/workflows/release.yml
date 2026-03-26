@@ -43,7 +43,7 @@ jobs:
           make-default: true
 
       - name: Install more system deps
-        run: sudo apt update; sudo apt install --yes clang ninja-build libboost-all-dev
+        run: sudo apt update; sudo apt install --yes clang ninja-build libboost-all-dev libabsl-dev
 
       - name: Build
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1

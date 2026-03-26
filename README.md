@@ -58,6 +58,7 @@ You will need:
 - Just (optional)
 - mold (optional)
 - Something compatible with Ubuntu 22.04+ (I develop on Arch, btw)
+- Abseil (e.g. `libabsl-dev` or similar)
 
 The simplest way to build, with Just, is to run `just build` and/or `just build_debug`.
 
