@@ -13,8 +13,15 @@
 #include <lsp/types.h>
 #include <optional>
 #include <spdlog/spdlog.h>
+#include <string>
 #include <toml++/toml.hpp>
 #include <vector>
+#include <re2/re2.h>
+
+namespace {
+// https://stackoverflow.com/a/72900791
+std::string SEMVER_REGEX = R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)";
+}; // namespace
 
 namespace {
 std::optional<std::vector<std::string>> parseConfigToml(std::filesystem::path &path) {
@@ -27,11 +34,19 @@ std::optional<std::vector<std::string>> parseConfigToml(std::filesystem::path &p
         }
 
         auto *version = config["version"].as_string();
-        if (*version != slingshot::CONFIG_VERSION) {
-            SPDLOG_ERROR("Config version mismatch. Project uses {}, but server uses {}",
-                std::string(*version), slingshot::CONFIG_VERSION);
+
+        std::string major, minor, patch;
+        if (!RE2::FullMatch(std::string(*version), SEMVER_REGEX, &major, &minor, &patch)) {
+            SPDLOG_ERROR("Failed to match config version");
+        }
+
+        if (major != slingshot::CONFIG_MAJOR_VERSION) {
+            SPDLOG_ERROR("Config major version mismatch. Project uses {} (major: {}), but server uses {}.x.x",
+                std::string(*version), major, slingshot::CONFIG_MAJOR_VERSION);
             return std::nullopt;
         }
+
+        SPDLOG_INFO("Parsed config version: v{}.{}.{}", major, minor, patch);
 
         auto *include_dirs = config["include_dirs"].as_array();
         std::vector<std::string> out;

@@ -177,3 +177,4 @@ Slingshot uses the following 3rd party libraries:
 - **TOML++:** MIT licence
 - **sockpp:** BSD 3-Clause licence
 - **Graaf:** MIT licence
+- **re2:** BSD 3-Clause licence

@@ -31,7 +31,7 @@ extern RemoteDebugger g_debugger;
 extern std::shared_ptr<lsp::MessageHandler> g_msgHandler;
 extern CompletionManager g_completionManager;
 
-constexpr std::string CONFIG_VERSION = "1.0.0";
+constexpr std::string CONFIG_MAJOR_VERSION = "1";
 
 constexpr int REMOTE_DEBUGGER_PORT = 6942;
 
