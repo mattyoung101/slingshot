@@ -1,12 +1,11 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025 M. L. Young.
+// Copyright (c) 2025-2026 M. L. Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
 #include "moodycamel/concurrentqueue.h"
-#include "slingshot/import_locator.hpp"
 #include <atomic>
 #include <cstdint>
 #include <mutex>
@@ -24,7 +23,6 @@
 #include <lsp/types.h>
 #include <memory>
 #include <moodycamel/blockingconcurrentqueue.h>
-#include <optional>
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -85,8 +83,8 @@ public:
     /// Submits a compilation job asynchronously
     void submitCompilationJob(const std::string &document, const std::filesystem::path &path, bool isIndex);
 
-    std::optional<Diagnostics> getDiagnostics(const std::filesystem::path &path);
-
+    /// Registers a user specified include dir in the source manager. Does not directly act on this, just
+    /// updates the source manager.
     void addIncludeDir(const std::string &dir) {
         auto err = sourceMgr->addUserDirectories(dir);
         if (err) {
@@ -95,13 +93,7 @@ public:
     }
 
     /// List of files the editor has open
-    ankerl::unordered_dense::set<std::filesystem::path> openFiles {};
-
-    /// Association between a FS path and a Slang BufferID once it's been added to the internal SourceManager
-    ankerl::unordered_dense::map<std::filesystem::path, BufferID> bufferIds;
-
-    /// Inverse of bufferIds
-    ankerl::unordered_dense::map<BufferID, std::filesystem::path> bufferIdsInverse;
+    ankerl::unordered_dense::set<std::filesystem::path> openFiles { };
 
     /// Gets the source manager. This is really only a hack to plumb this shit into the completion system.
     std::shared_ptr<SourceManager> getSourceManager() {
@@ -114,53 +106,65 @@ public:
         return std::unique_lock(lock);
     }
 
+    /// Used by the remote debugger to get deps for a file
     std::string debugGetDepsForFile(const std::string &path);
 
-    inline std::string debugGetTopoSort() {
-        auto lock = acquireLock();
-        return debugTopoSort;
-    }
+    /// Association between a FS path and a Slang BufferID once it's been added to the internal SourceManager
+    ankerl::unordered_dense::map<std::filesystem::path, BufferID> bufferIds;
+
+    friend class LSPDiagnosticClient;
 
 private:
-    BS::thread_pool<> pool {};
-    ankerl::unordered_dense::map<std::filesystem::path, Diagnostics> diags;
-    /// mapping of a document to all the documents it requires to build the AST
-    ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::filesystem::path>> requiredDocuments;
-    /// mapping between a document and the hash of its Imports calculated by the import locator
+    BS::thread_pool<> pool { };
     ankerl::unordered_dense::map<std::filesystem::path, uint64_t> importHashes;
     ankerl::unordered_dense::map<std::filesystem::path, SourceBuffer> bufMap;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
     std::recursive_mutex lock;
     std::atomic_int indexingJobsInProgress;
-    std::string debugTopoSort;
+
+    /// mapping of a document to all the documents it requires to build the AST
+    ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::filesystem::path>> requiredDocuments;
+
+    /// mapping between a document and the hash of its Imports calculated by the import locator
+
+    /// Inverse of bufferIds
+    ankerl::unordered_dense::map<BufferID, std::filesystem::path> bufferIdsInverse;
 
     /// outgoing, timestamped diagnostics
-    moodycamel::BlockingConcurrentQueue<TimestampedDiagnostics> outgoingDiagnostics{};
+    moodycamel::BlockingConcurrentQueue<TimestampedDiagnostics> outgoingDiagnostics { };
 
     /// Performs a bulk compilation of all the documents in the index, once the document graph has been built
     void performBulkCompilation(bool shouldSendLspNotification);
 
-    void locateAllRequiredDocuments();
+    /// Fills in the table `requiredDocuments` by analysing the document graph using a BFS
+    void locateAllRequiredDocuments(bool shouldSendLspNotification);
 
-    void maybeUpdateIndexingProgress(const std::filesystem::path &path);
-
+    /// Parse the Concrete Syntax Tree. This is essential for all the other routines.
     std::shared_ptr<slang::syntax::SyntaxTree> doCstParse(
         const std::filesystem::path &path, const SourceBuffer &buf, DiagnosticEngine &diagEngine);
 
+    /// Parse the Abstract Syntax Tree. This is only used for diagnostics.
     std::shared_ptr<ast::Compilation> doAstParse(const std::filesystem::path &path, const SourceBuffer &buf,
         DiagnosticEngine &diagEngine, const std::shared_ptr<slang::syntax::SyntaxTree> &tree);
 
+    /// Perform additional analysis. Requires CST and AST parse to be done.
     void doAnalysis(const SourceBuffer &buf, DiagnosticEngine &diagEngine,
         std::shared_ptr<ast::Compilation> &compilation);
 
+    /// Perform custom lang lifting. Necessary for completion.
     void doLifting(const std::filesystem::path &path, std::shared_ptr<slang::syntax::SyntaxTree> &tree);
 
+    /// Issue collected Slang diagnostics to the LSP client. **This should only be called by the outgoing
+    /// diagnostics thread!**
     void issueDiagnostics(const std::filesystem::path &path, const LSPDiagnosticClient::Ptr &diagClient);
 
+    /// Checks if indexing is done using thread safe variables. If yes, submits a bulk compilation job.
     void maybeFinaliseIndexingProgress();
 
-    void reIndexDocument(
-        const std::filesystem::path &path, const std::shared_ptr<slang::syntax::SyntaxTree> &tree);
+    /// If the import table for a file has changed, re-scan the document to see what changed and update the
+    /// document graph, and requires documents.
+    void reIndexDocument(const std::filesystem::path &path,
+        const std::shared_ptr<slang::syntax::SyntaxTree> &tree, bool shouldSendLspNotification);
 
     /// Recompiles a document that's already in the index, used by reIndexDocument
     void reCompileDocument(const std::filesystem::path &path);

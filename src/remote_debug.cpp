@@ -48,7 +48,7 @@ void RemoteDebugger::debuggerThread() {
         }
 
         while (socket.is_open()) {
-            std::array<char, 512> buf {};
+            std::array<char, 512> buf { };
             ssize_t n = socket.read(buf.data(), buf.size());
             if (n <= 0) {
                 break;
@@ -113,13 +113,9 @@ std::string RemoteDebugger::processMsg(std::string msg) {
         trim(msg);
         return g_compilerManager.debugGetDepsForFile(msg);
     }
-    if (msg == "dump toposort") {
-        return g_compilerManager.debugGetTopoSort();
-    }
 
-    return fmt::format(
-        "Command '{}' not found. Commands are:\n    dump {{index,lang,graph,sources,toposort}}\n   "
-        " sigtrap\n    die\n    query deps {{path}}",
+    return fmt::format("Command '{}' not found. Commands are:\n    dump {{index,lang,graph,sources}}\n   "
+                       " sigtrap\n    die\n    query deps {{path}}",
         msg);
 }
 

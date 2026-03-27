@@ -244,7 +244,7 @@ void IndexManager::parseFListFile(const std::filesystem::path &path) {
     std::istringstream iss(contents);
     for (std::string line; std::getline(iss, line);) {
         trim(line);
-        if (line.size() == 0) {
+        if (line.empty()) {
             // skip empty lines
             continue;
         }

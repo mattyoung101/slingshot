@@ -51,7 +51,9 @@ int main() {
     using namespace slang;
     using namespace slingshot;
 
-    auto level = spdlog::level::trace;
+    // TODO if this is a GH release we should probably set this to info; or better yet make it runtime
+    // configurable!!
+    auto level = spdlog::level::debug;
 
     spdlog::set_level(level);
     spdlog::flush_on(level);
