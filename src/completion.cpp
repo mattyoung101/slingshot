@@ -174,6 +174,7 @@ void CompletionSyntaxVisitor::handle(const SimpleSequenceExprSyntax &syntax) {
             RECOMMEND(CompletionGenerator::generateSystemTasks());
             RECOMMEND(CompletionGenerator::generateIf());
             RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+        RECOMMEND(CompletionGenerator::generateModuleInstantiations());
 
             if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
                 RECOMMEND(CompletionGenerator::generateAlways());
@@ -190,6 +191,7 @@ void CompletionSyntaxVisitor::handle(const IdentifierNameSyntax &syntax) {
         RECOMMEND(CompletionGenerator::generateSystemTasks());
         RECOMMEND(CompletionGenerator::generateIf());
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+        RECOMMEND(CompletionGenerator::generateModuleInstantiations());
 
         if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
             RECOMMEND(CompletionGenerator::generateAlways());

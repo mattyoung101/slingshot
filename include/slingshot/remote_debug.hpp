@@ -48,6 +48,7 @@ private:
 
     bool booted;
     bool connected;
+    bool running = true;
 };
 
 }; // namespace slingshot

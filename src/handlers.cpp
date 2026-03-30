@@ -164,12 +164,12 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
 }
 
 void exit() {
-    SPDLOG_INFO("Shutting down");
+    SPDLOG_INFO("Shutting down (exit)");
     slingshot::g_running = false;
 }
 
 lsp::requests::Shutdown::Result shutdown() {
-    SPDLOG_INFO("Shutting down");
+    SPDLOG_INFO("Shutting down (shutdown)");
     slingshot::g_running = false;
     return lsp::requests::Shutdown::Result {};
 }

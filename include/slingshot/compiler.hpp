@@ -106,6 +106,12 @@ public:
         return std::unique_lock(lock);
     }
 
+    void shutdown() {
+        SPDLOG_DEBUG("Shutting down CompilationManager");
+        running = false;
+        pool.purge();
+    }
+
     /// Used by the remote debugger to get deps for a file
     std::string debugGetDepsForFile(const std::string &path);
 
@@ -121,6 +127,7 @@ private:
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
     std::recursive_mutex lock;
     std::atomic_int indexingJobsInProgress;
+    std::atomic_bool running = true;
 
     /// mapping of a document to all the documents it requires to build the AST
     ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::filesystem::path>> requiredDocuments;

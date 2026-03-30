@@ -119,11 +119,21 @@ std::string RemoteDebugger::processMsg(std::string msg) {
         msg);
 }
 
+void RemoteDebugger::shutdown() {
+    running = false;
+    socket.shutdown();
+    socket.close();
+}
+
 #else
 
 using namespace slingshot;
 
 void RemoteDebugger::boot(int) {
+    SPDLOG_INFO("Remote debugger has been disabled.");
+}
+
+void RemoteDebugger::shutdown() {
     SPDLOG_INFO("Remote debugger has been disabled.");
 }
 

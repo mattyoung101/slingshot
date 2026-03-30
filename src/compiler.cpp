@@ -557,7 +557,7 @@ void CompilationManager::outgoingDiagnosticsThread() {
 
     ankerl::unordered_dense::map<std::filesystem::path, uint64_t> lastTimes;
 
-    while (true) {
+    while (running) {
         TimestampedDiagnostics diag;
         outgoingDiagnostics.wait_dequeue(diag);
 
@@ -572,6 +572,8 @@ void CompilationManager::outgoingDiagnosticsThread() {
         // wait for 100 ms (rate limit!)
         std::this_thread::sleep_for(100ms);
     }
+
+    SPDLOG_DEBUG("outgoingDiagnosticsThread() terminating");
 }
 
 std::string CompilationManager::debugGetDepsForFile(const std::string &path) {

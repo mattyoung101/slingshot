@@ -19,6 +19,7 @@
 #include <csignal>
 #include <exception>
 #include <filesystem>
+#include <iostream>
 #include <memory>
 #include <spdlog/common.h>
 #include <spdlog/sinks/ansicolor_sink.h>
@@ -40,11 +41,27 @@ void addCallbacks(std::shared_ptr<lsp::MessageHandler> &msgHandler) {
 
 namespace slingshot {
 bool g_running = false;
-IndexManager g_indexManager = {};
-CompilationManager g_compilerManager = {};
-RemoteDebugger g_debugger = {};
-std::shared_ptr<lsp::MessageHandler> g_msgHandler = {};
-CompletionManager g_completionManager = {};
+IndexManager g_indexManager = { };
+CompilationManager g_compilerManager = { };
+RemoteDebugger g_debugger = { };
+std::shared_ptr<lsp::MessageHandler> g_msgHandler = { };
+CompletionManager g_completionManager = { };
+
+void exit_handler() {
+    std::cerr << "EXIT HANDLER RAHH\n";
+    SPDLOG_DEBUG("Exit handler!");
+    g_compilerManager.shutdown();
+    g_debugger.shutdown();
+
+    SPDLOG_INFO("Goodbye!");
+
+    for (const auto &sink : spdlog::default_logger()->sinks()) {
+        sink->flush();
+    }
+
+    std::this_thread::sleep_for(500ms);
+}
+
 } // namespace slingshot
 
 int main() {
@@ -57,33 +74,13 @@ int main() {
 
     spdlog::set_level(level);
     spdlog::flush_on(level);
+    atexit(slingshot::exit_handler);
 
     // keep stderr free for the LSP
     auto stderr_sink = std::make_shared<spdlog::sinks::ansicolor_stderr_sink_mt>();
     stderr_sink->set_level(level);
     spdlog::default_logger()->sinks().clear();
     spdlog::default_logger()->sinks().push_back(stderr_sink);
-
-    // and do a file sink as well
-    std::string homeDir;
-
-    {
-        char *homeDirPtr = getenv("HOME");
-        if (homeDirPtr == nullptr) {
-            SPDLOG_ERROR("Failed to get home dir from HOME env var");
-            return 1;
-        }
-        homeDir = homeDirPtr;
-    }
-
-    std::filesystem::create_directories(homeDir + "/.local/share/slingshot");
-
-    std::filesystem::path logPath
-        = homeDir + "/.local/share/slingshot/slingshot.log"; // + std::to_string(pid) + ".log";
-    // auto rotating = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logPath, 4096 * 1024, 5, false);
-    auto rotating = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logPath, false);
-    rotating->set_level(level);
-    spdlog::default_logger()->sinks().push_back(rotating);
 
     spdlog::default_logger()->set_pattern("[%Y-%m-%d %H:%M:%S.%e thread %t] [%^%l%$] [%s:%# %!] %v");
     for (auto &sink : spdlog::default_logger()->sinks()) {
@@ -113,6 +110,9 @@ int main() {
         SPDLOG_ERROR("LSP error: {}", e.what());
         return 1;
     }
+
+    SPDLOG_INFO("Shutting down");
+    std::cerr << "EXITING NOW\n";
 
     return 0;
 }
