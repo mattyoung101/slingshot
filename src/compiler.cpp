@@ -35,7 +35,12 @@
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
 
-// Parts of this are based on slang-server ServerDiagClient.cpp, which is available under the MIT licence:
+using namespace slingshot;
+using namespace slang::syntax;
+using namespace slang::ast;
+using namespace slang::analysis;
+
+// report() is based on slang-server ServerDiagClient.cpp, which is available under the MIT licence:
 //
 // Copyright (c) 2024-2025 Hudson River Trading LLC <opensource@hudson-trading.com>
 //
@@ -56,11 +61,6 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-
-using namespace slingshot;
-using namespace slang::syntax;
-using namespace slang::ast;
-using namespace slang::analysis;
 
 void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
     SPDLOG_TRACE("Received a diagnostic");
@@ -138,6 +138,8 @@ void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
 
     lspDiags.push_back(lspDiag);
 }
+
+// begin Slingshot code
 
 void CompilationManager::submitCompilationJob(
     const std::string &document, const std::filesystem::path &path, bool isIndex) {
