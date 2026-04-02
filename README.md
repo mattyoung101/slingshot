@@ -8,7 +8,7 @@ SystemVerilog as intuitive to edit as C++ or Rust.
 
 Compared to other SV LSPs, the main feature that Slingshot brings to the table is a completion-first approach,
 using the powerful [Slang](https://github.com/MikePopoloski/slang) frontend. The intent is to provide fast,
-accurate and robust completion even in complex projects. Slingshot also features an **advanced multi-threaded
+accurate and robust completion even in complex projects. Slingshot also features a relatively advanced **multi-threaded
 indexing system**, to power this completion system, that features graph-based dependency resolution.
 
 The trade-off is this does mean that features such as "go-to-reference" take somewhat of a backseat; though
@@ -26,9 +26,9 @@ aims to:
     - Context-sensitive completion, based off the Slang parse tree, a "best-effort" approach to only recommend
       valid completions
 - Advanced indexing system
-    - Graph-based (DAG with topological sort) automatic dependency tracking between SV documents
+    - Graph-based (backwards BFS) automatic dependency tracking between SV documents
         - Improves performance by only compiling the documents necessary to index a file
-    - Multi-threaded for high-performance on large codebases
+    - Multi-threaded for theoretically higher-performance on large codebases
 - Simple configuration
   - Slingshot is configured through a simple `.slingshot.toml` file declared in the project's root
   directory
@@ -41,8 +41,7 @@ Future features are planned on the [issue tracker](https://github.com/mlyoung101
 Slingshot is somewhat stable and is ready for testing in larger projects. Please keep me posted!
 
 ### Timeline
-Slingshot is being developed in my free time during my PhD. One day, it might become a joint project of my PhD
-lab, hopefully. I do not _always_ have time to work on this project.
+Slingshot is being developed in my free time during my PhD. I do not _always_ have time to work on this project.
 
 ### Known supported editors
 - Neovim v0.11+
@@ -109,13 +108,13 @@ This is the setup I use for development as well.
 `.slingshot.toml` file to configure the server. This is mandatory for multi-file (read: most) projects.
 
 ### Troubleshooting
-Slingshot issues can be diagnosed by reading the log file. This is located in
+Slingshot issues can be diagnosed by reading the LSP log file. This is located in
 `~/.local/share/slingshot/slingshot.log`.
 
-If there are errors about missing includes or not being able to find certain files, please make
-sure you have read [docs/config.md](docs/config.md) and created your `.slingshot.toml` file. Then,
-read the log to make sure that Slingshot has the correct root directory. The best way to ensure this
-is invoking Neovim by typing `nvim .` in the project's root directory - don't edit individual files.
+If the LSP does nothing at all, please make sure you have read [docs/config.md](docs/config.md) and created
+your `.slingshot.toml` file. Then, read the log to make sure that Slingshot has the correct root directory.
+The best way to ensure this is invoking Neovim by typing `nvim .` in the project's root directory - don't edit
+individual files.
 
 If the above steps do not resolve your issue, please open a bug ticket in the GitHub issue tracker.
 You must include your log file, detailed description of the issue, and also a SystemVerilog code
