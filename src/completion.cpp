@@ -46,6 +46,8 @@ constexpr bool containsRelaxed(const SourceLocation &loc, const SourceRange &ran
     return loc >= range.start() && loc <= range.end();
 }
 
+/// Returns true iff any one of the nodes of type "kind" exists in the direct parental hierarchy of the given
+/// node "node"
 inline bool containsInDirectHierarchy(const SyntaxNode &node, const std::vector<SyntaxKind> &kinds) {
     SyntaxNode *parent = node.parent;
     while (parent != nullptr) {
@@ -62,6 +64,7 @@ inline bool containsInDirectHierarchy(const SyntaxNode &node, const std::vector<
     return false;
 }
 
+/// Any type of always block
 const std::vector<SyntaxKind> ALWAYS_BLOCK = { SyntaxKind::AlwaysCombBlock, SyntaxKind::AlwaysFFBlock,
     SyntaxKind::AlwaysLatchBlock, SyntaxKind::AlwaysBlock };
 
@@ -101,6 +104,7 @@ void CompletionSyntaxVisitor::handle(const ExpressionStatementSyntax &syntax) {
         RECOMMEND(CompletionGenerator::generateSystemTasks());
         RECOMMEND(CompletionGenerator::generateIf());
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+        RECOMMEND(CompletionGenerator::generateStandardMacros());
 
         if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
             RECOMMEND(CompletionGenerator::generateAlways());
@@ -128,6 +132,7 @@ void CompletionSyntaxVisitor::handle(const DataDeclarationSyntax &syntax) {
         RECOMMEND(CompletionGenerator::generateIf());
         RECOMMEND(CompletionGenerator::generateAlways());
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+        RECOMMEND(CompletionGenerator::generateStandardMacros());
 
         if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
             RECOMMEND(CompletionGenerator::generateModuleInstantiations());
@@ -164,6 +169,7 @@ void CompletionSyntaxVisitor::handle(const HierarchyInstantiationSyntax &syntax)
         RECOMMEND(CompletionGenerator::generateIf());
         RECOMMEND(CompletionGenerator::generateAlways());
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+        RECOMMEND(CompletionGenerator::generateStandardMacros());
 
         if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
             RECOMMEND(CompletionGenerator::generateModuleInstantiations());
@@ -182,6 +188,7 @@ void CompletionSyntaxVisitor::handle(const SimpleSequenceExprSyntax &syntax) {
             RECOMMEND(CompletionGenerator::generateSystemTasks());
             RECOMMEND(CompletionGenerator::generateIf());
             RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+        RECOMMEND(CompletionGenerator::generateStandardMacros());
 
             if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
                 RECOMMEND(CompletionGenerator::generateModuleInstantiations());
@@ -199,6 +206,7 @@ void CompletionSyntaxVisitor::handle(const IdentifierNameSyntax &syntax) {
         RECOMMEND(CompletionGenerator::generateSystemTasks());
         RECOMMEND(CompletionGenerator::generateIf());
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
+        RECOMMEND(CompletionGenerator::generateStandardMacros());
 
         if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
             RECOMMEND(CompletionGenerator::generateModuleInstantiations());

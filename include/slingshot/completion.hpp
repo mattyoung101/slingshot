@@ -133,6 +133,8 @@ public:
         const lang::PortDirection &filter);
 
     static std::vector<lsp::CompletionItem> generateModuleInstantiations();
+
+    static std::vector<lsp::CompletionItem> generateStandardMacros();
 };
 
 } // namespace slingshot

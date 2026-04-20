@@ -206,3 +206,36 @@ std::vector<lsp::CompletionItem> CompletionGenerator::generateModuleInstantiatio
     }
     return out;
 }
+
+std::vector<lsp::CompletionItem> CompletionGenerator::generateStandardMacros() {
+    return {
+        lsp::CompletionItem {
+            .label = "`ifdef",
+            .kind = lsp::CompletionItemKind::Snippet,
+            .filterText = "`ifdef",
+            .insertText = "`ifdef $0\n\t$1\n`endif",
+            .insertTextFormat = lsp::InsertTextFormat::Snippet,
+        },
+        lsp::CompletionItem {
+            .label = "`ifndef",
+            .kind = lsp::CompletionItemKind::Snippet,
+            .filterText = "`ifndef",
+            .insertText = "`ifndef $0\n\t$1\n`endif",
+            .insertTextFormat = lsp::InsertTextFormat::Snippet,
+        },
+        lsp::CompletionItem {
+            .label = "`if",
+            .kind = lsp::CompletionItemKind::Snippet,
+            .filterText = "`if",
+            .insertText = "`if $0\n\t$1\n`endif",
+            .insertTextFormat = lsp::InsertTextFormat::Snippet,
+        },
+        lsp::CompletionItem {
+            .label = "`define",
+            .kind = lsp::CompletionItemKind::Snippet,
+            .filterText = "`define",
+            .insertText = "`define $0 $1",
+            .insertTextFormat = lsp::InsertTextFormat::Snippet,
+        },
+    };
+}
