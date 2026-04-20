@@ -128,8 +128,13 @@ void CompletionSyntaxVisitor::handle(const DataDeclarationSyntax &syntax) {
         RECOMMEND(CompletionGenerator::generateIf());
         RECOMMEND(CompletionGenerator::generateAlways());
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
-        RECOMMEND(CompletionGenerator::generateModuleInstantiations());
+
+        if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
+            RECOMMEND(CompletionGenerator::generateModuleInstantiations());
+        }
+
         // don't recommend system tasks because we're more or less on the LHS of something
+        //
         SPDLOG_TRACE("Complete data declaration syntax: {}", syntax.toString());
     })
 }
@@ -159,7 +164,10 @@ void CompletionSyntaxVisitor::handle(const HierarchyInstantiationSyntax &syntax)
         RECOMMEND(CompletionGenerator::generateIf());
         RECOMMEND(CompletionGenerator::generateAlways());
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
-        RECOMMEND(CompletionGenerator::generateModuleInstantiations());
+
+        if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
+            RECOMMEND(CompletionGenerator::generateModuleInstantiations());
+        }
         SPDLOG_TRACE("Complete hierarchy instantiation syntax syntax: {}", syntax.toString());
     })
 }
@@ -168,15 +176,15 @@ void CompletionSyntaxVisitor::handle(const SimpleSequenceExprSyntax &syntax) {
     BEGIN({
         if (syntax.expr->kind == SyntaxKind::StringLiteralExpression) {
             // recommend nothing, we're in a string
-            RECOMMEND({});
+            RECOMMEND({ });
         } else {
             RECOMMEND(CompletionGenerator::generateLogic());
             RECOMMEND(CompletionGenerator::generateSystemTasks());
             RECOMMEND(CompletionGenerator::generateIf());
             RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
-        RECOMMEND(CompletionGenerator::generateModuleInstantiations());
 
             if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
+                RECOMMEND(CompletionGenerator::generateModuleInstantiations());
                 RECOMMEND(CompletionGenerator::generateAlways());
             }
         }
@@ -191,9 +199,9 @@ void CompletionSyntaxVisitor::handle(const IdentifierNameSyntax &syntax) {
         RECOMMEND(CompletionGenerator::generateSystemTasks());
         RECOMMEND(CompletionGenerator::generateIf());
         RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
-        RECOMMEND(CompletionGenerator::generateModuleInstantiations());
 
         if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
+            RECOMMEND(CompletionGenerator::generateModuleInstantiations());
             RECOMMEND(CompletionGenerator::generateAlways());
         }
     })
@@ -225,7 +233,7 @@ std::vector<lsp::CompletionItem> CompletionManager::getCompletions(
 
     if (indexEntry->doc == std::nullopt) {
         // document not available
-        return {};
+        return { };
     }
 
     CompletionSyntaxVisitor visitor(cursor, *indexEntry->doc);
