@@ -1,6 +1,6 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025 M. L. Young.
+// Copyright (c) 2025-2026 M. L. Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -161,6 +161,8 @@ public:
 
     /// Load and parse a *.f (f-list) file
     void parseFListFile(const std::filesystem::path &path);
+
+    void beginInitialIndexing();
 
 private:
     /// Private R/W lock that can be accessed by the acquire{Read/Write}Lock methods

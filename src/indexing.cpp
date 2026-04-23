@@ -115,17 +115,7 @@ std::optional<IndexEntry::Ptr> IndexManager::retrieve(const std::filesystem::pat
     return index.at(realPath);
 }
 
-void IndexManager::walkDir(const std::filesystem::path &path) {
-    SPDLOG_INFO("Walk dir: {}", path.string());
-
-    if (!std::filesystem::is_directory(path)) {
-        // we lie a bit here, submit directly for indexing if they told us its a path but it's actually a
-        // single file
-        SPDLOG_INFO("Discovered (direct) document: {}", path.string());
-        insert(std::filesystem::absolute(path), true);
-        return;
-    }
-
+void IndexManager::beginInitialIndexing() {
     isStillQueueingIndexJobs = true;
 
     // first, we need to tell the server about our token
@@ -141,6 +131,20 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
     g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(beginMsg));
 
     isInitialIndexInProgress = true;
+}
+
+void IndexManager::walkDir(const std::filesystem::path &path) {
+    SPDLOG_INFO("Walk dir: {}", path.string());
+
+    if (!std::filesystem::is_directory(path)) {
+        // we lie a bit here, submit directly for indexing if they told us its a path but it's actually a
+        // single file
+        SPDLOG_INFO("Discovered (direct) document: {}", path.string());
+        insert(std::filesystem::absolute(path), true);
+        return;
+    }
+
+    beginInitialIndexing();
 
     for (const auto &dirEntry : std::filesystem::recursive_directory_iterator(path)) {
         // make sure the extension is in (sv, v, svh, vh)
@@ -164,7 +168,6 @@ ankerl::unordered_dense::set<std::shared_ptr<slang::syntax::SyntaxTree>> IndexMa
     for (const auto &entry : index) {
         const auto &[path, indexEntry] = entry;
 
-        // if (indexEntry->valid && indexEntry->tree != nullptr) {
         if (indexEntry->tree != nullptr) {
             SPDLOG_TRACE("Add syntax tree: {}", path.string());
             out.insert(indexEntry->tree);
@@ -231,14 +234,7 @@ void IndexManager::parseFListFile(const std::filesystem::path &path) {
 
     auto contents = readFile(path);
 
-    // in order to fit the F-list file format into our existing include system, we need to find the unique
-    // parent dirs of each of the F-list files, and then scan them. it's a bit ugly. but this is the only way
-    // I've managed to get it to work: any attempt otherwise (including implementing the majority of walkDir
-    // in here) seems to just blow up unique and spectacularly fun ways, including exhausting all of the
-    // system's memory, failing to finish indexing, etc.
-    // I think we have a fundamental problem with how many ridiculously stupid bool hacks we use to manage the
-    // indexer state, which we should fix if we have time.
-    ankerl::unordered_dense::set<std::filesystem::path> uniqueParentDirs;
+    beginInitialIndexing();
 
     // https://stackoverflow.com/a/12514641
     std::istringstream iss(contents);
@@ -260,21 +256,9 @@ void IndexManager::parseFListFile(const std::filesystem::path &path) {
         } else {
             // assume a path
             auto path= std::filesystem::path(line);
-            if (!path.has_parent_path()) {
-                SPDLOG_WARN("Path {} does not have parent path", path.string());
-                continue;
-            }
-            auto parent = path.parent_path();
-            if (!std::filesystem::is_directory(parent)) {
-                SPDLOG_WARN("Parent of {} ({}) is not a dir", path.string(), parent.string());
-                continue;
-            }
-            uniqueParentDirs.insert(parent);
+            insert(std::filesystem::absolute(path), true);
         }
     }
 
-    SPDLOG_DEBUG("Found {} unique parent dirs", uniqueParentDirs.size());
-    for (const auto &dir : uniqueParentDirs) {
-        walkDir(dir);
-    }
+    isStillQueueingIndexJobs = false;
 }
