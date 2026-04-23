@@ -121,7 +121,7 @@ public:
     friend class LSPDiagnosticClient;
 
 private:
-    BS::thread_pool<> pool { };
+    BS::thread_pool<> pool { 1 };
     ankerl::unordered_dense::map<std::filesystem::path, uint64_t> importHashes;
     ankerl::unordered_dense::map<std::filesystem::path, SourceBuffer> bufMap;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();

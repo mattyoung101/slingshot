@@ -406,13 +406,19 @@ void CompilationManager::locateAllRequiredDocuments(bool shouldSendLspNotificati
         SPDLOG_ERROR(
             "This WILL break the index, you need to fix this by removing self-referential dependencies.");
         SPDLOG_ERROR("This may assist you:");
-        g_indexManager.documentGraph->debugLocateCycles();
+        // g_indexManager.documentGraph->debugLocateCycles();
         // TODO warn user in GUI
         return;
     }
 
-    for (const auto &doc : g_indexManager.documentGraph->getAllKnownDocuments()) {
+    size_t i = 0;
+    auto allDocs = g_indexManager.documentGraph->getAllKnownDocuments();
+    for (const auto &doc : allDocs) {
+        // if (shouldSendLspNotification) {
+        //     sendLspProgressMsg(fmt::format("Computing dependents from document graph ({}/{})", i, allDocs.size()));
+        // }
         requiredDocuments[doc] = g_indexManager.documentGraph->locateRequiredDependents(doc);
+        i++;
     }
 }
 
