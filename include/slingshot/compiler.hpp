@@ -5,25 +5,23 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
-#include "moodycamel/concurrentqueue.h"
-#include <atomic>
-#include <cstdint>
-#include <mutex>
-#include <slang/ast/Compilation.h>
-#include <slang/syntax/SyntaxTree.h>
-#include <slang/util/Util.h>
-#define BS_THREAD_POOL_NATIVE_EXTENSIONS
-#include "BS_thread_pool.hpp"
 #include "ankerl/unordered_dense.h"
+#include "moodycamel/concurrentqueue.h"
 #include "slang/diagnostics/DiagnosticClient.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/diagnostics/Diagnostics.h"
 #include "slang/text/SourceManager.h"
+#include <atomic>
+#include <cstdint>
 #include <filesystem>
 #include <lsp/types.h>
 #include <memory>
 #include <moodycamel/blockingconcurrentqueue.h>
+#include <mutex>
+#include <slang/ast/Compilation.h>
+#include <slang/syntax/SyntaxTree.h>
 #include <slang/text/SourceLocation.h>
+#include <slang/util/Util.h>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <utility>
@@ -75,10 +73,24 @@ public:
     LSPDiagnosticClient::Ptr lspDiags;
 };
 
+class CompilationJob {
+public:
+    /// Slang source buffer with text
+    SourceBuffer buf;
+    /// Absolute FS path
+    std::filesystem::path path;
+    /// Document text
+    std::string document;
+    /// True if this is an initial indexing job
+    bool isIndex;
+    /// Time this job was scheduled at
+    size_t scheduledTime;
+};
+
 class CompilationManager {
 public:
     /// Starts the outgoing diagnostics thread
-    void startOutgoingDiagnostics();
+    void boot();
 
     /// Submits a compilation job asynchronously
     void submitCompilationJob(const std::string &document, const std::filesystem::path &path, bool isIndex);
@@ -109,7 +121,7 @@ public:
     void shutdown() {
         SPDLOG_DEBUG("Shutting down CompilationManager");
         running = false;
-        pool.purge();
+        // TODO interrupt threads
     }
 
     /// Used by the remote debugger to get deps for a file
@@ -121,7 +133,6 @@ public:
     friend class LSPDiagnosticClient;
 
 private:
-    BS::thread_pool<> pool { 1 };
     ankerl::unordered_dense::map<std::filesystem::path, uint64_t> importHashes;
     ankerl::unordered_dense::map<std::filesystem::path, SourceBuffer> bufMap;
     std::shared_ptr<SourceManager> sourceMgr = std::make_shared<SourceManager>();
@@ -139,6 +150,9 @@ private:
 
     /// outgoing, timestamped diagnostics
     moodycamel::BlockingConcurrentQueue<TimestampedDiagnostics> outgoingDiagnostics { };
+
+    /// job queue
+    moodycamel::BlockingConcurrentQueue<CompilationJob> jobs { };
 
     /// Performs a bulk compilation of all the documents in the index, once the document graph has been built
     void performBulkCompilation(bool shouldSendLspNotification);
@@ -177,6 +191,8 @@ private:
     void reCompileDocument(const std::filesystem::path &path);
 
     void outgoingDiagnosticsThread();
+
+    void compilerThread();
 };
 
 } // namespace slingshot

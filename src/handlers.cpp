@@ -146,7 +146,7 @@ lsp::requests::Initialize::Result initialise(const lsp::requests::Initialize::Pa
         }
     }
 
-    g_compilerManager.startOutgoingDiagnostics();
+    g_compilerManager.boot();
 
     return lsp::requests::Initialize::Result{
 				.capabilities = {
