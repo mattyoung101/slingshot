@@ -1,6 +1,6 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025 M. L. Young.
+// Copyright (c) 2025-2026 M. L. Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -8,7 +8,6 @@
 #include "slingshot/compiler.hpp"
 #include "slingshot/language.hpp" // NECESSARY for JSON conversion
 #include "slingshot/slingshot.hpp"
-#include <algorithm>
 #include <ankerl/unordered_dense.h>
 #include <filesystem>
 #include <fstream>
@@ -144,8 +143,6 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
         return;
     }
 
-    beginInitialIndexing();
-
     for (const auto &dirEntry : std::filesystem::recursive_directory_iterator(path)) {
         // make sure the extension is in (sv, v, svh, vh)
         auto ext = dirEntry.path().extension().string();
@@ -155,9 +152,6 @@ void IndexManager::walkDir(const std::filesystem::path &path) {
         SPDLOG_INFO("Discovered document: {}", dirEntry.path().string());
         insert(dirEntry, true);
     }
-
-    // we've finished queueing jobs now, so later at some point we can officially terminate the indexing
-    isStillQueueingIndexJobs = false;
 }
 
 ankerl::unordered_dense::set<std::shared_ptr<slang::syntax::SyntaxTree>> IndexManager::getAllSyntaxTrees() {
@@ -234,14 +228,12 @@ void IndexManager::parseFListFile(const std::filesystem::path &path) {
 
     auto contents = readFile(path);
 
-    beginInitialIndexing();
-
     // https://stackoverflow.com/a/12514641
     std::istringstream iss(contents);
     for (std::string line; std::getline(iss, line);) {
         trim(line);
-        if (line.empty()) {
-            // skip empty lines
+        if (line.empty() || line.starts_with("//") || line.starts_with("#")) {
+            // skip empty lines and comments
             continue;
         }
 
@@ -259,6 +251,4 @@ void IndexManager::parseFListFile(const std::filesystem::path &path) {
             insert(std::filesystem::absolute(path), true);
         }
     }
-
-    isStillQueueingIndexJobs = false;
 }

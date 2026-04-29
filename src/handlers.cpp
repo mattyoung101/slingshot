@@ -74,7 +74,12 @@ void parseConfigToml(std::filesystem::path &path) {
 
         bool didFindFileSources = false;
 
+        // begin initial indexing
+        slingshot::g_indexManager.beginInitialIndexing();
+
         if (config.contains("include_dirs")) {
+            SPDLOG_DEBUG("Config has include_dirs");
+
             auto *include_dirs = config["include_dirs"].as_array();
 
             std::vector<std::string> dirs;
@@ -83,6 +88,7 @@ void parseConfigToml(std::filesystem::path &path) {
                 slingshot::g_compilerManager.addIncludeDir(str);
                 dirs.push_back(str);
             }
+            // okay to assign here, this won't conflict with flist_files since we do that later
             slingshot::g_indexManager.includeDirs = dirs;
 
             // **now** that we've registered the include dirs, we can actually walk the directories
@@ -94,6 +100,8 @@ void parseConfigToml(std::filesystem::path &path) {
         }
 
         if (config.contains("flist_files")) {
+            SPDLOG_DEBUG("Config has flist_files");
+
             auto *flist_files = config["flist_files"].as_array();
             for (const auto &file : *flist_files) {
                 slingshot::g_indexManager.parseFListFile(std::string(*file.as_string()));
@@ -105,6 +113,9 @@ void parseConfigToml(std::filesystem::path &path) {
             SPDLOG_ERROR("Config file defines no file sources. At least one of 'include_dirs' or "
                          "'flist_files' should be present.");
         }
+
+        // finished queueing all index jobs
+        slingshot::g_indexManager.isStillQueueingIndexJobs = false;
     } catch (const std::exception &e) {
         SPDLOG_ERROR("Failed to parse config TOML: {}", e.what());
     }
