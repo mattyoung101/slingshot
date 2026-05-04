@@ -470,15 +470,18 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
         reCompileDocument(doc);
     }
 
-    // FIXME we should only send this once
-    if (shouldSendLspNotification) {
-        lsp::notifications::Progress::Params endMsg;
-        endMsg.token = "SlingshotIndexProgress";
-        endMsg.value = lsp::toJson(lsp::WorkDoneProgressEnd());
-        g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(endMsg));
-        g_indexManager.isInitialIndexInProgress = false;
+    g_indexManager.isInitialIndexInProgress = false;
 
-        SPDLOG_DEBUG("Sending LSP message: WORK DONE PROGRESS END");
+    if (shouldSendLspNotification) {
+        // this is another incredibly stupid hack... send this damn message 5 times to ensure the client
+        // actually picks it up :skull:
+        for (int i = 0; i < 5; i++) {
+            lsp::notifications::Progress::Params endMsg;
+            endMsg.token = "SlingshotIndexProgress";
+            endMsg.value = lsp::toJson(lsp::WorkDoneProgressEnd());
+            g_msgHandler->sendNotification<lsp::notifications::Progress>(std::move(endMsg));
+            SPDLOG_DEBUG("Sending LSP message: WORK DONE PROGRESS END");
+        }
     }
 }
 
