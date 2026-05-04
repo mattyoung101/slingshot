@@ -5,7 +5,7 @@ project(slingshot
     DESCRIPTION "SystemVerilog language server powered by Slang"
     HOMEPAGE_URL "https://github.com/mlyoung101/slingshot"
 )
-set(CPACK_PACKAGE_CONTACT "M. L. Young <foss@mlyoung.cool>")
+set(CPACK_PACKAGE_CONTACT "Mel Young <foss@mlyoung.cool>")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
