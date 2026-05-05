@@ -33,6 +33,7 @@ class IndexEntry {
 public:
     std::string version = INDEX_VERSION;
     std::string path {};
+    std::string contents {};
     uint64_t hash {};
 
     /// Time in nanoseconds from std::chrono::steady_clock this index entry was last updated successfully

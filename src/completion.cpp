@@ -11,6 +11,7 @@
 #include "slingshot/slingshot.hpp"
 #include <algorithm>
 #include <ankerl/unordered_dense.h>
+#include <exception>
 #include <filesystem>
 #include <lsp/messages.h>
 #include <lsp/types.h>
@@ -188,7 +189,7 @@ void CompletionSyntaxVisitor::handle(const SimpleSequenceExprSyntax &syntax) {
             RECOMMEND(CompletionGenerator::generateSystemTasks());
             RECOMMEND(CompletionGenerator::generateIf());
             RECOMMEND(CompletionGenerator::generateVariableSameModule(activeModule, doc));
-        RECOMMEND(CompletionGenerator::generateStandardMacros());
+            RECOMMEND(CompletionGenerator::generateStandardMacros());
 
             if (!containsInDirectHierarchy(syntax, ALWAYS_BLOCK)) {
                 RECOMMEND(CompletionGenerator::generateModuleInstantiations());
@@ -241,6 +242,23 @@ std::vector<lsp::CompletionItem> CompletionManager::getCompletions(
 
     if (indexEntry->doc == std::nullopt) {
         // document not available
+        return { };
+    }
+
+    // determine if we are in a comment
+    try {
+        auto lines = split_string(indexEntry->contents, "\n");
+        const auto &line = lines.at(pos.line);
+
+        SPDLOG_DEBUG("Completion line: {}", line);
+
+        auto indexOfSlashSlash = line.find("//");
+        SPDLOG_DEBUG("Comment exists at {}, we are {}", indexOfSlashSlash, pos.character);
+        if (indexOfSlashSlash != std::string::npos && pos.character >= indexOfSlashSlash) {
+            return { };
+        }
+    } catch (const std::exception &e) {
+        SPDLOG_ERROR("Failed to get contents of line idx {}, why: {}", pos.line, e.what());
         return { };
     }
 

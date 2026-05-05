@@ -45,6 +45,8 @@ void IndexManager::insert(const std::filesystem::path &path, const std::string &
         index[realPath]->invalidate(hash);
     }
 
+    index[realPath]->contents = document;
+
     // regardless, schedule a compilation job for this
     lock.unlock();
     g_compilerManager.submitCompilationJob(document, realPath, isIndex);
