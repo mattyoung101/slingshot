@@ -180,7 +180,6 @@ Slingshot uses the following 3rd party libraries:
 - **ankerl::unordered_dense**: MIT licence
 - **nlohmann::json:** MIT licence
 - **lsp-framework:** MIT licence
-- **BS::thread_pool:** MIT licence
 - **TOML++:** MIT licence
 - **sockpp:** BSD 3-Clause licence
 - **Graaf:** MIT licence

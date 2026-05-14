@@ -47,9 +47,6 @@ CPMAddPackage(URI "gh:Precision-Contribution-Group/graaf#b82914d7f83d9710be80965
 # CPMAddPackage("gh:yohhoy/yamc#4e015a7e8eb0d61c34e6928676c8c78881a72d73")
 CPMAddPackage("gh:catchorg/Catch2@3.11.0")
 
-add_library(BS_thread_pool INTERFACE)
-target_include_directories(BS_thread_pool INTERFACE ${BS_thread_pool_SOURCE_DIR}/include)
-
 list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
 include(CTest)
 include(Catch)
@@ -78,7 +75,7 @@ function(add_slingshot_target TARGET)
     message(STATUS "Remote debugger enabled: ${SLINGSHOT_ENABLE_REMOTE_DEBUGGER}")
 
     target_link_libraries(${TARGET} PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp
-        unordered_dense::unordered_dense nlohmann_json::nlohmann_json BS_thread_pool tomlplusplus::tomlplusplus
+        unordered_dense::unordered_dense nlohmann_json::nlohmann_json tomlplusplus::tomlplusplus
         Graaf::Graaf)
 
     if (SLINGSHOT_ENABLE_REMOTE_DEBUGGER)
@@ -137,7 +134,7 @@ function(add_slingshot_test TARGET SOURCE)
     target_include_directories(${TARGET} PRIVATE include)
 
     target_link_libraries(${TARGET} PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp
-        unordered_dense::unordered_dense nlohmann_json::nlohmann_json BS_thread_pool tomlplusplus::tomlplusplus
+        unordered_dense::unordered_dense nlohmann_json::nlohmann_json tomlplusplus::tomlplusplus
         Graaf::Graaf Catch2::Catch2WithMain)
 
     if (SLINGSHOT_ENABLE_REMOTE_DEBUGGER)
