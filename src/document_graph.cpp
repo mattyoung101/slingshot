@@ -5,10 +5,8 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/document_graph.hpp"
-#include "slingshot/language.hpp"
 #include "slingshot/slingshot.hpp"
 #include <ankerl/unordered_dense.h>
-#include <cstdint>
 #include <filesystem>
 #include <graaflib/algorithm/cycle_detection/dfs_cycle_detection.h>
 #include <graaflib/algorithm/graph_traversal/breadth_first_search.h>
@@ -22,6 +20,7 @@
 #include <lsp/messages.h>
 #include <lsp/types.h>
 #include <optional>
+#include <spdlog/fmt/bundled/format.h>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <vector>
@@ -29,35 +28,6 @@
 using namespace slingshot;
 
 using Graph_t = graaf::directed_graph<std::filesystem::path, std::string>;
-
-template <>
-struct ankerl::unordered_dense::hash<std::vector<graaf::vertex_id_t>> {
-    using is_avalanching = void;
-
-    [[nodiscard]] auto operator()(std::vector<graaf::vertex_id_t> const &x) const noexcept -> uint64_t {
-        uint64_t hash = 0xBEEF;
-        for (const auto &elem : x) {
-            uint64_t update = detail::wyhash::hash(elem);
-            hash = detail::wyhash::mix(hash, update);
-        }
-        return hash;
-    }
-};
-
-template <>
-struct ankerl::unordered_dense::hash<std::vector<graaf::edge_id_t>> {
-    using is_avalanching = void;
-
-    [[nodiscard]] auto operator()(std::vector<graaf::edge_id_t> const &x) const noexcept -> uint64_t {
-        uint64_t hash = 0xBEEF;
-        for (const auto &elem : x) {
-            uint64_t update
-                = detail::wyhash::mix(detail::wyhash::hash(elem.first), detail::wyhash::hash(elem.second));
-            hash = detail::wyhash::mix(hash, update);
-        }
-        return hash;
-    }
-};
 
 void DocumentGraph::insertDocument(const std::filesystem::path &path) {
     SPDLOG_TRACE("Insert document vertex {} into graph", path.string());
@@ -85,7 +55,7 @@ void DocumentGraph::registerProvidedSymbol(const std::filesystem::path &path, co
     SPDLOG_DEBUG("{} ---(PROVIDES SYMBOL)---> '{}'", path.string(), symbol);
     auto it = unresolvedSymbols.begin();
     while (it != unresolvedSymbols.end()) {
-        auto &unresolved = *it;
+        auto unresolved = *it;
         // does this unresolved linking refer to the symbol we have now found?
         if (unresolved.symbol == symbol) {
             // maybe we can resolve some missing things?
@@ -116,14 +86,14 @@ void DocumentGraph::registerProvidedSymbol(const std::filesystem::path &path, co
 
 void DocumentGraph::registerRequiredSymbol(const std::filesystem::path &path, const std::string &symbol) {
     SPDLOG_TRACE("{} ---(REQUIRES SYMBOL)---> '{}'", path.string(), symbol);
-    unresolvedSymbols.push_back(
+    unresolvedSymbols.insert(
         UnresolvedSymbol { .lhs = std::nullopt, .rhs = path, .symbol = symbol, .maybe = false });
 }
 
 void DocumentGraph::registerMaybeRequiredSymbol(
     const std::filesystem::path &path, const std::string &symbol) {
     SPDLOG_TRACE("{} ---(MAYBE requires SYMBOL)---> '{}'", path.string(), symbol);
-    unresolvedSymbols.push_back(
+    unresolvedSymbols.insert(
         UnresolvedSymbol { .lhs = std::nullopt, .rhs = path, .symbol = symbol, .maybe = true });
 }
 
@@ -143,7 +113,7 @@ void DocumentGraph::dumpDot() {
 void DocumentGraph::finaliseOutstandingSymbols() {
     auto it = unresolvedSymbols.begin();
     while (it != unresolvedSymbols.end()) {
-        auto &sym = *it;
+        const auto &sym = *it;
         SPDLOG_TRACE("Trying to finalise outstanding symbol '{}': LHS '{}', RHS '{}'", sym.symbol,
             toString(sym.lhs), toString(sym.rhs));
 
@@ -162,13 +132,6 @@ void DocumentGraph::finaliseOutstandingSymbols() {
                 linkDocuments(*provider, *sym.rhs, sym.symbol);
                 it = unresolvedSymbols.erase(it);
             } else {
-                if (sym.maybe) {
-                    SPDLOG_TRACE(
-                        "Could not immediately find resolver for MAYBE required symbol: '{}' - removing it",
-                        sym.symbol);
-                    it = unresolvedSymbols.erase(it);
-                    continue;
-                }
                 SPDLOG_TRACE("Could NOT provide provider for unresolved symbol '{}' wanted by '{}'",
                     sym.symbol, sym.rhs->string());
                 it++;
@@ -221,7 +184,6 @@ std::vector<std::filesystem::path> DocumentGraph::locateRequiredDependents(
     std::vector<std::filesystem::path> dependents;
     auto edgeCallback = [&](const graaf::edge_id_t &edge) {
         const auto &[lhsId, rhsId] = edge;
-        const auto &lhs = invertedGraph.get_vertex(lhsId);
         const auto &rhs = invertedGraph.get_vertex(rhsId);
 
         // this **IS** the right way around (since we're on the inverted graph, remember)
@@ -254,4 +216,33 @@ std::vector<std::filesystem::path> DocumentGraph::getAllKnownDocuments() {
         out.push_back(key);
     }
     return out;
+}
+
+std::string DocumentGraph::debugDumpOutstandingSymbols() {
+    std::string out = "All outstanding symbols:\n";
+    for (const auto &sym : unresolvedSymbols) {
+        // don't consider maybe symbols, for now
+        if (sym.maybe) {
+            continue;
+        }
+
+        out += fmt::format("{} (required by: {})\n", sym.symbol, toString(sym.rhs));
+    }
+
+    return out;
+}
+
+void DocumentGraph::purgeMaybeRequiredSymbols() {
+    SPDLOG_INFO("Purging 'maybe required' symbols, have {} current unresolved", unresolvedSymbols.size());
+    auto it = unresolvedSymbols.begin();
+    while (it != unresolvedSymbols.end()) {
+        const auto &sym = *it;
+
+        if (sym.maybe) {
+            SPDLOG_TRACE("Purging maybe required symbol '{}' wanted by {}", sym.symbol, toString(sym.rhs));
+            it = unresolvedSymbols.erase(it);
+        } else {
+            it++;
+        }
+    }
 }

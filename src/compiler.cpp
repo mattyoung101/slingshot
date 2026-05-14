@@ -176,7 +176,7 @@ void CompilationManager::compilerThread() {
                 }
             }
 
-            SPDLOG_TRACE("==== COMPILING {} contents: =====\n{}", path.string(), document);
+            SPDLOG_TRACE("==== COMPILING {} =====", path.string());
 
             if (isIndex && g_indexManager.isInitialIndexInProgress) {
                 sendLspProgressMsg("Indexing " + path.string());
@@ -416,6 +416,9 @@ void CompilationManager::maybeFinaliseIndexingProgress() {
 
         // since we've just finished, submit a bulk compilation job
         performBulkCompilation(true);
+
+        auto lock = g_indexManager.acquireLock();
+        g_indexManager.documentGraph->purgeMaybeRequiredSymbols();
     }
 }
 
@@ -423,7 +426,7 @@ void CompilationManager::maybeFinaliseIndexingProgress() {
 void CompilationManager::locateAllRequiredDocuments(bool shouldSendLspNotification) {
     SPDLOG_INFO("Locating all required documents");
 
-    // finalise the graph
+    // update the graph in case we have symbols that we can now resolve, but couldn't earlier
     g_indexManager.documentGraph->finaliseOutstandingSymbols();
 
     if (g_indexManager.documentGraph->doesHaveCycles()) {
@@ -436,15 +439,9 @@ void CompilationManager::locateAllRequiredDocuments(bool shouldSendLspNotificati
         return;
     }
 
-    size_t i = 0;
     auto allDocs = g_indexManager.documentGraph->getAllKnownDocuments();
     for (const auto &doc : allDocs) {
-        // if (shouldSendLspNotification) {
-        //     sendLspProgressMsg(fmt::format("Computing dependents from document graph ({}/{})", i,
-        //     allDocs.size()));
-        // }
         requiredDocuments[doc] = g_indexManager.documentGraph->locateRequiredDependents(doc);
-        i++;
     }
 }
 
@@ -487,7 +484,7 @@ void CompilationManager::performBulkCompilation(bool shouldSendLspNotification) 
 
 void CompilationManager::reIndexDocument(const std::filesystem::path &path,
     const std::shared_ptr<slang::syntax::SyntaxTree> &tree, bool shouldSendLspNotification) {
-    SPDLOG_TRACE("Reindexing document: {}, contents:{}\n", path.string(), tree->root().toString());
+    SPDLOG_TRACE("Reindexing document: {}", path.string());
 
     // figure out what symbols this document provides and requires
     auto imports = ImportLocator::locateRequiredProvidedImports(tree, path);

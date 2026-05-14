@@ -12,6 +12,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "slingshot/unresolved_symbol.hpp"
 
 namespace slingshot {
 
@@ -21,7 +22,7 @@ class DocumentGraph {
 public:
     void insertDocument(const std::filesystem::path &path);
 
-   void registerProvidedSymbol(const std::filesystem::path &path, const std::string &symbol);
+    void registerProvidedSymbol(const std::filesystem::path &path, const std::string &symbol);
 
     void registerRequiredSymbol(const std::filesystem::path &path, const std::string &symbol);
 
@@ -44,17 +45,12 @@ public:
 
     void debugLocateCycles();
 
-private:
-    struct UnresolvedSymbol {
-        /// LHS, this side provides the symbol
-        std::optional<std::filesystem::path> lhs;
-        /// RHS, this side requires the symbol
-        std::optional<std::filesystem::path> rhs;
-        std::string symbol;
-        /// Is this symbol *maybe* required?
-        bool maybe;
-    };
+    std::string debugDumpOutstandingSymbols();
 
+    /// Purges unresolved "maybe required" symbols, intended to be run at the end of indexing
+    void purgeMaybeRequiredSymbols();
+
+private:
     /// Links the document that provides the symbol ("provider"/"A") to the document that requires the symbol
     /// ("requirer"/B). This creates the edge A ---(sym)--> B.
     void linkDocuments(const std::filesystem::path &provider, const std::filesystem::path &requirer,
@@ -66,17 +62,17 @@ private:
     /// these documents.
     /// the direction of the vertex A ---(sym)--> B means that A provides the symbol "sym" **TO** B.
     /// it's like this so that we get the result we want from a topo sort.
-    graaf::directed_graph<std::filesystem::path, std::string> graph {};
-    graaf::directed_graph<std::filesystem::path, std::string> invertedGraph {};
+    graaf::directed_graph<std::filesystem::path, std::string> graph { };
+    graaf::directed_graph<std::filesystem::path, std::string> invertedGraph { };
 
     /// graaflib makes use vertex IDs, so we store a mapping of vertices to paths here
-    ankerl::unordered_dense::map<std::filesystem::path, graaf::vertex_id_t> vertices {};
-    ankerl::unordered_dense::map<std::filesystem::path, graaf::vertex_id_t> invertedVertices {};
+    ankerl::unordered_dense::map<std::filesystem::path, graaf::vertex_id_t> vertices { };
+    ankerl::unordered_dense::map<std::filesystem::path, graaf::vertex_id_t> invertedVertices { };
 
     /// mapping of a file to the symbols it provides, used for findProvider()
-    ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::string>> symbolProviders {};
+    ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::string>> symbolProviders { };
 
-    std::vector<UnresolvedSymbol> unresolvedSymbols {};
+    ankerl::unordered_dense::set<UnresolvedSymbol> unresolvedSymbols { };
 
     bool hasCycles = false;
     bool hasCyclesCacheValid = false;

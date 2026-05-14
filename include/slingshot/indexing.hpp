@@ -8,6 +8,7 @@
 #include "ankerl/unordered_dense.h"
 #include "slingshot/document_graph.hpp"
 #include "slingshot/language.hpp"
+#include "slingshot/unresolved_symbol.hpp" // !! DON'T LISTEN TO CLANGD, THIS IS NECESSARY !!
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -16,7 +17,6 @@
 #include <memory>
 #include <mutex>
 #include <optional>
-#include <shared_mutex>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/syntax/SyntaxTree.h>
 #include <spdlog/spdlog.h>
@@ -32,22 +32,22 @@ constexpr std::string INDEX_VERSION = "1.0.0";
 class IndexEntry {
 public:
     std::string version = INDEX_VERSION;
-    std::string path {};
-    std::string contents {};
-    uint64_t hash {};
+    std::string path { };
+    std::string contents { };
+    uint64_t hash { };
 
     /// Time in nanoseconds from std::chrono::steady_clock this index entry was last updated successfully
-    uint64_t lastUpdated {};
+    uint64_t lastUpdated { };
 
     /// Parse tree
     /// WARNING May be nullptr if not yet parsed
-    std::shared_ptr<slang::syntax::SyntaxTree> tree {};
+    std::shared_ptr<slang::syntax::SyntaxTree> tree { };
 
     /// True if the parse tree is valid, false if the parse tree is invalidated and we're waiting a new parse
     bool valid = false;
 
     /// Current document. Only valid if parse is 'valid' is true.
-    std::optional<lang::Document> doc {};
+    std::optional<lang::Document> doc { };
 
     IndexEntry(std::string path, uint64_t hash)
         : path(std::move(path))
@@ -93,15 +93,14 @@ public:
     using Ptr = std::shared_ptr<IndexEntry>;
 
 private:
-    std::mutex mutex {};
-    std::condition_variable cond {};
+    std::mutex mutex { };
+    std::condition_variable cond { };
 };
 
 using namespace slang::syntax;
 
 class IndexManager {
 public:
-
     /// Inserts a document with the specified absolute path 'path' and contents 'document'. The document hash
     /// is computed using xxHash64, if the document is already in the index, it will not be inserted.
     /// @param isIndex true if this is a document submitted by the directory walk, false if it's a real
