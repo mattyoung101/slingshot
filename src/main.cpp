@@ -1,6 +1,6 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025 M. L. Young.
+// Copyright (c) 2025-2026 M. L. Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -17,6 +17,7 @@
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/spdlog.h"
 #include <csignal>
+#include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <iostream>
@@ -48,7 +49,6 @@ std::shared_ptr<lsp::MessageHandler> g_msgHandler = { };
 CompletionManager g_completionManager = { };
 
 void exit_handler() {
-    std::cerr << "EXIT HANDLER RAHH\n";
     SPDLOG_DEBUG("Exit handler!");
     g_compilerManager.shutdown();
     g_debugger.shutdown();
@@ -68,9 +68,14 @@ int main() {
     using namespace slang;
     using namespace slingshot;
 
-    // TODO if this is a GH release we should probably set this to info; or better yet make it runtime
-    // configurable!!
-    auto level = spdlog::level::debug;
+    // info by default
+    auto level = spdlog::level::info;
+    if (std::getenv("SLING_LOG_DEBUG") != nullptr) {
+        level = spdlog::level::debug;
+    }
+    if (std::getenv("SLING_LOG_TRACE") != nullptr) {
+        level = spdlog::level::trace;
+    }
 
     spdlog::set_level(level);
     spdlog::flush_on(level);
@@ -88,7 +93,7 @@ int main() {
     }
 
     SPDLOG_INFO(
-        "Slingshot LSP v{} - (c) 2023-2026 M. L. Young. Licenced under the MPL 2.0.", SLINGSHOT_VERSION);
+        "Slingshot LSP v{} - (c) 2023-2026 Mel Young. Licenced under the MPL 2.0.", SLINGSHOT_VERSION);
     SPDLOG_INFO("Slang version: {}.{}", VersionInfo::getMajor(), VersionInfo::getMinor());
 
     g_debugger.boot(REMOTE_DEBUGGER_PORT);
@@ -112,7 +117,6 @@ int main() {
     }
 
     SPDLOG_INFO("Shutting down");
-    std::cerr << "EXITING NOW\n";
 
     return 0;
 }

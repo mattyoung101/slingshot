@@ -8,8 +8,8 @@ SystemVerilog as intuitive to edit as C++ or Rust.
 
 Compared to other SV LSPs, the main feature that Slingshot brings to the table is a completion-first approach,
 using the powerful [Slang](https://github.com/MikePopoloski/slang) frontend. The intent is to provide fast,
-accurate and robust completion even in complex projects. Slingshot also features a relatively advanced **multi-threaded
-indexing system**, to power this completion system, that features graph-based dependency resolution.
+accurate and robust completion even in complex projects. Slingshot also features a relatively advanced
+**asynchronous indexing system**, to power this completion system, that features graph-based dependency resolution.
 
 The trade-off is this does mean that features such as "go-to-reference" take somewhat of a backseat; though
 the plan is to implement them eventually.
@@ -28,17 +28,20 @@ aims to:
 - Advanced indexing system
     - Graph-based (backwards BFS) automatic dependency tracking between SV documents
         - Improves performance by only compiling the documents necessary to index a file
-    - Multi-threaded for theoretically higher-performance on large codebases
+    - Asynchronous; does not block the main thread while indexing is active
 - Simple configuration
   - Slingshot is configured through a simple `.slingshot.toml` file declared in the project's root
   directory
   - This format is documented in [docs/config.md](docs/config.md)
+  - File discovery using directory walking or F-lists with automatic dependency resolution
+  - "It Just Works!"
 - Compatible with Ubuntu 22.04+ and similar Linux distributions
 
 Future features are planned on the [issue tracker](https://github.com/mlyoung101/slingshot/issues).
 
 ### Current state
-Slingshot is somewhat stable and is ready for testing in larger projects. Please keep me posted!
+Slingshot is relatively stable and is ready for testing in larger projects. I'm actively using it myself daily
+to develop my PhD dissertation. Please keep me posted!
 
 ### Timeline
 Slingshot is being developed in my free time during my PhD. I do not _always_ have time to work on this project.
@@ -57,7 +60,6 @@ You will need:
 - Just (optional)
 - mold (optional)
 - Something compatible with Ubuntu 22.04+ (I develop on Arch, btw)
-- Abseil (e.g. `libabsl-dev` or similar)
 
 The simplest way to build, with Just, is to run `just build` and/or `just build_debug`.
 
@@ -108,8 +110,12 @@ This is the setup I use for development as well.
 `.slingshot.toml` file to configure the server. This is mandatory for multi-file (read: most) projects.
 
 ### Troubleshooting
-Slingshot issues can be diagnosed by reading the LSP log file. This is located in
-`~/.local/share/slingshot/slingshot.log`.
+Slingshot issues can be diagnosed by reading the LSP log file. Slingshot prints to stderr, this will then
+usually be saved by your editor somewhere; please refer to editor specific docs. For Neovim, it will be in
+`~/.local/state/nvim/lsp.log`
+
+To see more verbose debug messages, set the environment variable `SLING_LOG_DEBUG` to any value. To see _even
+more_ verbose messages (spew), set the environment variable `SLING_LOG_TRACE` to any value.
 
 If the LSP does nothing at all, please make sure you have read [docs/config.md](docs/config.md) and created
 your `.slingshot.toml` file. Then, read the log to make sure that Slingshot has the correct root directory.
@@ -141,24 +147,25 @@ See [docs/impl_details.md](docs/impl_details.md)
 
 ## Contributing guidelines
 ### No AI policy
-As part of Slingshot's design philosophy, as well as the tenuous copyright and ethical situation around the
-use of LLMs, I will **not** accept any pull requests or issues that are written in whole or in part using
-LLMs. I also do not use any LLMs in any way when working on Slingshot. All bugs are 100% proudly human
-generated.
+As part of Slingshot's design philosophy, as well as the tenuous situation around the use of LLMs regarding
+copyright and even ethics, I will **not** accept any pull requests or issues that are written in whole or in
+part using LLMs. I also do not use any LLMs in any way when working on Slingshot. This is intended to be a fun
+and useful project for myself and others, so why would I automate the fun away? :)
 
-Slingshot's mission in this AI-age (bubble?) is to assist human developers writing good SystemVerilog code
-through rigorous, disciplined and explainable syntax-tree analysis.
+Whilst we may be operating in an era in which you can vibe code all your RTL and ship it, I strongly believe
+that _explainable_ and rigorous syntax-tree based analysis that assists human developers will continue to have
+a place, and that's what Slingshot aims to provide.
 
 > [!IMPORTANT]
 > Submitting a PR or issue that is reasonably believed to be written using AI will result in it being
-> immediately closed without exception.
+> closed without exception, and you will be referred back to this policy.
 
 This is based on precedent from [Zig](https://ziglang.org/code-of-conduct/#strict-no-llm-no-ai-policy),
 [QEMU](https://www.qemu.org/docs/master/devel/code-provenance.html#use-of-ai-generated-content),
 [LibreOffice](https://wiki.documentfoundation.org/Development/AI_policy), and others.
 
 ## Licence
-Copyright (c) 2023-2026 M. L. Young. Available under the Mozilla Public License v2.0.
+Copyright (c) 2023-2026 Mel Young <mel@mlyoung.cool>. Available under the Mozilla Public License v2.0.
 
 > This Source Code Form is subject to the terms of the Mozilla Public
 > License, v. 2.0. If a copy of the MPL was not distributed with this

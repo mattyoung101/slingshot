@@ -113,8 +113,11 @@ std::string RemoteDebugger::processMsg(std::string msg) {
         trim(msg);
         return g_compilerManager.debugGetDepsForFile(msg);
     }
+    if (msg.starts_with("dump outstanding")) {
+        return g_indexManager.documentGraph->debugDumpOutstandingSymbols();
+    }
 
-    return fmt::format("Command '{}' not found. Commands are:\n    dump {{index,lang,graph,sources}}\n   "
+    return fmt::format("Command '{}' not found. Commands are:\n    dump {{index,lang,graph,sources,outstanding}}\n   "
                        " sigtrap\n    die\n    query deps {{path}}",
         msg);
 }
