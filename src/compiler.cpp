@@ -4,27 +4,22 @@
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#include "slingshot/compiler.hpp"
+#include "slingshot/conversions.hpp"
 #include "slingshot/import_locator.hpp"
+#include "slingshot/indexing.hpp"
+#include "slingshot/lang_lifter.hpp"
+#include "slingshot/slingshot.hpp"
+#include <ankerl/unordered_dense.h>
 #include <atomic>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
 #include <iterator>
-#include <optional>
-#include <spdlog/fmt/bundled/format.h>
-#include <thread>
-#include <vector>
-#define BS_THREAD_POOL_NATIVE_EXTENSIONS
-#include "slingshot/compiler.hpp"
-#include "slingshot/conversions.hpp"
-#include "slingshot/indexing.hpp"
-#include "slingshot/lang_lifter.hpp"
-#include "slingshot/slingshot.hpp"
-#include <BS_thread_pool.hpp>
-#include <ankerl/unordered_dense.h>
 #include <lsp/messages.h>
 #include <lsp/types.h>
 #include <lsp/uri.h>
+#include <optional>
 #include <slang/analysis/AnalysisManager.h>
 #include <slang/ast/Compilation.h>
 #include <slang/ast/symbols/CompilationUnitSymbols.h>
@@ -32,15 +27,19 @@
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/driver/Driver.h>
 #include <slang/syntax/SyntaxTree.h>
+#include <slang/diagnostics/CompilationDiags.h>
 #include <slang/text/SourceLocation.h>
+#include <spdlog/fmt/bundled/format.h>
 #include <spdlog/spdlog.h>
+#include <thread>
+#include <vector>
 
 using namespace slingshot;
 using namespace slang::syntax;
 using namespace slang::ast;
 using namespace slang::analysis;
 
-// report() is based on slang-server ServerDiagClient.cpp, which is available under the MIT licence:
+// Parts of report() is based on slang-server ServerDiagClient.cpp, which is available under the MIT licence:
 //
 // Copyright (c) 2024-2025 Hudson River Trading LLC <opensource@hudson-trading.com>
 //
@@ -64,6 +63,12 @@ using namespace slang::analysis;
 
 void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
     SPDLOG_TRACE("Received a diagnostic");
+
+    // don't report missing timescale diagnostics, as they are caused by design elements being brought into
+    // the compilation tree through dependency graph resolution, but are not visible to the user
+    if (diagnostic.originalDiagnostic.code == slang::diag::MissingTimeScale) {
+        return;
+    }
 
     {
         auto lock = g_compilerManager.acquireLock();
@@ -514,8 +519,6 @@ void CompilationManager::reCompileDocument(const std::filesystem::path &path) {
 
     try {
         SPDLOG_DEBUG("Recompiling document after re-index: {}", path.string());
-
-        BS::this_thread::set_os_thread_name("Compiler");
 
         {
             // is the data out of date?
