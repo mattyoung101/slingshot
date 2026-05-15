@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 project(slingshot
     LANGUAGES C CXX
-    VERSION 1.4.0
+    VERSION 1.5.0
     DESCRIPTION "SystemVerilog language server powered by Slang"
     HOMEPAGE_URL "https://github.com/mlyoung101/slingshot"
 )
