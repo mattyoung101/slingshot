@@ -130,6 +130,9 @@ public:
     /// Association between a FS path and a Slang BufferID once it's been added to the internal SourceManager
     ankerl::unordered_dense::map<std::filesystem::path, BufferID> bufferIds;
 
+    /// Add a predefined macro
+    void addPreDefinedMacro(const std::string &name, const std::string &value);
+
     friend class LSPDiagnosticClient;
 
 private:
@@ -139,6 +142,7 @@ private:
     std::recursive_mutex lock;
     std::atomic_int indexingJobsInProgress;
     std::atomic_bool running = true;
+    std::vector<std::string> predefinedMacros;
 
     /// mapping of a document to all the documents it requires to build the AST
     ankerl::unordered_dense::map<std::filesystem::path, std::vector<std::filesystem::path>> requiredDocuments;

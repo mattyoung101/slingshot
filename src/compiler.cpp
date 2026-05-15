@@ -26,11 +26,14 @@
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/driver/Driver.h>
+#include <slang/parsing/Preprocessor.h>
 #include <slang/syntax/SyntaxTree.h>
 #include <slang/diagnostics/CompilationDiags.h>
 #include <slang/text/SourceLocation.h>
+#include <slang/util/Bag.h>
 #include <spdlog/fmt/bundled/format.h>
 #include <spdlog/spdlog.h>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -273,7 +276,11 @@ void CompilationManager::submitCompilationJob(
 
 std::shared_ptr<slang::syntax::SyntaxTree> CompilationManager::doCstParse(
     const std::filesystem::path &path, const SourceBuffer &buf, DiagnosticEngine &diagEngine) {
-    auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr);
+
+    parsing::PreprocessorOptions options;
+    options.predefines = predefinedMacros;
+
+    auto tree = SyntaxTree::fromBuffer(buf, *sourceMgr, options);
     SPDLOG_TRACE("Parsed document {}, got {} CST diagnostics", path.string(), tree->diagnostics().size());
     // this is essential so that later, we will have the parse tree associated with this current
     // document
@@ -629,4 +636,8 @@ std::string CompilationManager::debugGetDepsForFile(const std::string &path) {
         out += fmt::format("  {}. {}\n", i++, req.string());
     }
     return out;
+}
+
+void CompilationManager::addPreDefinedMacro(const std::string &name, const std::string &value) {
+    predefinedMacros.push_back(fmt::format("{}={}", name, value));
 }

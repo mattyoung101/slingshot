@@ -13,22 +13,24 @@ The current `.slingshot.toml` format looks as follows:
 # https://github.com/mlyoung101/slingshot
 
 # Config file version
-version = "1.1.0"
+version = "1.2.0"
 
 # List of include directories, relative to project root, to search for SystemVerilog files.
 # Note: The project root directory is usually the Git root directory.
-# If specified, 'flist_files' must NOT be specified.
 include_dirs = [
   "rtl"
   # ... any other RTL source directories here ...
 ]
 
 # List of F-list files (*.f) to pull dependencies from.
-# If specified, 'include_dirs' must NOT be specified.
 # Paths are relative to the project root as well.
 flist_files = [
   "my_project.f"
 ]
+
+# List of manual definitions
+[defines]
+IS_FOO = "bar"
 ```
 
 If Slingshot is not behaving correctly, see the troubleshooting steps in the main README. I expect

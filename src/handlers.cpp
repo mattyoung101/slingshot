@@ -20,7 +20,8 @@
 
 namespace {
 // https://stackoverflow.com/a/72900791
-const std::regex SEMVER_REGEX(R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)");
+const std::regex SEMVER_REGEX(
+    R"(^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$)");
 }; // namespace
 
 namespace {
@@ -114,6 +115,16 @@ void parseConfigToml(std::filesystem::path &path) {
                          "'flist_files' should be present.");
         }
 
+        if (config.contains("defines")) {
+            auto *defines = config["defines"].as_table();
+            for (const auto &[key, value] : *defines) {
+                auto keystr = std::string(key);
+                auto valuestr = std::string(*value.as_string());
+                SPDLOG_INFO("Add predefined macro: {}={}", keystr, valuestr);
+                slingshot::g_compilerManager.addPreDefinedMacro(keystr, valuestr);
+            }
+        }
+
         // finished queueing all index jobs
         slingshot::g_indexManager.isStillQueueingIndexJobs = false;
     } catch (const std::exception &e) {
@@ -182,7 +193,7 @@ void exit() {
 lsp::requests::Shutdown::Result shutdown() {
     SPDLOG_INFO("Shutting down (shutdown)");
     slingshot::g_running = false;
-    return lsp::requests::Shutdown::Result {};
+    return lsp::requests::Shutdown::Result { };
 }
 
 void textDocumentOpen(const lsp::notifications::TextDocument_DidOpen::Params &&params) {
@@ -240,11 +251,11 @@ lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     auto result = g_indexManager.retrieve(path);
     if (!result.has_value()) {
         SPDLOG_WARN("Document {} is not in index", path);
-        return {};
+        return { };
     }
     if ((*result)->tree == nullptr) {
         SPDLOG_WARN("Document {} has no parse tree at all, can't do completion", path);
-        return {};
+        return { };
     }
 
     // ensure the index entry is valid
