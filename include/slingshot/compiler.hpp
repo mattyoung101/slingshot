@@ -152,9 +152,6 @@ private:
     /// Inverse of bufferIds
     ankerl::unordered_dense::map<BufferID, std::filesystem::path> bufferIdsInverse;
 
-    /// outgoing, timestamped diagnostics
-    moodycamel::BlockingConcurrentQueue<TimestampedDiagnostics> outgoingDiagnostics { };
-
     /// job queue
     moodycamel::BlockingConcurrentQueue<CompilationJob> jobs { };
 
@@ -193,8 +190,6 @@ private:
 
     /// Recompiles a document that's already in the index, used by reIndexDocument
     void reCompileDocument(const std::filesystem::path &path);
-
-    void outgoingDiagnosticsThread();
 
     void compilerThread();
 };

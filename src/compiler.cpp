@@ -230,7 +230,7 @@ void CompilationManager::compilerThread() {
             doLifting(path, tree);
 
             // enqueue outgoing diagnostics
-            outgoingDiagnostics.enqueue({ .timestamp = timeNowNs(), .path = path, .lspDiags = diagClient });
+            issueDiagnostics(path, diagClient);
 
             if (isIndex) {
                 indexingJobsInProgress--;
@@ -582,7 +582,7 @@ void CompilationManager::reCompileDocument(const std::filesystem::path &path) {
         doLifting(path, tree);
 
         // enqueue diagnostics
-        outgoingDiagnostics.enqueue({ .timestamp = timeNowNs(), .path = path, .lspDiags = diagClient });
+        issueDiagnostics(path, diagClient);
     } catch (const std::exception &e) {
         SPDLOG_ERROR("Caught exception in re-compilation job: {}", e.what());
     }
@@ -594,34 +594,6 @@ void CompilationManager::boot() {
     auto compilerThread = std::thread(&CompilationManager::compilerThread, this);
     pthread_setname_np(compilerThread.native_handle(), "Compiler");
     compilerThread.detach();
-
-    auto diagnosticsThread = std::thread(&CompilationManager::outgoingDiagnosticsThread, this);
-    pthread_setname_np(diagnosticsThread.native_handle(), "DiagOut");
-    diagnosticsThread.detach();
-}
-
-void CompilationManager::outgoingDiagnosticsThread() {
-    SPDLOG_DEBUG("Enter outgoingDiagnosticsThread");
-
-    ankerl::unordered_dense::map<std::filesystem::path, uint64_t> lastTimes;
-
-    while (running) {
-        TimestampedDiagnostics diag;
-        outgoingDiagnostics.wait_dequeue(diag);
-
-        if (lastTimes.contains(diag.path) && lastTimes.at(diag.path) > diag.timestamp) {
-            SPDLOG_WARN("Discarding old diagnostic for path: {}", diag.path.string());
-            continue;
-        }
-
-        issueDiagnostics(diag.path, diag.lspDiags);
-        lastTimes[diag.path] = diag.timestamp;
-
-        // wait for 100 ms (rate limit!)
-        std::this_thread::sleep_for(100ms);
-    }
-
-    SPDLOG_DEBUG("outgoingDiagnosticsThread() terminating");
 }
 
 std::string CompilationManager::debugGetDepsForFile(const std::string &path) {
