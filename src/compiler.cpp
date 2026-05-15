@@ -12,7 +12,6 @@
 #include "slingshot/slingshot.hpp"
 #include <ankerl/unordered_dense.h>
 #include <atomic>
-#include <cstdint>
 #include <exception>
 #include <filesystem>
 #include <iterator>
@@ -23,12 +22,12 @@
 #include <slang/analysis/AnalysisManager.h>
 #include <slang/ast/Compilation.h>
 #include <slang/ast/symbols/CompilationUnitSymbols.h>
+#include <slang/diagnostics/CompilationDiags.h>
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/driver/Driver.h>
 #include <slang/parsing/Preprocessor.h>
 #include <slang/syntax/SyntaxTree.h>
-#include <slang/diagnostics/CompilationDiags.h>
 #include <slang/text/SourceLocation.h>
 #include <slang/util/Bag.h>
 #include <spdlog/fmt/bundled/format.h>
