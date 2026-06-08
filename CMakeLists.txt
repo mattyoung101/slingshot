@@ -23,6 +23,10 @@ include(cmake/CPM.cmake)
 
 option(SLINGSHOT_ENABLE_REMOTE_DEBUGGER "Enables the remote debugger functionality in Slingshot. Does not work
     on Windows." TRUE)
+if (WIN32)
+    message("Remote debugger will be disabled on Windows, as it doesn't work.")
+    set(SLINGSHOT_ENABLE_REMOTE_DEBUGGER FALSE)
+endif()
 
 option(SLINGSHOT_BUILD_TESTS "Enables building tests." TRUE)
 

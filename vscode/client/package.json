@@ -1,0 +1,22 @@
+{
+  "name": "Slingshot",
+  "description": "Slingshot SystemVerilog language server",
+  "author": "Mel Young",
+  "license": "MPL-2.0",
+  "version": "0.0.1",
+  "publisher": "Mel Young",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mlyoung101/slingshot"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "dependencies": {
+    "octokit": "^5.0.5",
+    "vscode-languageclient": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.81.0"
+  }
+}

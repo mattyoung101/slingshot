@@ -1,0 +1,32 @@
+{
+  "name": "Slingshot",
+  "description": "Slingshot SystemVerilog language server",
+  "author": "Mel Young",
+  "license": "MPL-2.0",
+  "version": "1.0.0",
+  "publisher": "Mel Young",
+  "categories": [],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "activationEvents": [
+    "onLanguage"
+  ],
+  "main": "./client/out/extension",
+  "contributes": {
+    "configuration": {}
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "postinstall": "cd client && npm install && cd .."
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.7",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "octokit": "^5.0.5"
+  }
+}

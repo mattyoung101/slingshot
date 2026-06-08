@@ -149,16 +149,27 @@ See [docs/impl_details.md](docs/impl_details.md)
 ### No AI policy
 As part of Slingshot's design philosophy, as well as the tenuous situation around the use of LLMs regarding
 copyright and even ethics, I will **not** accept any pull requests or issues that are written in whole or in
-part using LLMs. I also do not use any LLMs in any way when working on Slingshot. This is intended to be a fun
-and useful project for myself and others, so why would I automate the fun away? :)
+part using LLMs. I also do not use any LLMs in any way when working on Slingshot. "Vibe coded" LLM
+contributions tend to create an enormous maintenance burden that would be unacceptable for me as the sole
+maintainer and editor of this project.
 
-Whilst we may be operating in an era in which you can vibe code all your RTL and ship it, I strongly believe
-that _explainable_ and rigorous syntax-tree based analysis that assists human developers will continue to have
-a place, and that's what Slingshot aims to provide.
+In addition, there are _already_ at least two SV LSPs developed with significant AI assistance, so if you
+prefer this model, use them instead.
 
 > [!IMPORTANT]
 > Submitting a PR or issue that is reasonably believed to be written using AI will result in it being
-> closed without exception, and you will be referred back to this policy.
+> closed in almost all circumstances, and you will be referred back to this policy.
+
+To be clear, here are some examples of this policy in effect:
+- A user submits an issue or PR that has obvious hallmarks of AI writing and exaggeration: **Reject, refer to
+  policy.**
+- A user submits a PR that includes "Co-authored-by: Claude". **Reject without exception, refer to policy.**
+- A user submits a PR that masquerades as human-authored, but is suspicious. **Clarify with user, refer to
+  policy; reject if user admits AI, has made other AI PRs, or is otherwise evasive.**
+- A user authors a PR using auto-complete style AI tools, but otherwise developed it manually. **Approve, as
+  long as style is acceptable and user understands their contribution clearly.**
+- A user employs an LLM-based translation tool to translate their otherwise hand-written issue. **Approve, as
+  long as LLM has not modified the original intent significantly.**
 
 This is based on precedent from [Zig](https://ziglang.org/code-of-conduct/#strict-no-llm-no-ai-policy),
 [QEMU](https://www.qemu.org/docs/master/devel/code-provenance.html#use-of-ai-generated-content),
