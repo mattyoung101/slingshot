@@ -6,9 +6,11 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
 #include <functional>
+#include <lsp/types.h>
 #include <nlohmann/detail/macro_scope.hpp>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <unordered_set>
@@ -38,19 +40,31 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PortDirection,
         ENUM_ENTRY(InOut),
     });
 
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(lsp::Position, line, character);
+
 /// Represents a port in a module
 class Port {
 public:
     std::string name {};
     PortDirection direction = PortDirection::Unknown;
+    lsp::Position location {};
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Port, name, direction);
 
+/// Represents a generic token with a name and a location
+class LangLocatable {
+public:
+    std::string name {};
+    lsp::Position location {};
+};
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LangLocatable, name, location);
+
 /// Represents a module in a document
 class Module {
 public:
-    Module(std::string name)
+    Module(std::string name, const slang::SourceLocation &location)
         : name(std::move(name)) {
     }
 
@@ -95,6 +109,7 @@ public:
     std::unordered_set<std::string> variables {};
     std::unordered_set<std::string> parameters {};
     std::string name {};
+    lsp::Position location {};
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Module, ports, parameters, name, variables);
@@ -102,7 +117,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Module, ports, parameters, name, variables);
 /// Represents a document
 class Document {
 public:
-    void startModule(const std::string &name) {
+    void startModule(const std::string &name, const slang::SourceLocation &location) {
         if (currentModule != std::nullopt) {
             SPDLOG_ERROR("Starting a module when a module is already active!");
         }

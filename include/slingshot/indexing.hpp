@@ -1,6 +1,6 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025-2026 M. L. Young.
+// Copyright (c) 2025-2026 Mel Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -19,6 +19,7 @@
 #include <optional>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/syntax/SyntaxTree.h>
+#include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <utility>
@@ -26,14 +27,20 @@
 
 namespace slingshot {
 
-/// Index version that this version of Slingshot is compatible with
+/// Index major version that this version of Slingshot is compatible with
 constexpr std::string INDEX_VERSION = "1.0.0";
 
 class IndexEntry {
 public:
     std::string version = INDEX_VERSION;
+
+    /// Path to the document on disk
     std::string path { };
+
+    /// Raw contents of the file
     std::string contents { };
+
+    /// WyHash of the contents of the document
     uint64_t hash { };
 
     /// Time in nanoseconds from std::chrono::steady_clock this index entry was last updated successfully
@@ -46,8 +53,11 @@ public:
     /// True if the parse tree is valid, false if the parse tree is invalidated and we're waiting a new parse
     bool valid = false;
 
-    /// Current document. Only valid if parse is 'valid' is true.
+    /// Current 'lang' document. Only valid if parse is 'valid' is true.
     std::optional<lang::Document> doc { };
+
+    /// Mapping between symbols this document declares and their locations; used for go to definition support
+    ankerl::unordered_dense::map<std::string, slang::SourceLocation> declaredTokenLocations { };
 
     IndexEntry(std::string path, uint64_t hash)
         : path(std::move(path))
@@ -102,7 +112,7 @@ using namespace slang::syntax;
 class IndexManager {
 public:
     /// Inserts a document with the specified absolute path 'path' and contents 'document'. The document hash
-    /// is computed using xxHash64, if the document is already in the index, it will not be inserted.
+    /// is computed using WyHash, if the document is already in the index, it will not be inserted.
     /// @param isIndex true if this is a document submitted by the directory walk, false if it's a real
     /// document
     void insert(const std::filesystem::path &path, const std::string &document, bool isIndex);
