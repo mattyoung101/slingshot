@@ -143,4 +143,9 @@ inline std::vector<std::string> split_string(const std::string &str, const std::
     return strings;
 }
 
+/// Same as SourceRange::contains(), expect that it includes <= on the end position, i.e. it's inclusive
+constexpr bool containsRelaxed(const SourceLocation &loc, const SourceRange &range) {
+    return loc >= range.start() && loc <= range.end();
+}
+
 } // namespace slingshot

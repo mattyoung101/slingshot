@@ -42,11 +42,6 @@ namespace {
 
 #define RECOMMEND(what) recommend(what, #what)
 
-/// Same as SourceRange::contains(), expect that it includes <= on the end position, i.e. it's inclusive
-constexpr bool containsRelaxed(const SourceLocation &loc, const SourceRange &range) {
-    return loc >= range.start() && loc <= range.end();
-}
-
 /// Returns true iff any one of the nodes of type "kind" exists in the direct parental hierarchy of the given
 /// node "node"
 inline bool containsInDirectHierarchy(const SyntaxNode &node, const std::vector<SyntaxKind> &kinds) {

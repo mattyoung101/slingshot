@@ -7,6 +7,7 @@
 #include "slingshot/language.hpp"
 #include "slingshot/conversions.hpp"
 #include "slingshot/slingshot.hpp"
+#include <filesystem>
 #include <lsp/types.h>
 #include <lsp/uri.h>
 #include <nlohmann/detail/macro_scope.hpp>
@@ -21,47 +22,59 @@ using namespace slingshot::lang;
 
 namespace {
 
-constexpr std::pair<lsp::Position, lsp::Uri> extractLocation(const slang::SourceLocation &location) {
+constexpr LangLocatable extractLocation(
+    const std::string &name, const std::filesystem::path &path, const slang::SourceLocation &location) {
     auto lock = g_compilerManager.acquireLock();
     auto sourceManager = g_compilerManager.getSourceManager();
     auto convertedLocation = toPosition(location, sourceManager);
 
-    // FIXME this just returns unnamed buffer, we should somehow plumb this in from the completion system I
-    // think?
-    auto uri
-        = lsp::Uri::parse(std::string("file://") + sourceManager->getFullPath(location.buffer()).string());
-
-    return std::make_pair(convertedLocation, uri);
+    return { .name = name, .pos = convertedLocation, .path = path };
 }
 
 }; // namespace
 
-Module::Module(std::string name, const slang::SourceLocation &location)
+Module::Module(std::string name, const std::filesystem::path &path, const slang::SourceLocation &location)
     : name(std::move(name)) {
-    const auto &[convertedLocation, uri] = extractLocation(location);
-    this->location = { .name = name, .pos = convertedLocation, .uri = uri };
+    this->location = extractLocation(name, path, location);
 }
 
 void Module::addPort(const std::string &portName, PortDirection dir, const slang::SourceLocation &location) {
-    const auto &[convertedLocation, uri] = extractLocation(location);
     // clang-format off
     ports.push_back(Port {
         .name = portName,
         .direction = dir,
-        .location = LangLocatable {
-            .name = portName, .pos = convertedLocation,
-            .uri = uri
-        }
+        .location = extractLocation(portName, this->location.path, location)
     });
     // clang-format on
 }
 
 void Module::addParameter(const std::string &paramName, const slang::SourceLocation &location) {
-    const auto &[convertedLocation, uri] = extractLocation(location);
-    parameters.insert({ .name = paramName, .pos = convertedLocation, .uri = uri });
+    parameters.insert(extractLocation(paramName, this->location.path, location));
 }
 
 void Module::addVariable(const std::string &varName, const slang::SourceLocation &location) {
-    const auto &[convertedLocation, uri] = extractLocation(location);
-    variables.insert({ .name = varName, .pos = convertedLocation, .uri = uri });
+    variables.insert(extractLocation(varName, this->location.path, location));
+}
+
+std::optional<LangLocatable> Module::querySymbolLocation(const std::string &symbol) const {
+    for (const auto &port : ports) {
+        if (port.name == symbol) {
+            return port.location;
+        }
+    }
+
+    for (const auto &variable : variables) {
+        if (variable.name == symbol) {
+            return variable;
+        }
+    }
+
+    for (const auto &parameters : parameters) {
+        if (parameters.name == symbol) {
+            return parameters;
+        }
+    }
+
+    // couldn't find it
+    return std::nullopt;
 }

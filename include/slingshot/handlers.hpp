@@ -1,6 +1,6 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025-2026 M. L. Young.
+// Copyright (c) 2025-2026 Mel Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -25,5 +25,8 @@ void textDocumentSave(const lsp::notifications::TextDocument_DidSave::Params &&p
 
 lsp::requests::TextDocument_Completion::Result textDocumentCompletion(
     const lsp::requests::TextDocument_Completion::Params &&params);
+
+lsp::requests::TextDocument_Definition::Result textDocumentDefinition(
+    const lsp::requests::TextDocument_Definition::Params &&params);
 
 } // namespace slingshot::handlers

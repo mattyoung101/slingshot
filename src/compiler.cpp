@@ -9,6 +9,7 @@
 #include "slingshot/import_locator.hpp"
 #include "slingshot/indexing.hpp"
 #include "slingshot/lang_lifter.hpp"
+#include "slingshot/language.hpp"
 #include "slingshot/slingshot.hpp"
 #include <ankerl/unordered_dense.h>
 #include <atomic>
@@ -392,7 +393,7 @@ void CompilationManager::doAnalysis(
 void CompilationManager::doLifting(
     const std::filesystem::path &path, std::shared_ptr<slang::syntax::SyntaxTree> &tree) {
     SPDLOG_TRACE("Lifting language");
-    LangLifterVisitor langLifter;
+    LangLifterVisitor langLifter(path);
     langLifter.visit(tree->root());
     langLifter.doc.maybeFlushModule();
 

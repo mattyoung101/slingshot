@@ -6,6 +6,7 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
 #include "slingshot/language.hpp"
+#include <filesystem>
 #include <slang/syntax/AllSyntax.h>
 #include <slang/syntax/SyntaxVisitor.h>
 #include <spdlog/spdlog.h>
@@ -19,6 +20,8 @@ using namespace slang::syntax;
 
 class LangLifterVisitor : public SyntaxVisitor<LangLifterVisitor> {
 public:
+    LangLifterVisitor(const std::filesystem::path &path) : doc(path) {}
+
     void handle(const ModuleHeaderSyntax &syntax);
     void handle(const NetPortHeaderSyntax &syntax);
     void handle(const DeclaratorSyntax &syntax);

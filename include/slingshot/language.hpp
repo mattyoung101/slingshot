@@ -6,6 +6,7 @@
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
 #include <ankerl/unordered_dense.h>
+#include <filesystem>
 #include <functional>
 #include <lsp/types.h>
 #include <lsp/uri.h>
@@ -17,14 +18,15 @@
 #include <string>
 #include <string_view>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 /// A more abstract representation of the SV language, used for completion
 
 namespace lsp {
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Uri, data());
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Uri, toString());
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Position, character, line);
-};
+}; // namespace lsp
 
 namespace slingshot::lang {
 
@@ -33,15 +35,14 @@ class LangLocatable {
 public:
     std::string name { };
     lsp::Position pos { };
-    lsp::Uri uri { }; // document URI
-                      //
+    std::filesystem::path path { };
+
     bool operator==(const LangLocatable &l) const {
-        return l.name == name && l.pos.character == pos.character && l.pos.line == pos.line
-            && l.uri.data() == uri.data();
+        return l.name == name && l.pos.character == pos.character && l.pos.line == pos.line && l.path == path;
     }
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LangLocatable, name, pos, uri);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LangLocatable, name, pos, path);
 
 } // namespace slingshot::lang
 
@@ -55,7 +56,7 @@ struct hash<LangLocatable> {
         auto name = ankerl::unordered_dense::hash<std::string> { }(l.name);
         auto posLine = ankerl::unordered_dense::hash<lsp::uint> { }(l.pos.line);
         auto posChar = ankerl::unordered_dense::hash<lsp::uint> { }(l.pos.character);
-        auto uri = ankerl::unordered_dense::hash<std::string_view> { }(l.uri.data());
+        auto uri = ankerl::unordered_dense::hash<std::filesystem::path> { }(l.path);
 
         hash = ankerl::unordered_dense::detail::wyhash::mix(hash, name);
         hash = ankerl::unordered_dense::detail::wyhash::mix(hash, posLine);
@@ -93,7 +94,7 @@ class Port {
 public:
     std::string name { };
     PortDirection direction = PortDirection::Unknown;
-    LangLocatable location {};
+    LangLocatable location { };
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Port, name, direction, location);
@@ -101,7 +102,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Port, name, direction, location);
 /// Represents a module in a document
 class Module {
 public:
-    Module(std::string name, const slang::SourceLocation &location);
+    Module(std::string name, const std::filesystem::path &path, const slang::SourceLocation &location);
 
     void addPort(const std::string &portName, PortDirection dir, const slang::SourceLocation &location);
 
@@ -112,7 +113,7 @@ public:
     /// Returns the list of port directions that match the given direction. If direction is
     /// PortDirection::DontCare, then all directions will be returned. PortDirection::Unknown is treated as
     /// any valid direction.
-    std::vector<std::string> getPortNames(const PortDirection &direction) {
+    std::vector<std::string> getPortNames(const PortDirection &direction) const {
         std::vector<std::string> out { };
         out.reserve(ports.size());
         for (const auto &port : ports) {
@@ -130,6 +131,9 @@ public:
         return out;
     }
 
+    /// Attempts to find the location of the symbol specified, or returns nullopt if it could not be found.
+    std::optional<LangLocatable> querySymbolLocation(const std::string &symbol) const;
+
     std::vector<Port> ports { };
     // these are left as std::unordered_sets for the benefit of nlohmann::json
     std::unordered_set<LangLocatable> variables { };
@@ -143,12 +147,14 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Module, ports, parameters, name, variables);
 /// Represents a document
 class Document {
 public:
+    Document(std::filesystem::path path)
+        : path(std::move(path)) { };
+
     void startModule(const std::string &name, const slang::SourceLocation &location) {
         if (currentModule != std::nullopt) {
             SPDLOG_ERROR("Starting a module when a module is already active!");
         }
-        // SPDLOG_TRACE("Start module: {}", name);
-        currentModule = Module(name, location);
+        currentModule = Module(name, path, location);
     }
 
     /// Ends the module that is being generated. A module must be active. Flushes the module to the module
@@ -158,7 +164,6 @@ public:
             SPDLOG_ERROR("Trying to end a module, but no module is active!");
             return;
         }
-        // SPDLOG_TRACE("End module: {}", currentModule->name);
         modules.push_back(*currentModule);
         currentModule = std::nullopt;
     }
@@ -202,14 +207,15 @@ public:
 
     std::vector<Module> modules { };
 
-    // FIXME make these be LangLocatable
-    std::unordered_set<std::string> packages { };
-    std::unordered_set<std::string> macros { };
+    std::unordered_set<LangLocatable> packages { };
+    std::unordered_set<LangLocatable> macros { };
+
+    std::filesystem::path path;
 
 private:
     std::optional<Module> currentModule = std::nullopt;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Document, modules, packages, macros);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Document, modules, packages, macros, path);
 
 } // namespace slingshot::lang

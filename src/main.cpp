@@ -16,11 +16,8 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/spdlog.h"
-#include <csignal>
 #include <cstdlib>
 #include <exception>
-#include <filesystem>
-#include <iostream>
 #include <memory>
 #include <spdlog/common.h>
 #include <spdlog/sinks/ansicolor_sink.h>
@@ -36,6 +33,7 @@ void addCallbacks(std::shared_ptr<lsp::MessageHandler> &msgHandler) {
     msgHandler->add<lsp::notifications::TextDocument_DidChange>(slingshot::handlers::textDocumentChange);
     msgHandler->add<lsp::requests::TextDocument_Completion>(slingshot::handlers::textDocumentCompletion);
     msgHandler->add<lsp::notifications::TextDocument_DidClose>(slingshot::handlers::textDocumentClose);
+    msgHandler->add<lsp::requests::TextDocument_Definition>(slingshot::handlers::textDocumentDefinition);
 }
 
 } // namespace

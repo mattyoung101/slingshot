@@ -56,9 +56,6 @@ public:
     /// Current 'lang' document. Only valid if parse is 'valid' is true.
     std::optional<lang::Document> doc { };
 
-    /// Mapping between symbols this document declares and their locations; used for go to definition support
-    ankerl::unordered_dense::map<std::string, slang::SourceLocation> declaredTokenLocations { };
-
     IndexEntry(std::string path, uint64_t hash)
         : path(std::move(path))
         , hash(hash) {
