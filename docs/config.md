@@ -1,10 +1,9 @@
 # Slingshot configuration
 
 ## .slingshot.toml
-Slingshot configuration is loaded from a file canonically called `.slingshot.toml`
-(also acceptably `.slingshot.yml`) in the root directory of the project. The project root directory
-is usually the Git root directory, so the top of your Git repo. However, this is decided by the
-LSP client, so it depends on how that is configured.
+Slingshot configuration is loaded from a file called `.slingshot.toml` in the root directory of the project.
+The project root directory is usually the Git root directory, so the top of your Git repo. However, this is
+decided by the LSP client, so it depends on how that is configured.
 
 The current `.slingshot.toml` format looks as follows:
 
@@ -39,6 +38,9 @@ not processing the `include_dirs` correctly. Always check the log file (see read
 a large amount of information.
 
 ## Config file version history
+### v1.2.0
+- Support adding definitions
+
 ### v1.1.0
 - Support f-list files (*.f)
 

@@ -22,7 +22,9 @@
 #include <slang/analysis/AnalysisManager.h>
 #include <slang/ast/Compilation.h>
 #include <slang/ast/symbols/CompilationUnitSymbols.h>
+#include <slang/diagnostics/AnalysisDiags.h>
 #include <slang/diagnostics/CompilationDiags.h>
+#include <slang/diagnostics/DeclarationsDiags.h>
 #include <slang/diagnostics/DiagnosticEngine.h>
 #include <slang/diagnostics/Diagnostics.h>
 #include <slang/driver/Driver.h>
@@ -67,8 +69,12 @@ void LSPDiagnosticClient::report(const ReportedDiagnostic &diagnostic) {
     SPDLOG_TRACE("Received a diagnostic");
 
     // don't report missing timescale diagnostics, as they are caused by design elements being brought into
-    // the compilation tree through dependency graph resolution, but are not visible to the user
-    if (diagnostic.originalDiagnostic.code == slang::diag::MissingTimeScale) {
+    // the compilation tree through dependency graph resolution, but are not visible to the user.
+    // also - don't report generate unroll warnings, as these tend to happen in SRAM macros from my
+    // experience. we intentionally constrain the generate unroll limit to be very small to improve
+    // performance.
+    if (diagnostic.originalDiagnostic.code == slang::diag::MissingTimeScale
+        || diagnostic.originalDiagnostic.code == slang::diag::MaxGenerateStepsExceeded) {
         return;
     }
 
@@ -591,7 +597,9 @@ void CompilationManager::boot() {
     SPDLOG_INFO("Booting compiler manager");
 
     auto compilerThread = std::thread(&CompilationManager::compilerThread, this);
+#ifndef _WIN32
     pthread_setname_np(compilerThread.native_handle(), "Compiler");
+#endif
     compilerThread.detach();
 }
 

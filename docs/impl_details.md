@@ -10,7 +10,7 @@ It can also be serialised to JSON using `nlohmann_json`, and the intent is event
 clangd, documents do not have to be recompiled from scratch on server boot.
 
 The "lang lifter", defined in `lang_lifter.cpp/lang_lifter.hpp` is a Slang parse tree visitor that "lifts"
-SystemVerilog to this high-level representation. By the strict definition of "lifting", it's not really like
+a Slang SV CST to this high-level representation. By the strict definition of "lifting", it's not really like
 traditional lifters that do say x86 assembly to LLVM IR, but I named it like this as the inspiration.
 
 ## Compiler module
@@ -18,12 +18,18 @@ The compiler module, defined in `compiler.cpp/compiler.hpp` wraps Slang and perf
 - Concrete Syntax Tree (CST) initial parsing
 - Abstract Syntax Tree (AST) parsing and analysis for diagnostics
 - Higher level analysis (currently broken, probably?) using Slang's `AnalysisManager`
-- Language lifting to the internal lang module for completion
+- Language lifting to the internal "lang" module for completion
 - Dependency graph computation
 
-The compiler uses a thread pool and operates asynchronously in the background. Compilation jobs can be
-submitted to the pool. Once the compilation job has finished, the job will call `IndexManager` methods to
-associate index entries with their updated parse trees and other results.
+The compiler runs as a separate asynchronous thread and uses a blocking work queue to manage jobs. Compilation
+jobs can be submitted to the work queue and will be processed in order.
+
+When pulling jobs from the work queue, the compilation manager thread will compare the nanosecond timestamp of
+the work item and compare it against the last updated time of the item in the index. If the item in the index
+is newer, the work item will be discarded to prevent processing of outdated data.
+
+Once the compilation job has finished, the job will call `IndexManager` methods to associate index entries
+with their updated parse trees and other results.
 
 ## Remote debug module
 It can be hard to extract information from the server while it's running, for the purposes of debugging - for
@@ -32,7 +38,8 @@ server on port `6942` that can receive and execute commands.
 
 There's a Python script, `./scripts/remote_debugger.py` for interacting with this.
 
-The list of commands are defined at the bottom of `remote_debug.cpp`.
+The list of commands are defined at the bottom of `remote_debug.cpp`, and now you can also type `help` to
+see a list of all the commands.
 
 ## Indexing module
 Slingshot features a relatively competent, thread-safe (hopefully) indexing system. The basic purposes is to
@@ -51,7 +58,10 @@ The index also includes a dependency graph, which is modelled as a DAG (Directed
 Graaf library.
 
 The import locator (`import_locator.cpp/.h`) analyses the CST of a SV document to figure out both what symbols
-the document exports, and what symbols is required.
+the document exports, and what symbols is required. Certain symbols in the document may not be clear just by
+parsing the CST if they are actually required imported symbols, or if they are local to the document and not
+imported at all. For this reason, we also store so-called "maybe-required" symbols, which will be kept until
+at least indexing is complete.
 
 Then, the document graph (`document_graph.cpp/.h`) builds a DAG using the Graaf library. The graph is modelled
 as:
@@ -62,23 +72,43 @@ A ---(sym)---> B
 
 where "A" is the document that provides the symbol "sym" to document "B".
 
-Later, the document graph can be topologically sorted by the Graaf library to determine the correct order to
-compile all the documents in, and hence also what documents a given document depends on the be validly
-compiled.
+The document graph subsystem also maintains an inverted version of the graph; for example in the above example
+it would look like:
+
+```
+B ---(sym)---> A
+```
+
+To locate the required documents for a given document, the document graph subsystem performs a breadth-first
+search (BFS) on the inverted version of the graph; i.e. a backwards BFS on the regular graph.
+
+Because the document graph is modelled as a DAG, cycles are not permitted, and the server will complain
+extensively if it detects cycles in the document graph. This can be debugged most easily using the remote
+debugger defined above.
 
 ### Building the index
-The index is built by recursively walking the include dirs from the config file. Then, each document is added
-to the `CompilationManager` thread pool for indexing.
+The index is built by recursively walking the include dirs from the config file, or by parsing an F-list file.
+Then, each document is added to the `CompilationManager` work queue for indexing.
 
 The indexing process compiles the CST and performs the lang lifting, but does not parse the AST. This is also
 added to the dependency graph.
 
-Once the dependency graph is built, it's finalised to resolve any outstanding dependencies. After this, the
-graph is topologically sorted. Then, a bulk compilation is performed serially: each document is compiled in
-order, and the dependencies are monitored by storing all previous documents in the loop.
+Once the dependency graph is built, it's finalised to resolve any outstanding dependencies. The document graph
+attempts to greedily connect unconnected symbols if they are present. This includes "maybe required" symbols,
+which are still present at this stage.
+
+Then, a bulk compilation is performed serially: each document is compiled in order to generate ASTs, CSTs and
+lang documents. During the bulk compilation, the dependents for every document in the index are calculated
+using the backwards BFS mentioned above on the document graph.
+
+At the end of the initial indexing stage, the document graph now purges all unresolved "maybe required"
+symbols under the assumption that they were not required. This helps to reduce memory and improve the
+performance of the document graph.
 
 Once the dependency graph is computed, the diagnostics are re-evaluated for all open clients and resubmitted.
-The index will not be built again until the server is killed.
+The index will not be entirely re-built again until the server is killed. However, when typing, if Slingshot
+detects that the list of imports has changed (i.e. the hash of the import table has changed), it will re-build
+the import table for that particular file.
 
 ## Completion system
 The completion system is how the server attempts to understand SystemVerilog and decide what you want to type
