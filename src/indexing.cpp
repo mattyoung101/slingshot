@@ -211,7 +211,6 @@ std::string IndexManager::dumpSources() {
 }
 
 std::vector<lang::Document> IndexManager::getAllLangDocs() {
-    auto lock = acquireLock();
     std::vector<lang::Document> out;
     for (const auto &[key, value] : index) {
         if (value->doc.has_value()) {

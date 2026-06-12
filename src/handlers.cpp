@@ -309,11 +309,26 @@ lsp::requests::TextDocument_Definition::Result textDocumentDefinition(
         auto lookup = module.querySymbolLocation(target);
         SPDLOG_INFO("Found lookup target! {} in {}", lookup->name, lookup->path.string());
         if (lookup.has_value()) {
-            return lsp::Location {
-                // should be in the same file? look it up anyway
+            return lsp::Location { // should be in the same file? look it up anyway
                 .uri = lsp::Uri::parse("file://" + lookup->path.string()),
                 .range = lsp::Range { .start = lookup->pos, .end = lookup->pos }
             };
+        }
+    }
+
+    SPDLOG_INFO("Symbol not found in this document, scanning entire index");
+
+    // still unresolved, check if it's a module definition?
+    for (const auto &document : g_indexManager.getAllLangDocs()) {
+        for (const auto &module : document.modules) {
+            auto lookup = module.querySymbolLocation(target);
+            SPDLOG_INFO("Found lookup target! {} in {}", lookup->name, lookup->path.string());
+            if (lookup.has_value()) {
+                return lsp::Location { // should be in the same file? look it up anyway
+                    .uri = lsp::Uri::parse("file://" + lookup->path.string()),
+                    .range = lsp::Range { .start = lookup->pos, .end = lookup->pos }
+                };
+            }
         }
     }
 

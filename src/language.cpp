@@ -57,6 +57,11 @@ void Module::addVariable(const std::string &varName, const slang::SourceLocation
 }
 
 std::optional<LangLocatable> Module::querySymbolLocation(const std::string &symbol) const {
+    // perhaps they're referring to the module itself?
+    if (symbol == this->name) {
+        return this->location;
+    }
+
     for (const auto &port : ports) {
         if (port.name == symbol) {
             return port.location;
