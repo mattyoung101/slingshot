@@ -25,6 +25,9 @@ constexpr std::pair<lsp::Position, lsp::Uri> extractLocation(const slang::Source
     auto lock = g_compilerManager.acquireLock();
     auto sourceManager = g_compilerManager.getSourceManager();
     auto convertedLocation = toPosition(location, sourceManager);
+
+    // FIXME this just returns unnamed buffer, we should somehow plumb this in from the completion system I
+    // think?
     auto uri
         = lsp::Uri::parse(std::string("file://") + sourceManager->getFullPath(location.buffer()).string());
 
@@ -41,7 +44,16 @@ Module::Module(std::string name, const slang::SourceLocation &location)
 
 void Module::addPort(const std::string &portName, PortDirection dir, const slang::SourceLocation &location) {
     const auto &[convertedLocation, uri] = extractLocation(location);
-    ports.push_back(Port { .name = portName, .direction = dir });
+    // clang-format off
+    ports.push_back(Port {
+        .name = portName,
+        .direction = dir,
+        .location = LangLocatable {
+            .name = portName, .pos = convertedLocation,
+            .uri = uri
+        }
+    });
+    // clang-format on
 }
 
 void Module::addParameter(const std::string &paramName, const slang::SourceLocation &location) {

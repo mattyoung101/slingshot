@@ -8,6 +8,7 @@
 #include <ankerl/unordered_dense.h>
 #include <functional>
 #include <lsp/types.h>
+#include <lsp/uri.h>
 #include <nlohmann/detail/macro_scope.hpp>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -19,6 +20,11 @@
 #include <vector>
 
 /// A more abstract representation of the SV language, used for completion
+
+namespace lsp {
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Uri, data());
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Position, character, line);
+};
 
 namespace slingshot::lang {
 
@@ -35,7 +41,7 @@ public:
     }
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LangLocatable, name);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LangLocatable, name, pos, uri);
 
 } // namespace slingshot::lang
 
@@ -82,17 +88,15 @@ NLOHMANN_JSON_SERIALIZE_ENUM(PortDirection,
         ENUM_ENTRY(InOut),
     });
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(lsp::Position, line, character);
-
 /// Represents a port in a module
 class Port {
 public:
     std::string name { };
     PortDirection direction = PortDirection::Unknown;
-    lsp::Position location { };
+    LangLocatable location {};
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Port, name, direction);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Port, name, direction, location);
 
 /// Represents a module in a document
 class Module {
