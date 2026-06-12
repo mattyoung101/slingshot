@@ -15,7 +15,7 @@ using namespace slingshot;
 void LangLifterVisitor::handle(const ModuleHeaderSyntax &syntax) {
     // SPDLOG_TRACE("Visit module header");
     doc.maybeFlushModule();
-    doc.startModule(std::string(syntax.name.valueText()));
+    doc.startModule(std::string(syntax.name.valueText()), syntax.name.location());
     visitDefault(syntax);
 }
 
@@ -42,7 +42,7 @@ void LangLifterVisitor::handle(const NetPortHeaderSyntax &syntax) {
         }
         auto portName = implicitAnsiPort->declarator->name.valueText();
 
-        module.addPort(std::string(portName), direction);
+        module.addPort(std::string(portName), direction, implicitAnsiPort->sourceRange().start());
     });
     visitDefault(syntax);
 }
@@ -71,7 +71,7 @@ void LangLifterVisitor::handle(const ImplicitAnsiPortSyntax &syntax) {
 
         auto portName = syntax.declarator->name.valueText();
 
-        module.addPort(std::string(portName), direction);
+        module.addPort(std::string(portName), direction, header->sourceRange().start());
     });
     visitDefault(syntax);
 }
@@ -87,7 +87,7 @@ void LangLifterVisitor::handle(const DeclaratorSyntax &syntax) {
                 return;
             }
         }
-        module.addVariable(name);
+        module.addVariable(name, syntax.name.location());
     });
     visitDefault(syntax);
 }
@@ -97,9 +97,8 @@ void LangLifterVisitor::handle(const ParameterDeclarationSyntax &syntax) {
     doc.doIfModuleIsActive([&syntax](lang::Module &module) {
         for (const auto &declaration : syntax.declarators) {
             auto name = declaration->name.valueText();
-            module.addParameter(std::string(name));
+            module.addParameter(std::string(name), declaration->name.location());
         }
-
     });
     visitDefault(syntax);
 }

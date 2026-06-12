@@ -5,10 +5,10 @@
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
-#include "slingshot/indexing.hpp"
 #include "slingshot/language.hpp"
 #include <filesystem>
 #include <lsp/types.h>
+#include <memory>
 #include <slang/syntax/AllSyntax.h>
 #include <slang/syntax/SyntaxVisitor.h>
 #include <slang/text/SourceLocation.h>
@@ -24,35 +24,10 @@ using namespace slang;
 using namespace slang::syntax;
 
 // based on: https://docs.amd.com/r/en-US/ug901-vivado-synthesis/Verilog-System-Tasks-and-Functions
-const std::vector<std::string> SYSTEM_TASKS = {
-    "display",
-    "monitor",
-    "write",
-    "strobe",
-    "error",
-    "fatal",
-    "info",
-    "warning",
-    "clog2",
-    "finish",
-    "stop",
-    "fopen",
-    "fscanf",
-    "fwrite",
-    "fgets",
-    "readmemb",
-    "readmemh",
-    "write",
-    "floor",
-    "ceil",
-    "countones",
-    "countbits",
-    "time",
-    "signed",
-    "unsigned",
-    "countones",
-    "countbits"
-};
+const std::vector<std::string> SYSTEM_TASKS
+    = { "display", "monitor", "write", "strobe", "error", "fatal", "info", "warning", "clog2", "finish",
+          "stop", "fopen", "fscanf", "fwrite", "fgets", "readmemb", "readmemh", "write", "floor", "ceil",
+          "countones", "countbits", "time", "signed", "unsigned", "countones", "countbits" };
 
 /// A syntax visitor that walks the syntax tree, taking into account the cursor position
 class CompletionSyntaxVisitor : public SyntaxVisitor<CompletionSyntaxVisitor> {
@@ -96,11 +71,14 @@ private:
     void recommend(const std::vector<lsp::CompletionItem> &completions, const std::string &what);
 };
 
+// Forward decl of IndexEntry to prevent loops
+class IndexEntry;
+
 class CompletionManager {
 public:
     /// Generates completions for the given document at the given path
-    static std::vector<lsp::CompletionItem> getCompletions(
-        const std::filesystem::path &path, const lsp::Position &pos, const IndexEntry::Ptr &indexEntry);
+    static std::vector<lsp::CompletionItem> getCompletions(const std::filesystem::path &path,
+        const lsp::Position &pos, const std::shared_ptr<IndexEntry> &indexEntry);
 
 private:
 };

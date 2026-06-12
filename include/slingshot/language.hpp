@@ -1,10 +1,11 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025 M. L. Young.
+// Copyright (c) 2025-2026 Mel Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #pragma once
+#include <ankerl/unordered_dense.h>
 #include <functional>
 #include <lsp/types.h>
 #include <nlohmann/detail/macro_scope.hpp>
@@ -13,11 +14,52 @@
 #include <slang/text/SourceLocation.h>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <string_view>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
 /// A more abstract representation of the SV language, used for completion
+
+namespace slingshot::lang {
+
+/// Represents a generic token with a name and a location
+class LangLocatable {
+public:
+    std::string name { };
+    lsp::Position pos { };
+    lsp::Uri uri { }; // document URI
+                      //
+    bool operator==(const LangLocatable &l) const {
+        return l.name == name && l.pos.character == pos.character && l.pos.line == pos.line
+            && l.uri.data() == uri.data();
+    }
+};
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LangLocatable, name);
+
+} // namespace slingshot::lang
+
+namespace std {
+using namespace slingshot::lang;
+template <>
+struct hash<LangLocatable> {
+    std::size_t operator()(const LangLocatable &l) const noexcept {
+        uint64_t hash = 0xBEEF;
+
+        auto name = ankerl::unordered_dense::hash<std::string> { }(l.name);
+        auto posLine = ankerl::unordered_dense::hash<lsp::uint> { }(l.pos.line);
+        auto posChar = ankerl::unordered_dense::hash<lsp::uint> { }(l.pos.character);
+        auto uri = ankerl::unordered_dense::hash<std::string_view> { }(l.uri.data());
+
+        hash = ankerl::unordered_dense::detail::wyhash::mix(hash, name);
+        hash = ankerl::unordered_dense::detail::wyhash::mix(hash, posLine);
+        hash = ankerl::unordered_dense::detail::wyhash::mix(hash, posChar);
+        hash = ankerl::unordered_dense::detail::wyhash::mix(hash, uri);
+
+        return hash;
+    }
+};
+}; // namespace std
 
 namespace slingshot::lang {
 
@@ -45,49 +87,29 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(lsp::Position, line, character);
 /// Represents a port in a module
 class Port {
 public:
-    std::string name {};
+    std::string name { };
     PortDirection direction = PortDirection::Unknown;
-    lsp::Position location {};
+    lsp::Position location { };
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Port, name, direction);
 
-/// Represents a generic token with a name and a location
-class LangLocatable {
-public:
-    std::string name {};
-    lsp::Position location {};
-};
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LangLocatable, name, location);
-
 /// Represents a module in a document
 class Module {
 public:
-    Module(std::string name, const slang::SourceLocation &location)
-        : name(std::move(name)) {
-    }
+    Module(std::string name, const slang::SourceLocation &location);
 
-    void addPort(const std::string &portName, PortDirection dir) {
-        // SPDLOG_TRACE("Add port {} to module {}", portName, name);
-        ports.push_back(Port { .name = portName, .direction = dir });
-    }
+    void addPort(const std::string &portName, PortDirection dir, const slang::SourceLocation &location);
 
-    void addParameter(const std::string &paramName) {
-        // SPDLOG_TRACE("Add parameter {} to module {}", paramName, name);
-        parameters.insert(paramName);
-    }
+    void addParameter(const std::string &paramName, const slang::SourceLocation &location);
 
-    void addVariable(const std::string &varName) {
-        // SPDLOG_TRACE("Add variable {} to module {}", varName, name);
-        variables.insert(varName);
-    }
+    void addVariable(const std::string &varName, const slang::SourceLocation &location);
 
     /// Returns the list of port directions that match the given direction. If direction is
     /// PortDirection::DontCare, then all directions will be returned. PortDirection::Unknown is treated as
     /// any valid direction.
     std::vector<std::string> getPortNames(const PortDirection &direction) {
-        std::vector<std::string> out {};
+        std::vector<std::string> out { };
         out.reserve(ports.size());
         for (const auto &port : ports) {
             // always add these
@@ -104,12 +126,12 @@ public:
         return out;
     }
 
-    std::vector<Port> ports {};
+    std::vector<Port> ports { };
     // these are left as std::unordered_sets for the benefit of nlohmann::json
-    std::unordered_set<std::string> variables {};
-    std::unordered_set<std::string> parameters {};
-    std::string name {};
-    lsp::Position location {};
+    std::unordered_set<LangLocatable> variables { };
+    std::unordered_set<LangLocatable> parameters { };
+    std::string name { };
+    LangLocatable location { };
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Module, ports, parameters, name, variables);
@@ -122,7 +144,7 @@ public:
             SPDLOG_ERROR("Starting a module when a module is already active!");
         }
         // SPDLOG_TRACE("Start module: {}", name);
-        currentModule = Module(name);
+        currentModule = Module(name, location);
     }
 
     /// Ends the module that is being generated. A module must be active. Flushes the module to the module
@@ -161,22 +183,24 @@ public:
         return std::nullopt;
     }
 
-    void addPackage(const std::string &name) {
-        packages.insert(name);
-    }
+    // void addPackage(const std::string &name) {
+    //     packages.insert(name);
+    // }
 
-    std::optional<Module> getPackageByName(const std::string &name) const {
-        for (const auto &package : packages) {
-            if (package == name) {
-                return package;
-            }
-        }
-        return std::nullopt;
-    }
+    // std::optional<Module> getPackageByName(const std::string &name) const {
+    //     for (const auto &package : packages) {
+    //         if (package == name) {
+    //             return package;
+    //         }
+    //     }
+    //     return std::nullopt;
+    // }
 
-    std::vector<Module> modules {};
-    std::unordered_set<std::string> packages {};
-    std::unordered_set<std::string> macros {};
+    std::vector<Module> modules { };
+
+    // FIXME make these be LangLocatable
+    std::unordered_set<std::string> packages { };
+    std::unordered_set<std::string> macros { };
 
 private:
     std::optional<Module> currentModule = std::nullopt;

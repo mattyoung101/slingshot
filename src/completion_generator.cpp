@@ -141,7 +141,7 @@ std::vector<lsp::CompletionItem> CompletionGenerator::generateVariableSameModule
 
             for (const auto &var : module->variables) {
                 out.push_back(
-                    lsp::CompletionItem { .label = var, .kind = lsp::CompletionItemKind::Variable });
+                    lsp::CompletionItem { .label = var.name, .kind = lsp::CompletionItemKind::Variable });
             }
         }
     }
@@ -173,7 +173,7 @@ std::vector<lsp::CompletionItem> CompletionGenerator::generateVariableSameModule
 
         // no need to filter local variables
         for (const auto &var : module->variables) {
-            out.push_back(lsp::CompletionItem { .label = var, .kind = lsp::CompletionItemKind::Variable });
+            out.push_back(lsp::CompletionItem { .label = var.name, .kind = lsp::CompletionItemKind::Variable });
         }
     }
     return out;

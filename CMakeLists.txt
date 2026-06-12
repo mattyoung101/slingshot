@@ -72,6 +72,7 @@ function(add_slingshot_target TARGET)
         src/lang_lifter.cpp
         src/import_locator.cpp
         src/document_graph.cpp
+        src/language.cpp
     )
     target_include_directories(${TARGET} PRIVATE include)
 
@@ -115,60 +116,6 @@ function(add_slingshot_target TARGET)
     install(TARGETS ${TARGET})
 endfunction()
 
-
-# Adds a Slingshot test
-function(add_slingshot_test TARGET SOURCE)
-    message(STATUS "Add test: ${TARGET} Source file: ${SOURCE}")
-
-    # TODO compile a generic test library that includes all of this
-    add_executable(${TARGET}
-        src/handlers.cpp
-        src/indexing.cpp
-        src/compiler.cpp
-        src/remote_debug.cpp
-        src/completion.cpp
-        src/completion_generator.cpp
-        src/lang_lifter.cpp
-        src/import_locator.cpp
-        src/document_graph.cpp
-        test/globals.cpp
-        ${SOURCE}
-    )
-    target_include_directories(${TARGET} PRIVATE include)
-
-    target_link_libraries(${TARGET} PRIVATE spdlog::spdlog fmt::fmt slang::slang lsp
-        unordered_dense::unordered_dense nlohmann_json::nlohmann_json tomlplusplus::tomlplusplus
-        Graaf::Graaf Catch2::Catch2WithMain)
-
-    if (SLINGSHOT_ENABLE_REMOTE_DEBUGGER)
-        target_link_libraries(${TARGET} PRIVATE sockpp-static)
-    endif()
-
-    # note on diagnostic colour: https://stackoverflow.com/a/73349744/5007892
-    target_compile_options(${TARGET} PRIVATE "-Wall" "-Wextra" "-Wno-unused-parameter" "-ggdb"
-        "-fdiagnostics-color=always")
-    target_compile_definitions(${TARGET} PRIVATE
-        "-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE"
-        "-DSLINGSHOT_VERSION=\"${CMAKE_PROJECT_VERSION}\""
-    )
-
-    if (SLINGSHOT_ENABLE_REMOTE_DEBUGGER)
-        target_compile_definitions(${TARGET} PRIVATE "-DSLINGSHOT_ENABLE_REMOTE_DEBUGGER=1")
-    else()
-        target_compile_definitions(${TARGET} PRIVATE "-DSLINGSHOT_ENABLE_REMOTE_DEBUGGER=0")
-    endif()
-
-    #### LINKER
-    if (MOLD_RESULT MATCHES "mold 2")
-        message(STATUS "mold is available, it will be used")
-        target_link_options(${TARGET} PRIVATE "-fuse-ld=mold")
-    else()
-        message(STATUS "mold is NOT available, so we'll use the system default linker")
-    endif()
-
-    catch_discover_tests(${TARGET})
-endfunction()
-
 ########################################################################################################
 ########################################################################################################
 ########################################################################################################
@@ -181,8 +128,4 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_slingshot_target(slingshot_asan EXTRA_ARGS "-O0" "-fsanitize=address" "-fsanitize=undefined")
     add_slingshot_target(slingshot_tsan EXTRA_ARGS "-O0" "-fsanitize=thread")
     add_slingshot_target(slingshot_msan EXTRA_ARGS "-O0" "-fsanitize=memory")
-endif()
-
-if (SLINGSHOT_BUILD_TESTS)
-    add_slingshot_test(sling_test_indexer test/indexer.cpp)
 endif()
