@@ -7,6 +7,8 @@
 #include "slingshot/handlers.hpp"
 #include "slingshot/conversions.hpp"
 #include "slingshot/slingshot.hpp"
+#include <cctype>
+#include <cstddef>
 #include <exception>
 #include <filesystem>
 #include <lsp/messages.h>
@@ -136,6 +138,32 @@ void parseConfigToml(std::filesystem::path &path) {
     } catch (const std::exception &e) {
         SPDLOG_ERROR("Failed to parse config TOML: {}", e.what());
     }
+}
+
+constexpr bool isValidIdentifierChar(const char c) {
+    return std::isalpha(c) || std::isdigit(c) || c == '_';
+}
+
+std::string dumbTokeniserForwards(const std::string &line, const size_t cursorIdx) {
+    std::string out;
+    for (size_t i = cursorIdx; i < line.size(); i++) {
+        if (!isValidIdentifierChar(line[i]) ) {
+            break;
+        }
+        out += line[i];
+    }
+    return out;
+}
+
+std::string dumbTokeniserBackwards(const std::string &line, const size_t cursorIdx) {
+    std::string out;
+    for (size_t i = cursorIdx; i >= 0; i--) {
+        if (!isValidIdentifierChar(line[i])) {
+            break;
+        }
+        out += line[i];
+    }
+    return out;
 }
 
 }; // namespace
@@ -285,29 +313,30 @@ lsp::requests::TextDocument_Definition::Result textDocumentDefinition(
         return lsp::Null();
     }
 
-    auto loc = toSlangLocation(
-        params.position, params.textDocument.uri.path(), g_compilerManager.getSourceManager());
+    auto sourceLine = split_string((*result)->contents, "\n").at(params.position.line);
+    SPDLOG_INFO("Source line: {}", sourceLine);
 
-    // resolve the symbol under the cursor; find the deepest nested syntax node from the tree root
-    // basically DFS
-    std::string target;
-    AllSyntaxVisitor visitor([&loc, &target](const SyntaxNode &node) {
-        if (node.sourceRange().contains(loc)) {
-            SPDLOG_TRACE("Contains: {}", node.toString());
-            target = node.toString();
-        }
-    });
-    visitor.visit((*result)->tree->root());
-    trim(target);
+    // resolve the symbol under the cursor using our dumb and simple tokeniser
+    auto forwards = dumbTokeniserForwards(sourceLine, params.position.character);
+    auto backwards = dumbTokeniserBackwards(sourceLine, params.position.character);
 
-    SPDLOG_INFO("Target node lookup: '{}'", target);
+    // since we're iterating backwards, we need to reverse it
+    std::reverse(backwards.begin(), backwards.end());
+
+    // we also seemingly double up on the first character, so it's cheapest to delete it from the end of
+    // backwards
+    backwards.pop_back();
+
+    auto target = backwards + forwards;
+
+    SPDLOG_INFO("Target node lookup: '{}' (backwards: {} forwards: {})", target, backwards, forwards);
 
     auto doc = *(*result)->doc;
 
     // first, attempt to resolve the symbol within the file
     for (const auto &module : doc.modules) {
+        SPDLOG_DEBUG("Querying module: {}", module.name);
         auto lookup = module.querySymbolLocation(target);
-        SPDLOG_INFO("Found lookup target! {} in {}", lookup->name, lookup->path.string());
         if (lookup.has_value()) {
             return lsp::Location { // should be in the same file? look it up anyway
                 .uri = lsp::Uri::parse("file://" + lookup->path.string()),
@@ -322,7 +351,6 @@ lsp::requests::TextDocument_Definition::Result textDocumentDefinition(
     for (const auto &document : g_indexManager.getAllLangDocs()) {
         for (const auto &module : document.modules) {
             auto lookup = module.querySymbolLocation(target);
-            SPDLOG_INFO("Found lookup target! {} in {}", lookup->name, lookup->path.string());
             if (lookup.has_value()) {
                 return lsp::Location { // should be in the same file? look it up anyway
                     .uri = lsp::Uri::parse("file://" + lookup->path.string()),
