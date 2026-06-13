@@ -42,7 +42,7 @@ void LangLifterVisitor::handle(const NetPortHeaderSyntax &syntax) {
         }
         auto portName = implicitAnsiPort->declarator->name.valueText();
 
-        module.addPort(std::string(portName), direction, implicitAnsiPort->sourceRange().start());
+        module.addPort(std::string(portName), direction, implicitAnsiPort->declarator->sourceRange().start());
     });
     visitDefault(syntax);
 }

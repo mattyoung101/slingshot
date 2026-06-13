@@ -29,6 +29,8 @@ aims to:
     - Graph-based (backwards BFS) automatic dependency tracking between SV documents
         - Improves performance by only compiling the documents necessary to index a file
     - Asynchronous; does not block the main thread while indexing is active
+- Project-wide Go to Definition support
+  - _Brand new and highly experimental!_
 - Simple configuration
   - Slingshot is configured through a simple `.slingshot.toml` file declared in the project's root
   directory
@@ -44,7 +46,8 @@ Slingshot is relatively stable and is ready for testing in larger projects. I'm 
 to develop my PhD dissertation. Please keep me posted!
 
 ### Timeline
-Slingshot is being developed in my free time during my PhD. I do not _always_ have time to work on this project.
+Slingshot is being developed in my free time during my PhD. I do not _always_ have time to work on this
+project, but I try my best.
 
 ### Known supported editors
 - Neovim v0.11+
