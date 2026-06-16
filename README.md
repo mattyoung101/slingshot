@@ -3,21 +3,21 @@
 > **This is BETA quality software; bugs may be present. Please file issues on the issue tracker.**
 
 **Slingshot** is a language server for the **SystemVerilog** hardware description language, with a focus on
-**stability**, **performance**, and **accuracy** in autocomplete. The overarching goal is to make
-SystemVerilog as intuitive to edit as C++ or Rust.
+**stability**, **performance**, and **accuracy**. The overarching goal is to make SystemVerilog as intuitive
+to edit as C++ or Rust.
 
-Compared to other SV LSPs, the main feature that Slingshot brings to the table is a completion-first approach,
-using the powerful [Slang](https://github.com/MikePopoloski/slang) frontend. The intent is to provide fast,
-accurate and robust completion even in complex projects. Slingshot also features a relatively advanced
-**asynchronous indexing system**, to power this completion system, that features graph-based dependency resolution.
+Compared to other SystemVerilog LSPs, Slingshot focuses on producing the most stable and accurate editing
+experience possible. Slingshot offers what I believe to be best-in-class project-wide support for:
+diagnostics, context-sensitive auto-complete suggestions, and go-to-definition. Slingshot uses a relatively
+advanced asynchronous graph-based indexing system that should be capable of efficiently understanding even the
+most complex SystemVerilog projects with hundreds of files and dependencies, and continuously producing valid
+results during long editing sessions. Slingshot is also trivially configurable with [a single file](docs/config.md):
+the intent is to move the onus from the developer to the LSP itself.
 
-The trade-off is this does mean that features such as "go-to-reference" take somewhat of a backseat; though
-the plan is to implement them eventually.
-
-Slingshot is (now) written in C++23. Previously, it was written in Kotlin and used ANTLR. This new rewrite
-aims to:
-- Improve speed and utility by using a proper SystemVerilog parser (Slang)
-- Reduce memory usage
+Slingshot is written in C++23, and is proudly built on top of Mike Popoloski's
+[Slang](https://github.com/MikePopoloski/slang) frontend, which was exactly built to handle tasks such as this
+LSP. Slang is one of the most feature-complete SV frontends, and certainly the most feature-complete FOSS
+frontend.
 
 ## Features
 - Diagnostics
@@ -27,9 +27,9 @@ aims to:
       valid completions
 - Advanced indexing system
     - Graph-based (backwards BFS) automatic dependency tracking between SV documents
-        - Improves performance by only compiling the documents necessary to index a file
     - Asynchronous; does not block the main thread while indexing is active
-- Project-wide Go to Definition support
+    - Implicit and explicit package import resolution
+- Project-wide "go to definition" action support
   - _Brand new and highly experimental!_
 - Simple configuration
   - Slingshot is configured through a simple `.slingshot.toml` file declared in the project's root
@@ -42,7 +42,7 @@ aims to:
 Future features are planned on the [issue tracker](https://github.com/mlyoung101/slingshot/issues).
 
 ### Current state
-Slingshot is relatively stable and is ready for testing in larger projects. I'm actively using it myself daily
+Slingshot is quite stable and is ready for testing in larger projects. I'm actively using it myself daily
 to develop my PhD dissertation. Please keep me posted!
 
 ### Timeline
@@ -54,6 +54,14 @@ project, but I try my best.
 - Helix
 
 ## Building and running
+### Quick start
+The quickest way to get up and running with Slingshot is to download a [precompiled release](https://github.com/mlyoung101/slingshot/releases).
+If you do this, skip straight to the section "Running". Otherwise, to compile from source, read the section
+"Building and environment".
+
+The only runtime dependency of Slingshot is a Linux system; something compatible with Ubuntu 22.04+. For
+example, I use Arch (btw) and it works.
+
 ### Building and environment
 You will need:
 - CMake 3.21+
@@ -62,7 +70,6 @@ You will need:
 - ccache (optional)
 - Just (optional)
 - mold (optional)
-- Something compatible with Ubuntu 22.04+ (I develop on Arch, btw)
 
 The simplest way to build, with Just, is to run `just build` and/or `just build_debug`.
 

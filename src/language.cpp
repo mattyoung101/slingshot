@@ -17,6 +17,8 @@
 #include <string>
 #include <utility>
 
+/// Higher level representation of SystemVerilog for auto complete and go to definition.
+
 using namespace slingshot;
 using namespace slingshot::lang;
 

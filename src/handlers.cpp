@@ -1,11 +1,10 @@
 // Slingshot: A SystemVerilog language server.
 //
-// Copyright (c) 2025-2026 M. L. Young.
+// Copyright (c) 2025-2026 Mel Young.
 //
 // This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #include "slingshot/handlers.hpp"
-#include "slingshot/conversions.hpp"
 #include "slingshot/slingshot.hpp"
 #include <cctype>
 #include <cstddef>
@@ -25,6 +24,8 @@
 #include <string>
 #include <toml++/toml.hpp>
 #include <vector>
+
+/// Contains handlers for LSP methods
 
 namespace {
 // https://stackoverflow.com/a/72900791
@@ -144,6 +145,8 @@ constexpr bool isValidIdentifierChar(const char c) {
     return std::isalpha(c) || std::isdigit(c) || c == '_';
 }
 
+/// A "dumb" tokeniser that scans forwards until it sees a character that does not conform with
+/// isValidIdentifierChar.
 std::string dumbTokeniserForwards(const std::string &line, const size_t cursorIdx) {
     std::string out;
     for (size_t i = cursorIdx; i < line.size(); i++) {
@@ -155,6 +158,8 @@ std::string dumbTokeniserForwards(const std::string &line, const size_t cursorId
     return out;
 }
 
+/// A "dumb" tokeniser that scans backwards until it sees a character that does not conform with
+/// isValidIdentifierChar.
 std::string dumbTokeniserBackwards(const std::string &line, const size_t cursorIdx) {
     std::string out;
     for (size_t i = cursorIdx; i >= 0; i--) {
