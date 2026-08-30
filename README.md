@@ -156,34 +156,26 @@ go-to-definition, but importantly _only after_ the core features are sufficientl
 See [docs/impl_details.md](docs/impl_details.md)
 
 ## Contributing guidelines
-### No AI policy
-As part of Slingshot's design philosophy, as well as the tenuous situation around the use of LLMs regarding
-copyright and even ethics, I will **not** accept any pull requests or issues that are written in whole or in
-part using LLMs. I also do not use any LLMs in any way when working on Slingshot. "Vibe coded" LLM
-contributions tend to create an enormous maintenance burden that would be unacceptable for me as the sole
-maintainer and editor of this project.
+### LLM/AI policy
+Slingshot adopts LibreLane's LLM policy verbatim. You may read it here:
+https://librelane.readthedocs.io/en/stable/contributors/llm-policy.html
 
-In addition, there are _already_ at least two SV LSPs developed with significant AI assistance, so if you
+The tl;dr from them is:
+
+> - We reject “agentic” or vibe-coded submissions.
+> - For smaller issues found using LLMs, we encourage you to submit bug reports instead where the maintainers
+>   can fix them.
+> - For high-quality code that is primarily human-authored but AI-assisted, we require an Assisted-by (not
+>   Co-authored-by) commit trailer.
+> - Do not use LLMs for communication, with a narrow exemption if English is not your native language, in
+>   which case, you are allowed to translate text you have written yourself.
+
+I must note that there are _already_ at least two SV LSPs developed with significant AI assistance, so if you
 prefer this model, use them instead.
 
-> [!IMPORTANT]
-> Submitting a PR or issue that is reasonably believed to be written using AI will result in it being
-> closed in almost all circumstances, and you will be referred back to this policy.
-
-To be clear, here are some examples of this policy in effect:
-- A user submits an issue or PR that has obvious hallmarks of AI writing and exaggeration: **Reject, refer to
-  policy.**
-- A user submits a PR that includes "Co-authored-by: Claude". **Reject without exception, refer to policy.**
-- A user submits a PR that masquerades as human-authored, but is suspicious. **Clarify with user, refer to
-  policy; reject if user admits AI, has made other AI PRs, or is otherwise evasive.**
-- A user authors a PR using auto-complete style AI tools, but otherwise developed it manually. **Approve, as
-  long as style is acceptable and user understands their contribution clearly.**
-- A user employs an LLM-based translation tool to translate their otherwise hand-written issue. **Approve, as
-  long as LLM has not modified the original intent significantly.**
-
-This is based on precedent from [Zig](https://ziglang.org/code-of-conduct/#strict-no-llm-no-ai-policy),
-[QEMU](https://www.qemu.org/docs/master/devel/code-provenance.html#use-of-ai-generated-content),
-[LibreOffice](https://wiki.documentfoundation.org/Development/AI_policy), and others.
+See also
+[Guix's](https://codeberg.org/guix/guix-consensus-documents/src/commit/a24520c4147ffd67bb696c71f15ed4fb8521a791/008-genai.md)
+well written policy (imo), for further rationale behind this.
 
 ## Licence
 Copyright (c) 2023-2026 Mel Young <mel@mlyoung.cool>. Available under the Mozilla Public License v2.0.
